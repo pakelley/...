@@ -1,0 +1,2 @@
+brew "nushell"
+brew "starship"

@@ -1,0 +1,2 @@
+brew "erlang"
+brew "rebar"

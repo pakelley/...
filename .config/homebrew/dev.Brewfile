@@ -1,0 +1,20 @@
+brew "cmake"
+brew "docker", link: false
+brew "docuum", restart_service: true
+brew "gibo"
+brew "helm"
+brew "kubernetes-cli"
+brew "minikube"
+brew "mycli"
+brew "mysql"
+brew "packer"
+brew "pgcli"
+brew "postgresql", restart_service: true
+brew "terraform"
+brew "spotify/public/gcs-parquet-cli"
+cask "docker"
+cask "google-cloud-sdk"
+cask "lens"
+cask "ngrok"
+cask "nteract"
+cask "postman"
