@@ -1,0 +1,266 @@
+#+TITLE: Config
+* Packages
+#+begin_src elisp :tangle packages.el
+(package! org-anki)
+(package! org-gtd)
+(package! org-ref)
+#+end_src
+
+* GTD
+** Keybindings
+Global keybindings:
+| Keybinding | Description                  |
+|------------+------------------------------|
+| c          | Capture (to inbox file)      |
+| p          | Process inbox                |
+| n          | Show all NEXT tasks          |
+| s          | Show projects that are stuck |
+Keybindings while processing a task:
+| Keybinding | Description   |
+|------------+---------------|
+| C-c C-c    | Finalize task |
+#+begin_src elisp
+(use-package! org-gtd
+  :config
+  (map! (:leader (:prefix-map ("G" . "GTD")
+                  :desc "Capture"             "c" #'org-gtd-capture
+                  :desc "Process Inbox"       "p" #'org-gtd-process-inbox
+                  :desc "Show all next"       "n" #'org-gtd-show-all-next
+                  :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects))
+        (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize)))
+#+end_src
+** GTD Files
+Store GTD files in XDG-based path, sync-ed by Syncthing
+#+begin_src elisp
+(setq org-gtd-directory "~/.local/share/notes/gtd/")
+#+end_src
+** Other Recommended config
+These are suggested by the `org-gtd` README: set tags when processing tasks, add a `DELEGATED_TO` property, and add an agenda keybinding to the agenda
+#+begin_src elisp
+(setq org-gtd-process-item-hooks '(org-set-tags-command)
+      org-agenda-property-list '("DELEGATED_TO")
+      org-agenda-custom-commands '(("g" "Scheduled today and all NEXT items" ((agenda "" ((org-agenda-span 1))) (todo "NEXT")))))
+#+end_src
+** `org-edna` config for GTD
+Right now this is only the recommendations from `org-gtd`, but I'll probably add more eventually.
+#+begin_src elisp
+(setq org-edna-use-inheritance t)
+(org-edna-mode 1)
+#+end_src
+* Roam
+** Roam Files
+Store `org-roam` files in XDG-based path, sync-ed by Syncthing
+#+begin_src elisp
+(setq org-roam-directory "~/.local/share/notes/org-roam/")
+#+end_src
+** Roam completion everywhere
+On the fence about this one, need to check on the performance. Makes linking roam notes together simple though, so I'm enabling it for now: it just provides tab completion for roam note titles.
+#+begin_src elisp
+(setq org-roam-completion-everywhere t)
+#+end_src
+** Capture templates [0/1]
+- [ ] TODO review these
+Still a WIP, currently working off of the (fantastic) system crafters examples
+#+begin_src elisp
+(setq org-roam-completion-system 'default
+      org-roam-capture-templates
+       '(("d" "default" plain
+          #'org-roam-capture--get-point
+          "%?"
+          :file-name "%<%Y%m%d%H%M%S>-${slug}"
+          :head "#+title: ${title}\n"
+          :unnarrowed t)
+         ("ll" "link note" plain
+          #'org-roam-capture--get-point
+          "* %^{Link}"
+          :file-name "Inbox"
+          :olp ("Links")
+          :unnarrowed t
+          :immediate-finish)
+         ("lt" "link task" entry
+          #'org-roam-capture--get-point
+          "* TODO %^{Link}"
+          :file-name "Inbox"
+          :olp ("Tasks")
+          :unnarrowed t
+         :immediate-finish)))
+(setq org-roam-dailies-directory "dailies/"
+      org-roam-dailies-capture-templates
+       '(("d" "default" entry
+          #'org-roam-capture--get-point
+          "* %?"
+          :file-name "Journal/%<%Y-%m-%d>"
+          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+         ("t" "Task" entry
+          #'org-roam-capture--get-point
+          "* TODO %?\n  %U\n  %a\n  %i"
+          :file-name "Journal/%<%Y-%m-%d>"
+          :olp ("Tasks")
+          :empty-lines 1
+          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+         ("j" "journal" entry
+          #'org-roam-capture--get-point
+          "* %<%I:%M %p> - Journal  :journal:\n\n%?\n\n"
+          :file-name "Journal/%<%Y-%m-%d>"
+          :olp ("Log")
+          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+         ("l" "log entry" entry
+          #'org-roam-capture--get-point
+          "* %<%I:%M %p> - %?"
+          :file-name "Journal/%<%Y-%m-%d>"
+          :olp ("Log")
+          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+         ("m" "meeting" entry
+          #'org-roam-capture--get-point
+          "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
+          :file-name "Journal/%<%Y-%m-%d>"
+          :olp ("Log")
+       :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
+#+end_src
+* Reference [0/1]
+- [ ] TODO change these to relative paths
+Use org-ref and bibtex for bibliographic references
+#+begin_src elisp
+(use-package! org-ref
+  :config
+  (setq bibtex-completion-bibliography "/Users/pakelley/.local/share/bibtex/references.bib"
+        bibtex-completion-library-path "/Users/pakelley/.local/share/bibtex/pdfs/"
+        bibtex-completion-notes-path "/Users/pakelley/.local/share/bibtex/notes.org")
+  (setq reftex-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib"))
+  (setq org-ref-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib")
+        org-ref-pdf-directory "/Users/pakelley/.local/share/bibtex/pdfs/"
+        org-ref-bibliography-notes "/Users/pakelley/.local/share/bibtex/notes.org"))
+#+end_src
+* Todos
+** Todo keywords [0/1]
+- [ ] TODO: do I need both `CANCELLED` and `TRASH`?
+The sequence of stages my tasks go through. See the [[https://orgmode.org/manual/Tracking-TODO-state-changes.html][org manual]] for more info, but `!` gives a timestamp, `@` lets you leave a note when transitioning through that state, and `/` denotes whether the other symbols happen when transitioning in vs out of the state (before `/` is for transitioning into the state, which is the default).
+- TODO: on the agenda, but not something to immediately work on
+- NEXT: something I can immediately pick up
+- WAIT: blocked by something, don't even consider it a todo until it's unblocked
+- DONE: finished, congrats
+- CANCELLED: decided not to do this while working on it
+- TRASH: decided not to do this while prioritizing
+#+begin_src elisp
+(setq org-todo-keywords
+      '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
+(setq org-todo-keyword-faces
+      '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
+        ("WAIT" . (:foreground "#dc8cc3" :weight bold))
+        ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
+        ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
+#+end_src
+* Capture
+** Quick keybinding
+#+begin_src elisp
+(define-key global-map "\C-cc" 'org-capture)
+#+end_src
+** Capture Templates [0/1]
+- [ ] TODO: revisit these
+#+begin_src elisp
+(setq org-capture-templates
+      '(("b" "Bombora" entry (file+datetree "~/SparkleShare/org/work/bombora/bombora.cap.org")
+         "* %?\n  %i\n  %a")
+        ("B" "Bombora Retro" entry (file+datetree "~/SparkleShare/org/work/bombora/bombora.retro.org")
+         "* %?\n  %i\n  %a")
+        ("i" "Inbox"
+         entry (file "~/.local/share/notes/gtd/inbox.org")
+         "* %?\n%U\n\n  %i"
+         :kill-buffer t)
+        ("l" "Todo with link"
+         entry (file "~/.local/share/notes/gtd/inbox.org")
+         "* %?\n%U\n\n  %i\n  %a"
+         :kill-buffer t)))
+#+end_src
+* Agenda
+** Always include clockreport mode
+This gives some useful summary info about time spent on tasks from the agenda, when you have the discipline to use org's clock features.
+#+begin_src elisp
+(setq org-agenda-start-with-clockreport-mode t)
+#+end_src
+** Clockreport format [0/1]
+- [ ] TODO revisit this (I think I have it set up for org-pomodoro, but can't remember anymore)
+#+begin_src elisp
+(setq org-agenda-clockreport-parameter-plist
+      '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
+#+end_src
+** Agenda files
+For now, only use GTD files for the agenda
+#+begin_src elisp
+(setq org-agenda-files `(,org-gtd-directory))
+#+end_src
+* Deft
+#+begin_src elisp
+(setq deft-directory "~/.local/share/notes")
+(setq deft-recursive t)
+#+end_src
+* General
+** Notes directory
+Top-level note directory, synced with Syncthing
+#+begin_src elisp
+(setq org-directory "~/.local/share/notes")
+#+end_src
+** Render latex fragments when opening org file
+#+begin_src elisp
+(setq org-startup-with-latex-preview t)
+#+end_src
+** Word wrap
+Commenting this out for now; doom seems to do a good job of this on its own
+#+begin_src elisp
+;(setq org-startup-truncated nil)
+;(setq org-startup-indented t)
+#+end_src
+** Refile
+Commenting this out for now, unless I decide I need it
+#+begin_src elisp
+;(setq org-refile-targets
+;      '((nil :maxlevel . 3)
+;        (org-agenda-files :maxlevel . 3)))
+#+end_src
+* Babel [0/1]
+- [ ] TODO revisit these
+** Confirm evaluate
+Don't prompt me to confirm every time I want to evaluate a block
+#+begin_src elisp
+(setq org-confirm-babel-evaluate nil)
+#+end_src
+** Inline images
+Display/udate images in the buffer after I evaluate a block
+#+begin_src elisp
+(add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
+#+end_src
+* Pomodoro [0/1]
+- [ ] TODO review this
+#+begin_src elisp
+(setq org-pomodoro-length 40)
+(setq org-pomodoro-short-break-length 10)
+(setq org-pomodoro-long-break-length 20)
+(setq org-pomodoro-play-sounds 0)
+;(setq alert-default-style 'growl)
+#+end_src
+* Misc
+#+begin_src elisp
+(setq doom-theme 'doom-oceanic-next)
+(setq doom-localleader-key ",")
+#+end_src
+* Tags [0/1]
+- [ ] TODO figure out a better way of updating this
+#+begin_src elisp
+(setq org-tag-alist
+      '(
+        ("Configuration")
+        ; GTD
+        (:startgrouptag)
+        ("GTD")
+        (:grouptags)
+        ("Control")
+        ("Persp")
+        (:endgrouptag)
+        (:startgrouptag)
+        ("Control")
+        (:grouptags)
+        ("Context")
+        ("Task")
+        (:endgrouptag)
+        ("Circuit Theory")))
+#+end_src
