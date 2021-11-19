@@ -134,6 +134,10 @@
 
 (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
 
+(use-package! ob-mermaid
+  :config
+  (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
+
 (setq org-pomodoro-length 40)
 (setq org-pomodoro-short-break-length 10)
 (setq org-pomodoro-long-break-length 20)

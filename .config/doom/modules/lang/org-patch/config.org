@@ -1,6 +1,7 @@
 #+TITLE: Config
 * Packages
 #+begin_src elisp :tangle packages.el
+(package! ob-mermaid)
 (package! org-anki)
 (package! org-gtd)
 (package! org-ref)
@@ -119,6 +120,7 @@ Still a WIP, currently working off of the (fantastic) system crafters examples
 #+end_src
 * Reference [0/1]
 - [ ] TODO change these to relative paths
+- [ ] TODO set up ebib (the [[a][spacemacs bibtex layer]] should be helpful)
 Use org-ref and bibtex for bibliographic references
 #+begin_src elisp
 (use-package! org-ref
@@ -228,6 +230,14 @@ Don't prompt me to confirm every time I want to evaluate a block
 Display/udate images in the buffer after I evaluate a block
 #+begin_src elisp
 (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
+#+end_src
+** Mermaid
+Use [[https://mermaid-js.github.io/mermaid/#/][mermaid.js]] to generate diagrams in org files (rendered by babel)
+Notably, you'll need to install [[https://github.com/mermaid-js/mermaid-cli][mermaid-cli]].
+#+begin_src elisp
+(use-package! ob-mermaid
+  :config
+  (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 #+end_src
 * Pomodoro [0/1]
 - [ ] TODO review this
