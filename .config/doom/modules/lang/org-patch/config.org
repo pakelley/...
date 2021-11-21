@@ -241,11 +241,6 @@ Notably, you'll need to install [[https://github.com/mermaid-js/mermaid-cli][mer
 (setq org-pomodoro-play-sounds 0)
 ;(setq alert-default-style 'growl)
 #+end_src
-* Misc
-#+begin_src elisp
-(setq doom-theme 'doom-oceanic-next)
-(setq doom-localleader-key ",")
-#+end_src
 * Tags [0/1]
 - [ ] TODO figure out a better way of updating this
 #+begin_src elisp

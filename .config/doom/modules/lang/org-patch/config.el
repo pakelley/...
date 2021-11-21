@@ -137,9 +137,6 @@
 (setq org-pomodoro-play-sounds 0)
 ;(setq alert-default-style 'growl)
 
-(setq doom-theme 'doom-oceanic-next)
-(setq doom-localleader-key ",")
-
 (setq org-tag-alist
       '(
         ("Configuration")
