@@ -22,24 +22,17 @@
 
 (setq org-roam-completion-system 'default
       org-roam-capture-templates
-       '(("d" "default" plain
-          #'org-roam-capture--get-point
-          "%?"
-          :file-name "%<%Y%m%d%H%M%S>-${slug}"
-          :head "#+title: ${title}\n"
+       '(("d" "default" plain "%?"
+          :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org.gpg" "#+title: ${title}\n")
           :unnarrowed t)
          ("ll" "link note" plain
-          #'org-roam-capture--get-point
           "* %^{Link}"
-          :file-name "Inbox"
-          :olp ("Links")
+          :target (file+olp "Inbox" ("Links"))
           :unnarrowed t
           :immediate-finish)
          ("lt" "link task" entry
-          #'org-roam-capture--get-point
           "* TODO %^{Link}"
-          :file-name "Inbox"
-          :olp ("Tasks")
+          :target (file+olp "Inbox" ("Tasks"))
           :unnarrowed t
          :immediate-finish)))
 (setq org-roam-dailies-directory "dailies/"
