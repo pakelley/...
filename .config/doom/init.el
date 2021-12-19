@@ -187,4 +187,5 @@
 
        :config
        literate
+       literate-patch
        (default +bindings +smartparens))
