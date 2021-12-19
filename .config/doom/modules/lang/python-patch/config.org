@@ -1,0 +1,19 @@
+#+TITLE: Config
+* Packages
+#+begin_src elisp :tangle packages.el
+#+end_src
+
+* conda
+Set path to dirs, so `conda.el` can find them. Note: I set my conda envs to save to a xdg-based path by setting the `env_dirs` property in `~/.condarc` to `~/.config/conda/envs`
+#+begin_src elisp :tangle config.el
+(setq conda-anaconda-home "/opt/miniconda3")
+(setq conda-env-home-directory "/Users/pakelley/.config/conda")
+#+end_src
+Set up auto-activation of conda envs in projects. For example, in the project root directory you could add the following to a `.dir-locals.el` file:
+#+begin_src elisp :tangle no
+((python-mode . ((conda-project-env-path . "name-of-my-env"))))
+#+end_src
+which would tell `conda.el` to use that environment. Notably, you can use the name of the env (rather than the path, as the var name implies).
+#+begin_src elisp :tangle config.el
+(conda-env-autoactivate-mode t)
+#+end_src
