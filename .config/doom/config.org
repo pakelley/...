@@ -10,6 +10,11 @@ I don't like pressing two keys for my localleader... And you have to unbind evil
 (setq doom-localleader-key ",")
 (setq doom-localleader-alt-key "M-,")
 #+end_src
+* Set "SPC SPC" to call M-x, because I use M-x so often (and I miss this setting from spacemacs).
+#+begin_src elisp
+(map! (:leader
+       :desc "M-x"  "SPC" #'execute-extended-command))
+#+end_src
 * Set window bindings
 I think these are easier to remember than the doom defaults (plus they're what I use in tmux)
 #+begin_src elisp

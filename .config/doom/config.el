@@ -4,6 +4,9 @@
 (setq doom-localleader-key ",")
 (setq doom-localleader-alt-key "M-,")
 
+(map! (:leader
+       :desc "M-x"  "SPC" #'execute-extended-command))
+
 (map! (:map evil-window-map
        "/" #'+evil-window-vsplit-a
        "?" #'+evil/window-vsplit-and-follow
