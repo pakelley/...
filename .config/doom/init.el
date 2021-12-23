@@ -92,8 +92,8 @@
        ;;ein               ; tame Jupyter notebooks with emacs
        (eval +overlay)     ; run code, run (also, repls)
        ;;gist              ; interacting with github gists
-       lookup              ; navigate your code and its documentation
        magit             ; a git porcelain for Emacs
+       (lookup +docsets)   ; navigate your code and its documentation
        lsp                 ; M-x vscode
        ;;make              ; run make tasks from Emacs
        ;;pass              ; password manager for nerds
