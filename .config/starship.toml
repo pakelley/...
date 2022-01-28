@@ -1,0 +1,54 @@
+#prompt_order = [
+#    "username",
+#    "hostname",
+#    "kubernetes",
+#    "directory",
+#    "package",
+#    "git_branch",
+#    "git_commit",
+#    "git_state",
+#    "git_status",
+#    "hg_branch",
+#    "dotnet",
+#    "golang",
+#    "java",
+    # "nodejs",
+#    "python",
+#    "ruby",
+#    "rust",
+#    "nix_shell",
+#    "conda",
+#    "memory_usage",
+#    "aws",
+#    "env_var",
+#    "cmd_duration",
+#    "line_break",
+#    "jobs",
+#    "battery",
+#    "time",
+#    "character",
+#]
+format = "$directory$package$git_branch$git_status$conda$line_break$character"
+
+[directory]
+style = "bold purple"
+
+[python]
+symbol = " "
+style = "bold green"
+
+[conda]
+symbol = " "
+# symbol = "❀ "
+style = "bold dimmed green"
+
+[git_branch]
+style = "bold 208"
+symbol = " "
+
+[git_status]
+style = "208"
+
+[package]
+symbol = "▨ "
+style = "bold red"

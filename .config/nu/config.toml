@@ -1,0 +1,28 @@
+path = [
+  "/Users/pakelley/.local/share/.../bin",
+  "/Users/pakelley/.config/doom-emacs/bin",
+]
+prompt = "\n$nu.env.CMD_DURATION_MS\nstarship prompt"
+startup = [
+  "zoxide init nushell --hook prompt | save ~/.zoxide.nu",
+  "source ~/.zoxide.nu",
+  "source fuzzy/fzf.nu",
+  "source conda/conda.nu",
+  "source conda/conda_deactivate.nu",
+]
+
+[env]
+STARSHIP_SHELL = "nushell"
+
+[line_editor]
+auto_add_history = true
+bell_style = "audible"
+color_mode = "enabled"
+completion_prompt_limit = 10
+completion_type = "fuzzy"
+edit_mode = "vi"
+history_duplicates = "alwaysadd"
+history_ignore_space = true
+keyseq_timeout_ms = 500
+max_history_size = 1000
+tab_stop = 4
