@@ -29,3 +29,7 @@ Makes it easier to prefix commands with numbers (e.g. `5 j` would go 5 down, and
 #+begin_src elisp
 (setq display-line-numbers-type 'relative)
 #+end_src
+* Make evil-paste not kill (because it's usually more annoying than helpful for me)
+#+begin_src elisp
+(setq-default evil-kill-on-visual-paste nil)
+#+end_src

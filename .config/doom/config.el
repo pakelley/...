@@ -14,3 +14,5 @@
        "_" #'+evil/window-split-and-follow))
 
 (setq display-line-numbers-type 'relative)
+
+(setq-default evil-kill-on-visual-paste nil)
