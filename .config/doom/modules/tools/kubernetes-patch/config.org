@@ -1,0 +1,11 @@
+#+TITLE: Config
+* Packages
+#+begin_src elisp :tangle packages.el
+(package! kubernetes)
+(package! kubernetes-evil)
+#+end_src
+
+* config
+#+begin_src elisp :tangle config.el
+; TBD
+#+end_src
