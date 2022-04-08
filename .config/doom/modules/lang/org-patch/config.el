@@ -2,16 +2,16 @@
   :config
   (map! (:leader (:prefix-map ("G" . "GTD")
                   :desc "Capture"             "c" #'org-gtd-capture
+                  :desc "Engage"              "e" #'org-gtd-engage
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects))
-        (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize)))
+        ;; (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize)
+        (:map org-gtd-process-map       "C-c C-c" #'org-gtd-choose)))
 
 (setq org-gtd-directory "~/.local/share/notes/gtd/")
 
-(setq org-gtd-process-item-hooks '(org-set-tags-command)
-      org-agenda-property-list '("DELEGATED_TO")
-      org-agenda-custom-commands '(("g" "Scheduled today and all NEXT items" ((agenda "" ((org-agenda-span 1))) (todo "NEXT")))))
+(setq org-gtd-process-item-hooks '(org-set-tags-command))
 
 (setq org-edna-use-inheritance t)
 (org-edna-mode 1)
@@ -204,8 +204,6 @@ The namespace is the final directory of the file for the node."
 
 (setq org-agenda-clockreport-parameter-plist
       '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
-
-(setq org-agenda-files `(,org-gtd-directory))
 
 (setq deft-directory "~/.local/share/notes")
 (setq deft-recursive t)
