@@ -65,144 +65,147 @@ On the fence about this one, need to check on the performance. Makes linking roa
 Still a WIP, currently working off of the (fantastic) system crafters examples
 It takes some work to get `doct` to work with org roam... but from [[https://gist.github.com/vherrmann/f9b21eeea7d7c9123dc400a30599d50d][this gist]], we get the `doct-org-roam` function:
 #+begin_src elisp
-(defun doct-org-roam-convert (groups)
-  "Convert GROUPS of templates to `org-roam' compatible templates."
-  (setq doct-templates
-        (mapcar (lambda (template)
-                  (if-let* ((props (nthcdr (if (= (length template) 4) 2 5) template))
-                            (org-roam-props (plist-get (plist-get props :doct) :org-roam)))
-                      `(,@template ,@org-roam-props)
-                    template))
-                (doct-flatten-lists-in groups))))
+(after! doct
+  (defun doct-org-roam-convert (groups)
+    "Convert GROUPS of templates to `org-roam' compatible templates."
+    (setq doct-templates
+          (mapcar (lambda (template)
+                    (if-let* ((props (nthcdr (if (= (length template) 4) 2 5) template))
+                              (org-roam-props (plist-get (plist-get props :doct) :org-roam)))
+                        `(,@template ,@org-roam-props)
+                      template))
+                  (doct-flatten-lists-in groups))))
 
-(defun doct-org-roam--target-file (value)
-  "Convert declaration's :file VALUE and extensions to capture template syntax."
-  (let (type target)
-    ;; TODO: This doesn't catch :olp used together with :datetree
-    (when-let ((olp (doct--get :olp)))
-      (push :olp type)
-      (push olp target))
-    (if-let ((head (doct--get :head)))
-        (progn
-          (push :head type)
-          (push (pcase head
-                  ((pred stringp) (if (doct--expansion-syntax-p head)
-                                      (doct--replace-template-strings
-                                       head)
-                                    head))
-                  ((pred functionp) (doct--fill-template (funcall head)))
-                  ((pred doct--list-of-strings-p)
-                   (mapconcat (lambda (element)
-                                (if (doct--expansion-syntax-p element)
-                                    (doct--fill-template element)
-                                  element))
-                              head "\n")))
-           target))
-      (when-let ((datetree (doct--get :datetree)))
-        (push :datetree type)
-        (push datetree target)))
-    (push :file type)
-    (push (doct--type-check :file value '(stringp doct--variable-p)) target)
-    `(,(intern (mapconcat (lambda (keyword)
-                            (substring (symbol-name keyword) 1))
-                          (delq nil type) "+"))
-      ,@(delq nil target))))
+  (defun doct-org-roam--target-file (value)
+    "Convert declaration's :file VALUE and extensions to capture template syntax."
+    (let (type target)
+      ;; TODO: This doesn't catch :olp used together with :datetree
+      (when-let ((olp (doct--get :olp)))
+        (push :olp type)
+        (push olp target))
+      (if-let ((head (doct--get :head)))
+          (progn
+            (push :head type)
+            (push (pcase head
+                    ((pred stringp) (if (doct--expansion-syntax-p head)
+                                        (doct--replace-template-strings
+                                         head)
+                                      head))
+                    ((pred functionp) (doct--fill-template (funcall head)))
+                    ((pred doct--list-of-strings-p)
+                     (mapconcat (lambda (element)
+                                  (if (doct--expansion-syntax-p element)
+                                      (doct--fill-template element)
+                                    element))
+                                head "\n")))
+                  target))
+        (when-let ((datetree (doct--get :datetree)))
+          (push :datetree type)
+          (push datetree target)))
+      (push :file type)
+      (push (doct--type-check :file value '(stringp doct--variable-p)) target)
+      `(,(intern (mapconcat (lambda (keyword)
+                              (substring (symbol-name keyword) 1))
+                            (delq nil type) "+"))
+        ,@(delq nil target))))
 
-(defun doct-org-roam--target ()
-  "Convert declaration's target to template target."
-  (let ((doct-exclusive-target-keywords '(:file :node)))
-    (pcase (doct--first-in doct-exclusive-target-keywords)
-      ('nil (signal 'doct-no-target `(,doct-exclusive-target-keywords nil ,doct--current)))
-      (`(:id ,id) `(id ,(doct--type-check :id id '(stringp))))
-      (`(:file ,file) (doct-org-roam--target-file file)))))
+  (defun doct-org-roam--target ()
+    "Convert declaration's target to template target."
+    (let ((doct-exclusive-target-keywords '(:file :node)))
+      (pcase (doct--first-in doct-exclusive-target-keywords)
+        ('nil (signal 'doct-no-target `(,doct-exclusive-target-keywords nil ,doct--current)))
+        (`(:id ,id) `(id ,(doct--type-check :id id '(stringp))))
+        (`(:file ,file) (doct-org-roam--target-file file)))))
 
-(defun doct-org-roam--compose-entry (keys name parent)
-  "Return a template suitable for `org-roam-capture-templates'.
+  (defun doct-org-roam--compose-entry (keys name parent)
+    "Return a template suitable for `org-roam-capture-templates'.
 The list is of the form: (KEYS NAME type target template additional-options...).
 `doct--current-plist' provides the type, target template and additional options.
 If PARENT is non-nil, list is of the form (KEYS NAME)."
-  `(,keys ,name
-          ,@(unless parent
-              `(,(doct--entry-type)
-                ,(doct--template)
-                :target ,(doct-org-roam--target)
-                ,@(doct--additional-options)))
-          :doct ( :doct-name ,name
-                  ,@(cdr doct--current)
-                  ,@(when-let ((custom (doct--custom-properties)))
-                      `(:doct-custom ,custom)))))
+    `(,keys ,name
+            ,@(unless parent
+                `(,(doct--entry-type)
+                  ,(doct--template)
+                  :target ,(doct-org-roam--target)
+                  ,@(doct--additional-options)))
+            :doct ( :doct-name ,name
+                    ,@(cdr doct--current)
+                    ,@(when-let ((custom (doct--custom-properties)))
+                        `(:doct-custom ,custom)))))
 
-(defun doct-org-roam (declarations)
-  "Convert DECLARATIONS to `org-roam-capture-templates'.
+  (defun doct-org-roam (declarations)
+    "Convert DECLARATIONS to `org-roam-capture-templates'.
 DECLARATIONS must be of the same form that `doct' expects with
 one addition: the :org-roam keyword.
 The :org-roam keyword's value must be a plist mapping `org-roam''s
 template syntax extensions (e.g. :file-name :head) to their appropriate values.
 Note this does validate the :org-roam plist's values or keywords."
 
-;;TODO: we should preserve doct-after-conversion-functions
-;;in case user already has other functions set.
-(let ((doct-after-conversion-functions (append '(doct-org-roam-convert)
-                                               doct-after-conversion-functions)))
-  (cl-letf (((symbol-function 'doct--compose-entry) #'doct-org-roam--compose-entry))
-      (doct declarations))))
+    ;;TODO: we should preserve doct-after-conversion-functions
+    ;;in case user already has other functions set.
+    (let ((doct-after-conversion-functions (append '(doct-org-roam-convert)
+                                                   doct-after-conversion-functions)))
+      (cl-letf (((symbol-function 'doct--compose-entry) #'doct-org-roam--compose-entry))
+        (doct declarations)))))
 #+end_src
+Notably, the backtick is crucial for setting the hook in my anki template
 #+begin_src elisp
-(setq org-roam-completion-system 'default
-      org-roam-capture-templates
-      (doct-org-roam
-       '(:group "Org Roam"
-         :file "%<%Y%m%d%H%M%S>-${slug}.org.gpg"
-         :head "#+title: ${title}\n"
-         :unnarrowed t
-         :function ignore ;org-roam hardcodes target file logic
-         :type plain
-         :children
-         (("Default"
-           :keys "d"
-           :template "%?")
-          ("Anki Card"
-           :keys "a"
-           :hook ,(defun set-anki-deck-from-tags ()
-                    (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
-                      (org-roam-tag-add tags)
-                      ; NOTE this only sets the first tag as ANKI_DECK
-                      (org-set-property "ANKI_DECK" (car tags))))
-           :template ("* ${title}"
-                      "%?"))))))
+(after! doct
+  (setq org-roam-completion-system 'default
+        org-roam-capture-templates
+        (doct-org-roam
+         `(:group "Org Roam"
+           :file "%<%Y%m%d%H%M%S>-${slug}.org.gpg"
+           :head "#+title: ${title}\n"
+           :unnarrowed t
+           :function ignore ;org-roam hardcodes target file logic
+           :type plain
+           :children
+           (("Default"
+             :keys "d"
+             :template "%?")
+            ("Anki Card"
+             :keys "a"
+             :hook ,(defun set-anki-deck-from-tags ()
+                      (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
+                        (org-roam-tag-add tags)
+                        ; NOTE this only sets the first tag as ANKI_DECK
+                        (org-set-property "ANKI_DECK" (car tags))))
+             :template ("* ${title}"
+                        "%?")))))))
 
 (setq org-roam-dailies-directory "dailies/"
       org-roam-dailies-capture-templates
-       '(("d" "default" entry
-          #'org-roam-capture--get-point
-          "* %?"
-          :file-name "Journal/%<%Y-%m-%d>"
-          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-         ("t" "Task" entry
-          #'org-roam-capture--get-point
-          "* TODO %?\n  %U\n  %a\n  %i"
-          :file-name "Journal/%<%Y-%m-%d>"
-          :olp ("Tasks")
-          :empty-lines 1
-          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-         ("j" "journal" entry
-          #'org-roam-capture--get-point
-          "* %<%I:%M %p> - Journal  :journal:\n\n%?\n\n"
-          :file-name "Journal/%<%Y-%m-%d>"
-          :olp ("Log")
-          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-         ("l" "log entry" entry
-          #'org-roam-capture--get-point
-          "* %<%I:%M %p> - %?"
-          :file-name "Journal/%<%Y-%m-%d>"
-          :olp ("Log")
-          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-         ("m" "meeting" entry
-          #'org-roam-capture--get-point
-          "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
-          :file-name "Journal/%<%Y-%m-%d>"
-          :olp ("Log")
-       :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
+      '(("d" "default" entry
+         #'org-roam-capture--get-point
+         "* %?"
+         :file-name "Journal/%<%Y-%m-%d>"
+         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+        ("t" "Task" entry
+         #'org-roam-capture--get-point
+         "* TODO %?\n  %U\n  %a\n  %i"
+         :file-name "Journal/%<%Y-%m-%d>"
+         :olp ("Tasks")
+         :empty-lines 1
+         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+        ("j" "journal" entry
+         #'org-roam-capture--get-point
+         "* %<%I:%M %p> - Journal  :journal:\n\n%?\n\n"
+         :file-name "Journal/%<%Y-%m-%d>"
+         :olp ("Log")
+         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+        ("l" "log entry" entry
+         #'org-roam-capture--get-point
+         "* %<%I:%M %p> - %?"
+         :file-name "Journal/%<%Y-%m-%d>"
+         :olp ("Log")
+         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+        ("m" "meeting" entry
+         #'org-roam-capture--get-point
+         "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
+         :file-name "Journal/%<%Y-%m-%d>"
+         :olp ("Log")
+         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
 #+end_src
 * Reference [0/1]
 - [ ] TODO change these to relative paths
@@ -244,21 +247,55 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
 (define-key global-map "\C-cc" 'org-capture)
 #+end_src
 ** Capture Templates [0/1]
-- [ ] TODO: revisit these
+See the [[https://orgmode.org/manual/Template-expansion.html][template expansion docs]] for more info on the syntax here
+Appending to existing templates to keep project templates
+- [ ] figure out where existing templates are coming from, and migrate useful ones here
 #+begin_src elisp
-(setq org-capture-templates
-      '(("b" "Bombora" entry (file+datetree "~/SparkleShare/org/work/bombora/bombora.cap.org")
-         "* %?\n  %i\n  %a")
-        ("B" "Bombora Retro" entry (file+datetree "~/SparkleShare/org/work/bombora/bombora.retro.org")
-         "* %?\n  %i\n  %a")
-        ("i" "Inbox"
-         entry (file "~/.local/share/notes/gtd/inbox.org")
-         "* %?\n%U\n\n  %i"
-         :kill-buffer t)
-        ("l" "Todo with link"
-         entry (file "~/.local/share/notes/gtd/inbox.org")
-         "* %?\n%U\n\n  %i\n  %a"
-         :kill-buffer t)))
+;; (setq org-capture-templates
+;;       ((doct '(("Inbox"
+;;                 :keys "i"
+;;                 :file "~/.local/share/notes/gtd/inbox.org"
+;;                 :template "* %?")))))
+(after! doct
+  (setq org-capture-templates
+        (append org-capture-templates
+                (doct '(("Inbox"
+                         :keys "i"
+                         :file "~/.local/share/notes/gtd/inbox.org"
+                         :datetree t
+                         :template ("* %?"
+                                    "%U"
+                                    "  %i")
+                         :kill-buffer t)
+                        ("Meeting"
+                         :keys "m"
+                         :children
+                         (("Retro"
+                           :keys "r"
+                           :file "~/.local/share/notes/meetings/retro.org"
+                           :datetree t
+                           :template ("* %?"
+                                      "  %i"
+                                      "  %a")
+                           :kill-buffer t)))
+                        (:group "Reference"
+                         :file "~/.local/share/notes/reference/capture.org"
+                         :template "* %?"
+                         :children
+                         (("Food"
+                           :keys "f"
+                           :children
+                           (("Recipe"     :keys "r" :olp ("Recipes"))
+                            ("Cocktail"   :keys "c" :olp ("Cocktails"))
+                            ("Restaurant" :keys "s" :olp ("Restaurants"))))
+                          ("Media" :keys "e"
+                           :children
+                           (("Movie"   :keys "m" :olp ("Movies"))
+                            ("Show"    :keys "s" :olp ("Shows"))
+                            ("Book"    :keys "b" :olp ("Books"))
+                            ("Article" :keys "a" :olp ("Articles"))
+                            ("Album"   :keys "l" :olp ("Albums"))))
+                          ("Repo" :keys "r" :olp ("Repos")))))))))
 #+end_src
 * Agenda
 ** Always include clockreport mode
