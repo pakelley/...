@@ -1,4 +1,7 @@
-(setq conda-anaconda-home "/opt/miniconda3")
-(setq conda-env-home-directory "/Users/pakelley/.config/conda")
-
-(conda-env-autoactivate-mode t)
+(use-package! anaconda-mode
+  :defer t
+  :config
+  (setq conda-anaconda-home "/opt/miniconda3")
+  (setq conda-env-home-directory "/Users/pakelley/.config/conda")
+  (conda-env-autoactivate-mode t)
+  )

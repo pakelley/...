@@ -1,5 +1,10 @@
 (use-package! org-gtd
+  :defer
   :config
+  (setq org-gtd-directory "~/.local/share/notes/gtd/")
+  (setq org-gtd-process-item-hooks '(org-set-tags-command))
+  (setq org-edna-use-inheritance t)
+  (org-edna-mode 1)
   (map! (:leader (:prefix-map ("G" . "GTD")
                   :desc "Capture"             "c" #'org-gtd-capture
                   :desc "Engage"              "e" #'org-gtd-engage
@@ -9,18 +14,133 @@
         ;; (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize)
         (:map org-gtd-process-map       "C-c C-c" #'org-gtd-choose)))
 
-(setq org-gtd-directory "~/.local/share/notes/gtd/")
-
-(setq org-gtd-process-item-hooks '(org-set-tags-command))
-
-(setq org-edna-use-inheritance t)
-(org-edna-mode 1)
-
 (setq org-roam-directory "~/.local/share/notes/org-roam/")
 
 (setq org-roam-completion-everywhere t)
 
-(after! doct
+(use-package! org-ref
+  :defer
+  :config
+  (setq bibtex-completion-bibliography "/Users/pakelley/.local/share/bibtex/references.bib"
+        bibtex-completion-library-path "/Users/pakelley/.local/share/bibtex/pdfs/"
+        bibtex-completion-notes-path "/Users/pakelley/.local/share/bibtex/notes.org")
+  (setq reftex-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib"))
+  (setq org-ref-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib")
+        org-ref-pdf-directory "/Users/pakelley/.local/share/bibtex/pdfs/"
+        org-ref-bibliography-notes "/Users/pakelley/.local/share/bibtex/notes.org"))
+
+(setq org-todo-keywords
+      '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
+(setq org-todo-keyword-faces
+      '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
+        ("WAIT" . (:foreground "#dc8cc3" :weight bold))
+        ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
+        ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
+
+(use-package! org-capture
+  :defer
+  :config
+  (setq org-capture-templates
+        (append org-capture-templates
+                (doct '(("Inbox"
+                         :keys "i"
+                         :file "~/.local/share/notes/gtd/inbox.org"
+                         :datetree t
+                         :template ("* %?"
+                                    "%U"
+                                    "  %i")
+                         :kill-buffer t)
+                        ("Meeting"
+                         :keys "m"
+                         :children
+                         (("Retro"
+                           :keys "r"
+                           :file "~/.local/share/notes/meetings/retro.org"
+                           :datetree t
+                           :template ("* %?"
+                                      "  %i"
+                                      "  %a")
+                           :kill-buffer t)))
+                        (:group "Reference"
+                         :file "~/.local/share/notes/reference/capture.org"
+                         :template "* %?"
+                         :children
+                         (("Food"
+                           :keys "f"
+                           :children
+                           (("Recipe"     :keys "r" :olp ("Recipes"))
+                            ("Cocktail"   :keys "c" :olp ("Cocktails"))
+                            ("Restaurant" :keys "s" :olp ("Restaurants"))))
+                          ("Media" :keys "e"
+                           :children
+                           (("Movie"   :keys "m" :olp ("Movies"))
+                            ("Show"    :keys "s" :olp ("Shows"))
+                            ("Book"    :keys "b" :olp ("Books"))
+                            ("Article" :keys "a" :olp ("Articles"))
+                            ("Album"   :keys "l" :olp ("Albums"))))
+                          ("Repo" :keys "r" :olp ("Repos"))))))))
+  (setq org-roam-completion-system 'default
+        org-roam-capture-templates
+        (doct-org-roam
+         `(:group "Org Roam"
+           :file "%<%Y%m%d%H%M%S>-${slug}.org.gpg"
+           :head "#+title: ${title}\n"
+           :unnarrowed t
+           :function ignore ;org-roam hardcodes target file logic
+           :type plain
+           :children
+           (("Default"
+             :keys "d"
+             :template "%?")
+            ("Anki Card"
+             :keys "a"
+             :hook ,(defun set-anki-deck-from-tags ()
+                      (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
+                        (org-roam-tag-add tags)
+                                          ; NOTE this only sets the first tag as ANKI_DECK
+                        (org-set-property "ANKI_DECK" (car tags))))
+             :template ("* ${title}"
+                        "%?"))))))
+  
+  (setq org-roam-dailies-directory "dailies/"
+        org-roam-dailies-capture-templates
+        '(("d" "default" entry
+           #'org-roam-capture--get-point
+           "* %?"
+           :file-name "Journal/%<%Y-%m-%d>"
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+          ("t" "Task" entry
+           #'org-roam-capture--get-point
+           "* TODO %?\n  %U\n  %a\n  %i"
+           :file-name "Journal/%<%Y-%m-%d>"
+           :olp ("Tasks")
+           :empty-lines 1
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+          ("j" "journal" entry
+           #'org-roam-capture--get-point
+           "* %<%I:%M %p> - Journal  :journal:\n\n%?\n\n"
+           :file-name "Journal/%<%Y-%m-%d>"
+           :olp ("Log")
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+          ("l" "log entry" entry
+           #'org-roam-capture--get-point
+           "* %<%I:%M %p> - %?"
+           :file-name "Journal/%<%Y-%m-%d>"
+           :olp ("Log")
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
+          ("m" "meeting" entry
+           #'org-roam-capture--get-point
+           "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
+           :file-name "Journal/%<%Y-%m-%d>"
+           :olp ("Log")
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
+  )
+
+(define-key global-map "\C-cc" 'org-capture)
+
+(use-package! doct
+  :commands doct
+  :config
   (defun doct-org-roam-convert (groups)
     "Convert GROUPS of templates to `org-roam' compatible templates."
     (setq doct-templates
@@ -74,9 +194,9 @@
 
   (defun doct-org-roam--compose-entry (keys name parent)
     "Return a template suitable for `org-roam-capture-templates'.
-The list is of the form: (KEYS NAME type target template additional-options...).
-`doct--current-plist' provides the type, target template and additional options.
-If PARENT is non-nil, list is of the form (KEYS NAME)."
+  The list is of the form: (KEYS NAME type target template additional-options...).
+  `doct--current-plist' provides the type, target template and additional options.
+  If PARENT is non-nil, list is of the form (KEYS NAME)."
     `(,keys ,name
             ,@(unless parent
                 `(,(doct--entry-type)
@@ -90,137 +210,31 @@ If PARENT is non-nil, list is of the form (KEYS NAME)."
 
   (defun doct-org-roam (declarations)
     "Convert DECLARATIONS to `org-roam-capture-templates'.
-DECLARATIONS must be of the same form that `doct' expects with
-one addition: the :org-roam keyword.
-The :org-roam keyword's value must be a plist mapping `org-roam''s
-template syntax extensions (e.g. :file-name :head) to their appropriate values.
-Note this does validate the :org-roam plist's values or keywords."
 
+  DECLARATIONS must be of the same form that `doct' expects with
+  one addition: the :org-roam keyword.
+  The :org-roam keyword's value must be a plist mapping `org-roam''s
+  template syntax extensions (e.g. :file-name :head) to their appropriate values.
+  Note this does validate the :org-roam plist's values or keywords."
     ;;TODO: we should preserve doct-after-conversion-functions
     ;;in case user already has other functions set.
     (let ((doct-after-conversion-functions (append '(doct-org-roam-convert)
                                                    doct-after-conversion-functions)))
       (cl-letf (((symbol-function 'doct--compose-entry) #'doct-org-roam--compose-entry))
-        (doct declarations)))))
+        (doct declarations))))
+  )
 
-(after! doct
-  (setq org-roam-completion-system 'default
-        org-roam-capture-templates
-        (doct-org-roam
-         `(:group "Org Roam"
-           :file "%<%Y%m%d%H%M%S>-${slug}.org.gpg"
-           :head "#+title: ${title}\n"
-           :unnarrowed t
-           :function ignore ;org-roam hardcodes target file logic
-           :type plain
-           :children
-           (("Default"
-             :keys "d"
-             :template "%?")
-            ("Anki Card"
-             :keys "a"
-             :hook ,(defun set-anki-deck-from-tags ()
-                      (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
-                        (org-roam-tag-add tags)
-                                        ; NOTE this only sets the first tag as ANKI_DECK
-                        (org-set-property "ANKI_DECK" (car tags))))
-             :template ("* ${title}"
-                        "%?")))))))
-
-(setq org-roam-dailies-directory "dailies/"
-      org-roam-dailies-capture-templates
-      '(("d" "default" entry
-         #'org-roam-capture--get-point
-         "* %?"
-         :file-name "Journal/%<%Y-%m-%d>"
-         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-        ("t" "Task" entry
-         #'org-roam-capture--get-point
-         "* TODO %?\n  %U\n  %a\n  %i"
-         :file-name "Journal/%<%Y-%m-%d>"
-         :olp ("Tasks")
-         :empty-lines 1
-         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-        ("j" "journal" entry
-         #'org-roam-capture--get-point
-         "* %<%I:%M %p> - Journal  :journal:\n\n%?\n\n"
-         :file-name "Journal/%<%Y-%m-%d>"
-         :olp ("Log")
-         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-        ("l" "log entry" entry
-         #'org-roam-capture--get-point
-         "* %<%I:%M %p> - %?"
-         :file-name "Journal/%<%Y-%m-%d>"
-         :olp ("Log")
-         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")
-        ("m" "meeting" entry
-         #'org-roam-capture--get-point
-         "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
-         :file-name "Journal/%<%Y-%m-%d>"
-         :olp ("Log")
-         :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
-
-(use-package! org-ref
-  :defer
-  :config
-  (setq bibtex-completion-bibliography "/Users/pakelley/.local/share/bibtex/references.bib"
-        bibtex-completion-library-path "/Users/pakelley/.local/share/bibtex/pdfs/"
-        bibtex-completion-notes-path "/Users/pakelley/.local/share/bibtex/notes.org")
-  (setq reftex-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib"))
-  (setq org-ref-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib")
-        org-ref-pdf-directory "/Users/pakelley/.local/share/bibtex/pdfs/"
-        org-ref-bibliography-notes "/Users/pakelley/.local/share/bibtex/notes.org"))
-
-(setq org-todo-keywords
-      '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
-(setq org-todo-keyword-faces
-      '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
-        ("WAIT" . (:foreground "#dc8cc3" :weight bold))
-        ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
-        ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
-
-(define-key global-map "\C-cc" 'org-capture)
-
-(after! doct
-  (setq org-capture-templates
-        (append org-capture-templates
-                (doct '(("Inbox"
-                         :keys "i"
-                         :file "~/.local/share/notes/gtd/inbox.org"
-                         :datetree t
-                         :template ("* %?"
-                                    "%U"
-                                    "  %i")
-                         :kill-buffer t)
-                        ("Meeting"
-                         :keys "m"
-                         :children
-                         (("Retro"
-                           :keys "r"
-                           :file "~/.local/share/notes/meetings/retro.org"
-                           :datetree t
-                           :template ("* %?"
-                                      "  %i"
-                                      "  %a")
-                           :kill-buffer t)))
-                        (:group "Reference"
-                         :file "~/.local/share/notes/reference/capture.org"
-                         :template "* %?"
-                         :children
-                         (("Food"
-                           :keys "f"
-                           :children
-                           (("Recipe"     :keys "r" :olp ("Recipes"))
-                            ("Cocktail"   :keys "c" :olp ("Cocktails"))
-                            ("Restaurant" :keys "s" :olp ("Restaurants"))))
-                          ("Media" :keys "e"
-                           :children
-                           (("Movie"   :keys "m" :olp ("Movies"))
-                            ("Show"    :keys "s" :olp ("Shows"))
-                            ("Book"    :keys "b" :olp ("Books"))
-                            ("Article" :keys "a" :olp ("Articles"))
-                            ("Album"   :keys "l" :olp ("Albums"))))
-                          ("Repo" :keys "r" :olp ("Repos")))))))))
+(defun my/doct-properties ()
+                   "Add declaration's :properties to current entry."
+                   (let ((properties (doct-get :properties)))
+                     (dolist (keyword (seq-filter #'keywordp properties))
+                       (org-set-property (substring (symbol-name keyword) 1)
+                                         (plist-get properties keyword)))))
+;; Usage:
+;; (doct '(("My capture template"
+;;          ...
+;;          :hook my/org-property-drawer
+;;          :properties (:anki_deck "${category}"))))
 
 (setq org-agenda-start-with-clockreport-mode t)
 
@@ -246,6 +260,7 @@ Note this does validate the :org-roam plist's values or keywords."
 (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
 
 (use-package! ob-mermaid
+  :defer
   :config
   (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 
