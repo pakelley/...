@@ -1,3 +1,4 @@
+tap "railwaycat/emacsmacport"
 brew "cscope"
 brew "global"
 brew "hunspell"

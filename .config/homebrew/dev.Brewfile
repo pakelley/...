@@ -1,3 +1,4 @@
+# tap "spotify/public"
 brew "cmake"
 # brew "docker", link: false
 brew "docuum", restart_service: true

@@ -1,3 +1,5 @@
+tap "mopidy/mopidy"
+tap "cjbassi/gotop"
 brew "bat"
 brew "cmatrix"
 brew "cowsay"

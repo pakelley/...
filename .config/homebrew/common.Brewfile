@@ -1,3 +1,7 @@
+tap "homebrew/caskfonts"
+tap "ojford/formulae"
+tap "koekeishiya/formulae"
+tap "wez/wezterm"
 brew "direnv"
 brew "git"
 # cask "iterm2"
