@@ -46,9 +46,7 @@
                          :keys "i"
                          :file "~/.local/share/notes/gtd/inbox.org"
                          :datetree t
-                         :template ("* %?"
-                                    "%U"
-                                    "  %i")
+                         :template "* %?"
                          :kill-buffer t)
                         ("Meeting"
                          :keys "m"
@@ -61,6 +59,14 @@
                                       "  %i"
                                       "  %a")
                            :kill-buffer t)))
+                        ("Shopping" :keys "s"
+                         :file "~/.local/share/notes/reference/shopping.org"
+                         :template "* %?"
+                         :children
+                         (("Home" :keys "h" :olp ("Home"))
+                          ("Christmas" :keys "c" :olp ("Christmas"))
+                          ("Gift" :keys "g" :olp ("Gifts")) ; TODO either add recipient as tag or in olp
+                          ("Groceries" :keys "o" :olp ("Groceries"))))
                         (:group "Reference"
                          :file "~/.local/share/notes/reference/capture.org"
                          :template "* %?"
