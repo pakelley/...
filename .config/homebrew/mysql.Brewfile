@@ -1,0 +1,2 @@
+brew "mycli"
+brew "mysql"
