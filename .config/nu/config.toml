@@ -1,6 +1,6 @@
 path = [
-  "/Users/pakelley/.local/share/.../bin",
-  "/Users/pakelley/.config/doom-emacs/bin",
+  "~/.config/dots/bin",
+  "~/.config/doom-emacs/bin",
 ]
 prompt = "\n$nu.env.CMD_DURATION_MS\nstarship prompt"
 startup = [
