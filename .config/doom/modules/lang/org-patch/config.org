@@ -346,6 +346,23 @@ This gives some useful summary info about time spent on tasks from the agenda, w
 (setq org-agenda-clockreport-parameter-plist
       '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
 #+end_src
+** Sync
+*** Save buffers when modifying todos (taken from [[https://emacs.stackexchange.com/a/33063/15634][this SO answer]])
+#+begin_src elisp
+(defmacro η (fnc)
+  "Return function that ignores its arguments and invokes FNC."
+  `(lambda (&rest _rest)
+     (funcall ,fnc)))
+
+(advice-add 'org-deadline       :after (η #'org-save-all-org-buffers))
+(advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
+(advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
+(advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
+#+end_src
+*** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]])
+#+begin_src elisp
+(run-with-idle-timer 300 t (lambda () (org-agenda nil "a")) )
+#+end_src
 * Deft
 #+begin_src elisp
 (setq deft-directory "~/.local/share/notes")

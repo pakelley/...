@@ -247,6 +247,15 @@
 (setq org-agenda-clockreport-parameter-plist
       '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
 
+(defmacro η (fnc)
+  "Return function that ignores its arguments and invokes FNC."
+  `(lambda (&rest _rest)
+     (funcall ,fnc)))
+
+(advice-add 'org-deadline       :after (η #'org-save-all-org-buffers))
+(advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
+(advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
+(advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
 (setq deft-directory "~/.local/share/notes")
 (setq deft-recursive t)
 
