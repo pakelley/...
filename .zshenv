@@ -69,4 +69,8 @@ export PATH=~/.config/doom-emacs/bin:$PATH
 # ...
 export PATH=~/.config/.../bin:$PATH
 
+# pyenv
+export PYENV_ROOT="~/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+
 export GPG_TTY=$(tty)
