@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+ln -svf ~/.config/nu /Users/pakelley/Library/Application\ Support/org.nushell.nu
