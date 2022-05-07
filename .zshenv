@@ -63,4 +63,10 @@ export HADOOP_HOME=/usr/local/Cellar/hadoop/3.1.1/libexec/
 export PATH=/Users/pakelley/.local/share/ponyup/bin:$PATH
 if [ -e /Users/pakelley/.nix-profile/etc/profile.d/nix.sh ]; then . /Users/pakelley/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
+# doom
+export PATH=~/.config/doom-emacs/bin:$PATH
+
+# ...
+export PATH=~/.config/.../bin:$PATH
+
 export GPG_TTY=$(tty)
