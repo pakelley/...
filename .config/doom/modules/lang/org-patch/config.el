@@ -256,6 +256,57 @@
 (advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
 (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
 (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
+
+(after! org-agenda
+  (org-super-agenda-mode))
+
+; TODO review these config options
+(setq org-agenda-skip-scheduled-if-done t
+      org-agenda-skip-deadline-if-done t
+      org-agenda-include-deadlines t
+      ;; org-agenda-block-separator nil
+      org-agenda-tags-column 100 ;; from testing this seems to be a good value
+      org-agenda-compact-blocks t)
+
+(setq org-agenda-custom-commands
+      '(("." "What's happening"
+         ((agenda "" ((org-agenda-span 'day)
+                      (org-agenda-start-day "+0d")
+                      (org-super-agenda-groups
+                       '((:name "Today"
+                          :time-grid t
+                          :discard (:todo "NEXT"
+                                    :todo "WAIT")
+                          :and (:scheduled today
+                                :not (:todo "NEXT")
+                                :not (:todo "WAIT"))
+                          :order 0)))))
+          (alltodo "" ((org-agenda-overriding-header "")
+                       (org-agenda-span 'week)
+                       (org-agenda-start-day "+0d")
+                       (org-super-agenda-groups
+                        '((:name "Overdue"
+                           :scheduled past
+                           :face error
+                           :order 2)
+                          (:name "Next to do"
+                           :and (:scheduled today
+                                 :todo "NEXT")
+                           :discard (:and (:scheduled today
+                                           :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
+                           :order 1)
+                          (:name "Waiting"
+                           :and (:scheduled today
+                                 :todo "WAIT")
+                           :order 1)
+                          (:name "Unscheduled"
+                           :scheduled nil
+                           :face error
+                           :order 2)))))))))
+
+(after! evil-org-agenda
+  (setq org-super-agenda-header-map evil-org-agenda-mode-map))
+
 (setq deft-directory "~/.local/share/notes")
 (setq deft-recursive t)
 

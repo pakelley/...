@@ -6,6 +6,13 @@
 (package! org-gtd)
 (package! org-ref)
 (package! doct)
+(package! org-super-agenda :pin "fb5e2ef277bc811a3b061106c99e4c47b6b86f80")
+(package! org-pretty-table
+  :recipe (:host github :repo "Fuco1/org-pretty-table") :pin "87772a9469d91770f87bfa788580fca69b9e697a")
+
+(use-package! org-super-agenda
+  :defer
+  :commands org-super-agenda-mode)
 #+end_src
 
 * GTD
@@ -362,6 +369,68 @@ This gives some useful summary info about time spent on tasks from the agenda, w
 *** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]])
 #+begin_src elisp
 (run-with-idle-timer 300 t (lambda () (org-agenda nil "a")) )
+#+end_src
+** Super Agenda
+A few notes on this:
+- including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
+- I keep my active TODOs (i.e. the ones scheduled for today, except for "NEXT" and "WAIT") in the agenda, and everything else in the todo list (I keep "NEXT" separate because I treat them as things I can do whenever I have a chance, and I just want to declutter my agenda be removing anything I have to wait on, and therefore probably can't accurately predict when I can get it done)
+- I use the order to split the view into 3 sections: the timeboxed agenda, the regular todo list, and the degenerate todos (unscheduled or overdue)
+Future enhancements
+- [ ] fix priority icons
+- [ ] review the other org props I'm setting here
+#+begin_src elisp
+(after! org-agenda
+  (org-super-agenda-mode))
+
+; TODO review these config options
+(setq org-agenda-skip-scheduled-if-done t
+      org-agenda-skip-deadline-if-done t
+      org-agenda-include-deadlines t
+      ;; org-agenda-block-separator nil
+      org-agenda-tags-column 100 ;; from testing this seems to be a good value
+      org-agenda-compact-blocks t)
+
+(setq org-agenda-custom-commands
+      '(("." "What's happening"
+         ((agenda "" ((org-agenda-span 'day)
+                      (org-agenda-start-day "+0d")
+                      (org-super-agenda-groups
+                       '((:name "Today"
+                          :time-grid t
+                          :discard (:todo "NEXT"
+                                    :todo "WAIT")
+                          :and (:scheduled today
+                                :not (:todo "NEXT")
+                                :not (:todo "WAIT"))
+                          :order 0)))))
+          (alltodo "" ((org-agenda-overriding-header "")
+                       (org-agenda-span 'week)
+                       (org-agenda-start-day "+0d")
+                       (org-super-agenda-groups
+                        '((:name "Overdue"
+                           :scheduled past
+                           :face error
+                           :order 2)
+                          (:name "Next to do"
+                           :and (:scheduled today
+                                 :todo "NEXT")
+                           :discard (:and (:scheduled today
+                                           :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
+                           :order 1)
+                          (:name "Waiting"
+                           :and (:scheduled today
+                                 :todo "WAIT")
+                           :order 1)
+                          (:name "Unscheduled"
+                           :scheduled nil
+                           :face error
+                           :order 2)))))))))
+#+end_src
+Use evil bindings on agenda headers created by super agenda (using best-looking solution from [[https://github.com/alphapapa/org-super-agenda/issues/50][this issue]])
+- [ ] should do a proper evil-ification of this eventually
+#+begin_src elisp
+(after! evil-org-agenda
+  (setq org-super-agenda-header-map evil-org-agenda-mode-map))
 #+end_src
 * Deft
 #+begin_src elisp
