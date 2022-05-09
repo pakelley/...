@@ -1,4 +1,4 @@
-tap "homebrew/caskfonts"
+tap "homebrew/cask-fonts"
 tap "ojford/formulae"
 tap "koekeishiya/formulae"
 tap "wez/wezterm"
@@ -8,6 +8,7 @@ brew "git"
 brew "ojford/formulae/loginitems"
 brew "pandoc"
 brew "python@3.9"
+brew "svn" # needed to install some fonts
 brew "syncthing", restart_service: true
 brew "koekeishiya/formulae/skhd"
 brew "koekeishiya/formulae/yabai"
