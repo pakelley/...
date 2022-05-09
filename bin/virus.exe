@@ -114,6 +114,11 @@ for groupname, brewfile in selected_brewfiles.items():
     subprocess.run(["brew", "bundle", "install", "--file", brewfile_path])
     log.info("Finished installing %s dependencies!", groupname)
 
+log.info("Installing chemacs")
+subprocess.run(
+    ["git", "clone", "https://github.com/plexus/chemacs2.git", str(pathlib.Path.home() / ".emacs.d")]
+)
+
 log.info("Installing doom")
 subprocess.run(
     ["git", "clone", "https://github.com/hlissner/doom-emacs", "~/.config/doom-emacs"]
