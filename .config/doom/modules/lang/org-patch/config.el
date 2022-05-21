@@ -353,3 +353,26 @@
         ("Task")
         (:endgrouptag)
         ("Circuit Theory")))
+
+(after! org-superstar
+  (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")
+        org-superstar-prettify-item-bullets t ))
+
+(setq org-ellipsis " ▾ "
+      org-hide-leading-stars t
+      org-priority-highest ?A
+      org-priority-lowest ?E
+      org-fancy-priorities-list
+      `(,(list ?A (all-the-icons-octicon "flame" :face 'all-the-icons-red))
+        ,(list ?B (all-the-icons-faicon "bolt" :face 'all-the-icons-orange))
+        ,(list ?C (all-the-icons-faicon "check" :face 'all-the-icons-yellow))
+        ,(list ?D (all-the-icons-faicon "beer" :face 'all-the-icons-green))
+        ,(list ?E (all-the-icons-faicon "bed" :face 'all-the-icons-blue)))
+      )
+
+(use-package! org-modern
+  :defer
+  :after org
+  :config
+  (add-hook 'org-mode-hook #'org-modern-mode)
+  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
