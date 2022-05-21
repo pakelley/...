@@ -1,0 +1,39 @@
+#+TITLE: Config
+* Packages
+#+begin_src elisp :tangle packages.el
+(package! polymode)
+(package! poly-R)
+#+end_src
+
+* polymode
+#+begin_src elisp :noweb no-export
+(use-package! polymode
+  :defer t
+  :config
+  (map! :localleader
+        :map poly-noweb+r-mode-map
+        "e" #'polymode-export)
+  )
+(use-package! poly-R
+  :defer t)
+  #+end_src
+* R shortcuts
+#+begin_src elisp
+(use-package! ess
+  :defer t
+  :config
+  (defun ess-insert-magrittr-pipe ()
+    (interactive)
+    (just-one-space 1)
+    (insert "%>%")
+    (reindent-then-newline-and-indent))
+  (map!
+   (:map ess-r-mode-map
+    "M--" #'ess-insert-assign
+    "M-." #'ess-insert-magrittr-pipe)
+   (:map inferior-ess-r-mode-map
+    "M--" #'ess-insert-assign
+    "M-." #'ess-insert-magrittr-pipe)))
+  #+end_src
+* R packages
+Note that you'll need to install `languageserver` and `knitr`.
