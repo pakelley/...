@@ -1,6 +1,6 @@
 (use-package! org-gtd
-  :defer
-  :config
+  :after org
+  :init
   (setq org-gtd-directory "~/.local/share/notes/gtd/")
   (setq org-gtd-process-item-hooks '(org-set-tags-command))
   (setq org-edna-use-inheritance t)
@@ -38,7 +38,7 @@
         ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
 
 (use-package! org-capture
-  :defer
+  :commands org-capture
   :config
   (setq org-capture-templates
         (append org-capture-templates

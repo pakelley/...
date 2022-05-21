@@ -11,7 +11,6 @@
   :recipe (:host github :repo "Fuco1/org-pretty-table") :pin "87772a9469d91770f87bfa788580fca69b9e697a")
 
 (use-package! org-super-agenda
-  :defer
   :commands org-super-agenda-mode)
 #+end_src
 
@@ -30,8 +29,8 @@ Keybindings while processing a task:
 | C-c C-c    | Finalize task |
 #+begin_src elisp :noweb no-export
 (use-package! org-gtd
-  :defer
-  :config
+  :after org
+  :init
   <<org-gtd-directory>>
   <<org-gtd-recommendations>>
   <<org-gtd-edna>>
@@ -257,7 +256,7 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
 * Capture
 #+begin_src elisp :noweb no-export
 (use-package! org-capture
-  :defer
+  :commands org-capture
   :config
   <<org-capture-templates>>
   <<org-roam-capture-templates>>
