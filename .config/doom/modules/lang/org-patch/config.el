@@ -242,6 +242,8 @@
 ;;          :hook my/org-property-drawer
 ;;          :properties (:anki_deck "${category}"))))
 
+(setq org-agenda-files '("~/.local/share/notes/gtd"))
+
 (setq org-agenda-start-with-clockreport-mode t)
 
 (setq org-agenda-clockreport-parameter-plist
