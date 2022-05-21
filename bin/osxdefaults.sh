@@ -2,10 +2,10 @@
 defaults write com.apple.finder AppleShowAllFiles -bool true
 
 # Save screenshots in PNG format (other options: BMP, GIF, JPG, PDF, TIFF)
-defaults write com.apple.screencapture type -string “png”
+defaults write com.apple.screencapture type -string "png"
 
 # Disable the sound effects on boot
-sudo nvram SystemAudioVolume=” “
+sudo nvram SystemAudioVolume=" "
 
 ### Dock
 # Hide dock
