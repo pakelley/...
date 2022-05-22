@@ -89,7 +89,7 @@
         org-roam-capture-templates
         (doct-org-roam
          `(:group "Org Roam"
-           :file "%<%Y%m%d%H%M%S>-${slug}.org.gpg"
+           :file "%<%Y%m%d%H%M%S>-${slug}.org"
            :head "#+title: ${title}\n"
            :unnarrowed t
            :function ignore ;org-roam hardcodes target file logic
