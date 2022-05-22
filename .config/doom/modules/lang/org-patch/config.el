@@ -257,6 +257,8 @@
 (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
 (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
 
+(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "a"))) )
+
 (after! org-agenda
   (org-super-agenda-mode))
 
