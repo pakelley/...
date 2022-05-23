@@ -17,3 +17,7 @@ let $config = {
       }
     ]
 }
+
+# pyenv
+# Typically handled py `pyenv init`, but nu isn't supported so we have to do this manually
+pyenv rehash
