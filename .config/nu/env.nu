@@ -61,3 +61,6 @@ let-env NU_PLUGIN_DIRS = [
 let-env PYENV_ROOT = "~/.pyenv"
 let-env PATH = ($env.PATH | prepend $"($env.PYENV_ROOT)/bin" | prepend ([(pyenv root | str trim) "shims"] | path join))
 # may need to add something here for `pyenv shell` to be able to change env vars eventually
+
+# EDITOR
+let-env EDITOR = "emacs -nw"
