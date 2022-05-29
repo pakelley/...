@@ -63,15 +63,27 @@ Right now this is only the recommendations from `org-gtd`, but I'll probably add
 (org-edna-mode 1)
 #+end_src
 * Roam
+#+begin_src elisp :noweb no-export
+(use-package! org-roam
+  :after doct
+  :custom
+  <<org-roam-directory>>
+  <<org-roam-completion-everywhere>>
+  :config
+  <<doct-org-roam>>
+  <<org-roam-capture-templates>>)
+#+end_src
 ** Roam Files
 Store `org-roam` files in XDG-based path, sync-ed by Syncthing
-#+begin_src elisp
-(setq org-roam-directory "~/.local/share/notes/org-roam/")
+#+name: org-roam-directory
+#+begin_src elisp :tangle no
+(org-roam-directory "~/.local/share/notes/org-roam/")
 #+end_src
 ** Roam completion everywhere
 On the fence about this one, need to check on the performance. Makes linking roam notes together simple though, so I'm enabling it for now: it just provides tab completion for roam note titles.
-#+begin_src elisp
-(setq org-roam-completion-everywhere t)
+#+name: org-roam-completion-everywhere
+#+begin_src elisp :tangle no
+(org-roam-completion-everywhere t)
 #+end_src
 ** Capture templates [0/1]
 It takes some work to get `doct` to work with org roam... but from [[https://gist.github.com/vherrmann/f9b21eeea7d7c9123dc400a30599d50d][this gist]], we get the `doct-org-roam` function:
@@ -254,14 +266,6 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
         ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
 #+end_src
 * Capture
-#+begin_src elisp :noweb no-export
-(use-package! org-capture
-  :commands org-capture
-  :config
-  <<org-capture-templates>>
-  <<org-roam-capture-templates>>
-  )
-#+end_src
 ** Quick keybinding
 #+begin_src elisp
 (define-key global-map "\C-cc" 'org-capture)
@@ -270,9 +274,10 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
 `doct` makes writing capture templates much simpler and more readable
 #+begin_src elisp :noweb no-export
 (use-package! doct
+  :after (org org-capture)
   :commands doct
-  :config
-  <<doct-org-roam>>
+  :custom
+  <<org-capture-templates>>
   )
 #+end_src
 Nice function for passing properties to `doct`
@@ -294,7 +299,7 @@ Appending to existing templates to keep project templates
 - [ ] figure out where existing templates are coming from, and migrate useful ones here
 #+name: org-capture-templates
 #+begin_src elisp :tangle no
-(setq org-capture-templates
+(org-capture-templates
       (append org-capture-templates
               (doct '(("Inbox"
                        :keys "i"
