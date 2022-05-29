@@ -18,6 +18,10 @@
   :defer t)
   #+end_src
 * R shortcuts
+| Keybinding | Description                  |
+|------------+------------------------------|
+| M--        | "<-" (ess-insert-assign)     |
+| M-.        | "%>%" (insert magrittr pipe) |
 #+begin_src elisp
 (use-package! ess
   :defer t

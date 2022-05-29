@@ -20,6 +20,7 @@ Global keybindings:
 | Keybinding | Description                  |
 |------------+------------------------------|
 | c          | Capture (to inbox file)      |
+| e          | Engage (go to GTD agenda)    |
 | p          | Process inbox                |
 | n          | Show all NEXT tasks          |
 | s          | Show projects that are stuck |
