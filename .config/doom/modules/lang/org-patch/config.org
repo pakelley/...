@@ -300,6 +300,7 @@ Appending to existing templates to keep project templates
 - [ ] figure out where existing templates are coming from, and migrate useful ones here
 #+name: org-capture-templates
 #+begin_src elisp :tangle no
+; setq
 (org-capture-templates
       (append org-capture-templates
               (doct '(("Inbox"
@@ -315,9 +316,13 @@ Appending to existing templates to keep project templates
                          :keys "r"
                          :file "~/.local/share/notes/meetings/retro.org"
                          :datetree t
-                         :template ("* %?"
-                                    "  %i"
-                                    "  %a")
+                         :template "* %?"
+                         :kill-buffer t)
+                        ("Nico 1-on-1"
+                         :keys "n"
+                         :file "~/.local/share/notes/meetings/nico.org"
+                         :datetree t
+                         :template "* %?"
                          :kill-buffer t)))
                       ("Shopping" :keys "s"
                        :file "~/.local/share/notes/reference/shopping.org"
