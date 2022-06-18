@@ -85,6 +85,7 @@
 
        :tools
        ;;ansible
+       bazel-patch
        biblio
        (debugger +lsp)     ; FIXME stepping through code, to help you add bugs
        ;;direnv
@@ -102,6 +103,7 @@
        ;;pdf               ; pdf enhancements
        ;;prodigy           ; FIXME managing external services & code builders
        ;;rgb               ; creating color strings
+       smartparens-patch
        ;;taskrunner        ; taskrunner for all your projects
        ;;terraform         ; infrastructure as code
        ;;tmux              ; an API for interacting with tmux
@@ -155,7 +157,7 @@
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional
-       (python +lsp +conda); beautiful is better than ugly
+       (python +lsp +pyright); beautiful is better than ugly
        python-patch
        ;;qt                ; the 'cutest' gui framework ever
        ;;racket            ; a DSL for DSLs
