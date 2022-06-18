@@ -29,7 +29,7 @@
                         `(,@template ,@org-roam-props)
                       template))
                   (doct-flatten-lists-in groups))))
-
+  
   (defun doct-org-roam--target-file (value)
     "Convert declaration's :file VALUE and extensions to capture template syntax."
     (let (type target)
@@ -62,7 +62,7 @@
                               (substring (symbol-name keyword) 1))
                             (delq nil type) "+"))
         ,@(delq nil target))))
-
+  
   (defun doct-org-roam--target ()
     "Convert declaration's target to template target."
     (let ((doct-exclusive-target-keywords '(:file :node)))
@@ -70,7 +70,7 @@
         ('nil (signal 'doct-no-target `(,doct-exclusive-target-keywords nil ,doct--current)))
         (`(:id ,id) `(id ,(doct--type-check :id id '(stringp))))
         (`(:file ,file) (doct-org-roam--target-file file)))))
-
+  
   (defun doct-org-roam--compose-entry (keys name parent)
     "Return a template suitable for `org-roam-capture-templates'.
   The list is of the form: (KEYS NAME type target template additional-options...).
@@ -86,15 +86,15 @@
                     ,@(cdr doct--current)
                     ,@(when-let ((custom (doct--custom-properties)))
                         `(:doct-custom ,custom)))))
-
+  
   (defun doct-org-roam (declarations)
     "Convert DECLARATIONS to `org-roam-capture-templates'.
-
   DECLARATIONS must be of the same form that `doct' expects with
   one addition: the :org-roam keyword.
   The :org-roam keyword's value must be a plist mapping `org-roam''s
   template syntax extensions (e.g. :file-name :head) to their appropriate values.
   Note this does validate the :org-roam plist's values or keywords."
+  
     ;;TODO: we should preserve doct-after-conversion-functions
     ;;in case user already has other functions set.
     (let ((doct-after-conversion-functions (append '(doct-org-roam-convert)
