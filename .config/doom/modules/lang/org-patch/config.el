@@ -182,6 +182,7 @@
   :after (org org-capture)
   :commands doct
   :custom
+  ; setq
   (org-capture-templates
         (append org-capture-templates
                 (doct '(("Inbox"
@@ -197,9 +198,13 @@
                            :keys "r"
                            :file "~/.local/share/notes/meetings/retro.org"
                            :datetree t
-                           :template ("* %?"
-                                      "  %i"
-                                      "  %a")
+                           :template "* %?"
+                           :kill-buffer t)
+                          ("Nico 1-on-1"
+                           :keys "n"
+                           :file "~/.local/share/notes/meetings/nico.org"
+                           :datetree t
+                           :template "* %?"
                            :kill-buffer t)))
                         ("Shopping" :keys "s"
                          :file "~/.local/share/notes/reference/shopping.org"
