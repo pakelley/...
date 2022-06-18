@@ -1,3 +1,7 @@
+* Packages
+#+begin_src elisp :tangle packages.el
+(package! benchmark-init)
+#+end_src
 * Set theme
 For now, I like this one. We'll see how long it lasts.
 #+begin_src elisp
