@@ -374,8 +374,10 @@
       )
 
 (use-package! org-modern
-  :defer
   :after org
+  :custom
+  (org-modern-priority nil)
+  (org-modern-internal-target `(,(all-the-icons-material "redo" :face 'all-the-icons-blue) t " "))
   :config
   (add-hook 'org-mode-hook #'org-modern-mode)
   (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))

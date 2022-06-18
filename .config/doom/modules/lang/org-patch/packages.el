@@ -9,3 +9,4 @@
 
 (use-package! org-super-agenda
   :commands org-super-agenda-mode)
+(package! org-modern)
