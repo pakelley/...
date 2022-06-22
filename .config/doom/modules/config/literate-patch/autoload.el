@@ -10,6 +10,9 @@
                  (when msg
                    (print! (info "%s") (apply #'format msg args)))))
          (print! (start "Compiling your literate config..."))
+         ;;  make cache directory, if it doesn't already exist
+         (let ((cache-dir (file-name-directory cache)))
+            (unless (file-directory-p cache-dir) (make-directory cache-dir)))
          (print-group!
           (let (;; Do as little unnecessary work as possible in these org files.
                 (org-startup-indented nil)
