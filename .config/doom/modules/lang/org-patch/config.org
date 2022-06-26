@@ -355,7 +355,7 @@ Appending to existing templates to keep project templates
 * Agenda
 ** Agenda Files (only include GTD-related files)
 #+begin_src elisp
-(setq org-agenda-files '("~/.local/share/notes/gtd"))
+(setq org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
 #+end_src
 ** Always include clockreport mode
 This gives some useful summary info about time spent on tasks from the agenda, when you have the discipline to use org's clock features.
