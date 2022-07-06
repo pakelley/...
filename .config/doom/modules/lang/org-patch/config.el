@@ -10,9 +10,10 @@
                   :desc "Engage"              "e" #'org-gtd-engage
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
-                  :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects))
-        ;; (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize)
-        (:map org-gtd-process-map       "C-c C-c" #'org-gtd-choose)))
+                  :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
+                  :desc "Capture"             "c" #'org-gtd-capture
+                  :desc "Archive Done"        "a" #'org-gtd-archive-completed-items)
+         (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize))))
 
 (use-package! org-roam
   :after doct
@@ -188,7 +189,6 @@
                 (doct '(("Inbox"
                          :keys "i"
                          :file "~/.local/share/notes/gtd/inbox.org"
-                         :datetree t
                          :template "* %?"
                          :kill-buffer t)
                         ("Meeting"
