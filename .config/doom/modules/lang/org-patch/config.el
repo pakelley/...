@@ -197,7 +197,8 @@
                          :olp ("Calendar")
                          :template ("* TODO %?"
                                     "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
-                         :prepare-finalize (lambda () (org-priority))
+                         :prepare-finalize (lambda () (progn (org-priority)
+                                                             (org-set-tags-command)))
                          :kill-buffer t)
                         ("Meeting"
                          :keys "m"
