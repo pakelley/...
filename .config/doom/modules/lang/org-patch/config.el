@@ -191,6 +191,14 @@
                          :file "~/.local/share/notes/gtd/inbox.org"
                          :template "* %?"
                          :kill-buffer t)
+                        ("Today"
+                         :keys "2"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :olp ("Calendar")
+                         :template ("* TODO %?"
+                                    "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                         :prepare-finalize (lambda () (org-priority))
+                         :kill-buffer t)
                         ("Meeting"
                          :keys "m"
                          :children
