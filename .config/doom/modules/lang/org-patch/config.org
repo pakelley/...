@@ -386,6 +386,11 @@ Appending to existing templates to keep project templates
 #+begin_src elisp
 (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
 #+end_src
+** Change refile targets so I can refile to wherever I want from the agenda (e.g. my reference org files, and the inbox if I just want to reprocess a task completely)
+#+begin_src emacs-lisp
+(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3))
+#+end_src
 ** Super Agenda
 A few notes on this:
 - including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
