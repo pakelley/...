@@ -380,6 +380,7 @@ Appending to existing templates to keep project templates
 (advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
 (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
 (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
+(advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
 #+end_src
 *** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]])
 #+begin_src elisp
