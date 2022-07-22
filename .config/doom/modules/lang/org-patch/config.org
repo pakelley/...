@@ -14,6 +14,7 @@
 (use-package! org-super-agenda
   :commands org-super-agenda-mode)
 (package! org-modern)
+(package! origami)
 #+end_src
 
 * GTD
@@ -455,6 +456,13 @@ Future enhancements
                            :todo "NEXT")
                           (:name "Remove anything else"
                             :discard (:anything t)))))))))
+
+(use-package! origami
+  :after org-agenda
+  :hook
+  (org-agenda . origami-mode)
+  :config
+  (map! (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node) (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)))
 #+end_src
 Use evil bindings on agenda headers created by super agenda (using best-looking solution from [[https://github.com/alphapapa/org-super-agenda/issues/50][this issue]])
 - [ ] should do a proper evil-ification of this eventually
