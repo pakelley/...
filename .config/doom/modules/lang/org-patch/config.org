@@ -236,6 +236,18 @@ Notably, the backtick is crucial for setting the hook in my anki template
          :olp ("Log")
          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
 #+end_src
+** Dailies Protocol
+#+begin_src emacs-lisp :tangle yes
+(defun org-roam-protocol-open-daily (info)
+  "Say hello to the world."
+  (let ((goto (plist-get info :goto))
+        (keys (plist-get info :keys)))
+       (org-roam-dailies-capture-today goto keys))
+ nil)
+
+(push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
+      org-protocol-protocol-alist)
+#+end_src
 * Reference [0/1]
 - [ ] TODO change these to relative paths
 - [ ] TODO set up ebib (the [[a][spacemacs bibtex layer]] should be helpful)
