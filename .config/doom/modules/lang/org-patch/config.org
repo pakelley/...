@@ -5,6 +5,7 @@
 (package! org-anki)
 (package! org-gtd)
 (package! org-ref)
+(package! org-pomodoro)
 (package! doct)
 (package! org-super-agenda :pin "fb5e2ef277bc811a3b061106c99e4c47b6b86f80")
 (package! org-pretty-table
@@ -367,17 +368,6 @@ Appending to existing templates to keep project templates
 #+begin_src elisp
 (setq org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
 #+end_src
-** Always include clockreport mode
-This gives some useful summary info about time spent on tasks from the agenda, when you have the discipline to use org's clock features.
-#+begin_src elisp
-(setq org-agenda-start-with-clockreport-mode t)
-#+end_src
-** Clockreport format [0/1]
-- [ ] TODO revisit this (I think I have it set up for org-pomodoro, but can't remember anymore)
-#+begin_src elisp
-(setq org-agenda-clockreport-parameter-plist
-      '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
-#+end_src
 ** Sync
 *** Save buffers when modifying todos (taken from [[https://emacs.stackexchange.com/a/33063/15634][this SO answer]])
 #+begin_src elisp
@@ -507,14 +497,49 @@ Notably, you'll need to install [[https://github.com/mermaid-js/mermaid-cli][mer
   (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 #+end_src
 * Pomodoro [0/1]
-- [ ] TODO review this
-#+begin_src elisp
-(setq org-pomodoro-length 40)
-(setq org-pomodoro-short-break-length 10)
-(setq org-pomodoro-long-break-length 20)
-(setq org-pomodoro-play-sounds 0)
-;(setq alert-default-style 'growl)
-#+end_src
+- [ ] need to see if I can set slack status in pomodoro hooks
+#+begin_src elisp :noweb no-export
+(use-package! org-pomodoro
+  :custom
+  ; my personal pomodoro lengths
+  (org-pomodoro-length 40)
+  (org-pomodoro-short-break-length 10)
+  (org-pomodoro-long-break-length 30)
+  ; wait for me to start my break
+  (org-pomodoro-manual-break t)
+  ; only record pomodoro-approved time: overtime doesn't get clocked
+  (org-pomodoro-overtime-hook '(org-clock-out))
+  ; dont use annoying multiple bell after long break
+  (org-pomodoro-long-break-sound org-pomodoro-short-break-sound)
+  :config
+  <<clockreport-format>>
+  (defun +org/switch-task (&optional arg)
+    (interactive "P")
+    (org-agenda-clock-out)
+    (org-agenda-clock-in arg))
+  (map! :after org-agenda
+        :leader
+        (:prefix "n"
+         :desc "pomodoro" "p" #'org-pomodoro)
+        :map org-agenda-mode-map
+        :localleader
+        (:prefix ("c" . "clock")
+         :desc "switch task" "w" #'+org/switch-task
+         :desc "pomodoro" "p" #'org-pomodoro)))
+    #+end_src
+
+This gives some useful summary info about time spent on tasks from the agenda, when you have the discipline to use org's clock features.
+
+Oh my god, this is complicated without some background knowledge... see the [[https://orgmode.org/manual/The-clock-table.html][clocktable docs]] for info on setting this var, see [[https://orgmode.org/manual/The-Spreadsheet.html][the spreadsheet docs]] for info on the formula (the [[https://orgmode.org/manual/References.html][references docs]] are a good starting point), and just know that this is using calc under the hood with (what seems to be) org specific additions for the table references.
+I have not been able to find a way to change the column names for the clockreport.
+My setting here is originally based on [[https://emacs.stackexchange.com/a/12883/15634][this SE answer]].
+The save-window-excursion is here bc for some reason formatting the clockreport is leaving the agenda buffer (so I have to navigate to the agenda explicitly after loading it)
+  #+name: clockreport-format
+  #+begin_src emacs-lisp :tangle no
+(setq org-agenda-clockreport-parameter-plist
+   `(:link t :maxlevel 2 :formula ,(format "$5=ceil(($3+$4)*60/%s);N" org-pomodoro-length)))
+  #+end_src
+
 * Tags [0/1]
 - [ ] TODO figure out a better way of updating this
 #+begin_src elisp
