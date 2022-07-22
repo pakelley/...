@@ -391,7 +391,7 @@ Appending to existing templates to keep project templates
 (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
 (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3))
 #+end_src
-** Super Agenda
+** Super Agenda [0/7]
 A few notes on this:
 - including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
 - I keep my active TODOs (i.e. the ones scheduled for today, except for "NEXT" and "WAIT") in the agenda, and everything else in the todo list (I keep "NEXT" separate because I treat them as things I can do whenever I have a chance, and I just want to declutter my agenda be removing anything I have to wait on, and therefore probably can't accurately predict when I can get it done)
@@ -399,6 +399,10 @@ A few notes on this:
 Future enhancements
 - [ ] fix priority icons
 - [ ] review the other org props I'm setting here
+- [ ] filter "other tasks" after [[https://github.com/alphapapa/org-super-agenda/pull/149][this PR]] is merged (only include NEXT items for the next week or so)
+- [ ] maybe change TODO/NEXT logic to use one of the auto grouping features (maybe auto-group, or auto-property and set "quick" tag?)
+- [ ] don't mark subtasks as unscheduled if the parent is
+- [ ] maybe use org-ql (might help solve some of the above)
 #+begin_src elisp
 (after! org-agenda
   (org-super-agenda-mode))
@@ -412,7 +416,7 @@ Future enhancements
       org-agenda-compact-blocks t)
 
 (setq org-agenda-custom-commands
-      '(("." "What's happening"
+      `(("." "What's happening"
          ((agenda "" ((org-agenda-span 'day)
                       (org-agenda-start-day "+0d")
                       (org-super-agenda-groups
@@ -420,32 +424,37 @@ Future enhancements
                           :time-grid t
                           :discard (:todo "NEXT"
                                     :todo "WAIT")
-                          :and (:scheduled today
-                                :not (:todo "NEXT")
+                          :and (:not (:todo "NEXT")
                                 :not (:todo "WAIT"))
                           :order 0)))))
           (alltodo "" ((org-agenda-overriding-header "")
                        (org-agenda-span 'week)
                        (org-agenda-start-day "+0d")
                        (org-super-agenda-groups
-                        '((:name "Overdue"
+                        '((:name "Waiting"
+                           :todo "WAIT"
+                           :order 2)
+                          (:name "Overdue"
                            :scheduled past
                            :face error
-                           :order 2)
-                          (:name "Next to do"
+                           :order 3)
+                          (:name "Unscheduled"
+                           :scheduled nil
+                           :face error
+                           :order 3)
+                          (:name "Remove NEXT tasks that will already appear in clock agenda"
+                           :discard (:regexp ,org-ql-regexp-scheduled-with-time))
+                          (:name "Quick"
                            :and (:scheduled today
                                  :todo "NEXT")
                            :discard (:and (:scheduled today
                                            :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
                            :order 1)
-                          (:name "Waiting"
-                           :and (:scheduled today
-                                 :todo "WAIT")
-                           :order 1)
-                          (:name "Unscheduled"
-                           :scheduled nil
-                           :face error
-                           :order 2)))))))))
+                          (:name "Could pull in"
+                           :order 4
+                           :todo "NEXT")
+                          (:name "Remove anything else"
+                            :discard (:anything t)))))))))
 #+end_src
 Use evil bindings on agenda headers created by super agenda (using best-looking solution from [[https://github.com/alphapapa/org-super-agenda/issues/50][this issue]])
 - [ ] should do a proper evil-ification of this eventually
