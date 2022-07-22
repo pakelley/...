@@ -384,7 +384,7 @@ Appending to existing templates to keep project templates
 #+end_src
 *** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]])
 #+begin_src elisp
-(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "a"))) )
+(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
 #+end_src
 ** Super Agenda
 A few notes on this:
