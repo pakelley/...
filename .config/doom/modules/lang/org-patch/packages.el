@@ -2,6 +2,7 @@
 (package! org-anki)
 (package! org-gtd)
 (package! org-ref)
+(package! org-pomodoro)
 (package! doct)
 (package! org-super-agenda :pin "fb5e2ef277bc811a3b061106c99e4c47b6b86f80")
 (package! org-pretty-table
@@ -10,3 +11,4 @@
 (use-package! org-super-agenda
   :commands org-super-agenda-mode)
 (package! org-modern)
+(package! origami)

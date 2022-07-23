@@ -1,4 +1,7 @@
 #+TITLE: Config
+#+property: header-args:emacs-lisp :tangle yes
+#+property: header-args:elisp :tangle yes
+
 * Packages
 #+begin_src elisp :tangle packages.el
 (package! ob-mermaid)
@@ -237,9 +240,8 @@ Notably, the backtick is crucial for setting the hook in my anki template
          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
 #+end_src
 ** Dailies Protocol
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp
 (defun org-roam-protocol-open-daily (info)
-  "Say hello to the world."
   (let ((goto (plist-get info :goto))
         (keys (plist-get info :keys)))
        (org-roam-dailies-capture-today goto keys))

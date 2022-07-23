@@ -1,4 +1,7 @@
 #+TITLE: Config
+#+property: header-args:emacs-lisp :tangle yes
+#+property: header-args:elisp :tangle yes
+
 * packages
 #+begin_src elisp :tangle packages.el
 (package! bazel)

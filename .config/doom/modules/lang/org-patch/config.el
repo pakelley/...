@@ -13,7 +13,7 @@
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
                   :desc "Archive Done"        "a" #'org-gtd-archive-completed-items)
-         (:map org-gtd-command-map       "C-c C-c" #'org-gtd-clarify-finalize))))
+         (:map org-gtd-command-map       "C-c C-c" #'org-gtd-choose))))
 
 (use-package! org-roam
   :after doct
@@ -158,6 +158,15 @@
            :olp ("Log")
            :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n"))))
 
+(defun org-roam-protocol-open-daily (info)
+  (let ((goto (plist-get info :goto))
+        (keys (plist-get info :keys)))
+       (org-roam-dailies-capture-today goto keys))
+ nil)
+
+(push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
+      org-protocol-protocol-alist)
+
 (use-package! org-ref
   :defer
   :config
@@ -257,11 +266,6 @@
 
 (setq org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
 
-(setq org-agenda-start-with-clockreport-mode t)
-
-(setq org-agenda-clockreport-parameter-plist
-      '(:link t :maxlevel 2 :formula "$5=$3+$4;t::$6=ceil($5*60/25);N"))
-
 (defmacro η (fnc)
   "Return function that ignores its arguments and invokes FNC."
   `(lambda (&rest _rest)
@@ -271,8 +275,12 @@
 (advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
 (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
 (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
+(advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
 
-(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "a"))) )
+(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
+
+(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3))
 
 (after! org-agenda
   (org-super-agenda-mode))
@@ -286,7 +294,7 @@
       org-agenda-compact-blocks t)
 
 (setq org-agenda-custom-commands
-      '(("." "What's happening"
+      `(("." "What's happening"
          ((agenda "" ((org-agenda-span 'day)
                       (org-agenda-start-day "+0d")
                       (org-super-agenda-groups
@@ -294,32 +302,44 @@
                           :time-grid t
                           :discard (:todo "NEXT"
                                     :todo "WAIT")
-                          :and (:scheduled today
-                                :not (:todo "NEXT")
+                          :and (:not (:todo "NEXT")
                                 :not (:todo "WAIT"))
                           :order 0)))))
           (alltodo "" ((org-agenda-overriding-header "")
                        (org-agenda-span 'week)
                        (org-agenda-start-day "+0d")
                        (org-super-agenda-groups
-                        '((:name "Overdue"
+                        '((:name "Waiting"
+                           :todo "WAIT"
+                           :order 2)
+                          (:name "Overdue"
                            :scheduled past
                            :face error
-                           :order 2)
-                          (:name "Next to do"
+                           :order 3)
+                          (:name "Unscheduled"
+                           :scheduled nil
+                           :face error
+                           :order 3)
+                          (:name "Remove NEXT tasks that will already appear in clock agenda"
+                           :discard (:regexp ,org-ql-regexp-scheduled-with-time))
+                          (:name "Quick"
                            :and (:scheduled today
                                  :todo "NEXT")
                            :discard (:and (:scheduled today
                                            :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
                            :order 1)
-                          (:name "Waiting"
-                           :and (:scheduled today
-                                 :todo "WAIT")
-                           :order 1)
-                          (:name "Unscheduled"
-                           :scheduled nil
-                           :face error
-                           :order 2)))))))))
+                          (:name "Could pull in"
+                           :order 4
+                           :todo "NEXT")
+                          (:name "Remove anything else"
+                            :discard (:anything t)))))))))
+
+(use-package! origami
+  :after org-agenda
+  :hook
+  (org-agenda . origami-mode)
+  :config
+  (map! (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node) (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)))
 
 (after! evil-org-agenda
   (setq org-super-agenda-header-map evil-org-agenda-mode-map))
@@ -330,6 +350,17 @@
 (setq org-directory "~/.local/share/notes")
 
 (setq org-startup-with-latex-preview t)
+
+;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
+(add-to-list 'exec-path "/Library/TeX/texbin/")
+
+(defun set-exec-path-from-shell-PATH ()
+  (let ((path-from-shell
+      (replace-regexp-in-string "[[:space:]\n]*$" ""
+        (shell-command-to-string "$SHELL -l -c 'echo $PATH'"))))
+    (setenv "PATH" path-from-shell)
+    (setq exec-path (split-string path-from-shell path-separator))))
+(when (equal system-type 'darwin) (set-exec-path-from-shell-PATH))
 
 ;(setq org-startup-truncated nil)
 ;(setq org-startup-indented t)
@@ -347,11 +378,34 @@
   :config
   (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 
-(setq org-pomodoro-length 40)
-(setq org-pomodoro-short-break-length 10)
-(setq org-pomodoro-long-break-length 20)
-(setq org-pomodoro-play-sounds 0)
-;(setq alert-default-style 'growl)
+(use-package! org-pomodoro
+  :custom
+  ; my personal pomodoro lengths
+  (org-pomodoro-length 40)
+  (org-pomodoro-short-break-length 10)
+  (org-pomodoro-long-break-length 30)
+  ; wait for me to start my break
+  (org-pomodoro-manual-break t)
+  ; only record pomodoro-approved time: overtime doesn't get clocked
+  (org-pomodoro-overtime-hook '(org-clock-out))
+  ; dont use annoying multiple bell after long break
+  (org-pomodoro-long-break-sound org-pomodoro-short-break-sound)
+  :config
+  (setq org-agenda-clockreport-parameter-plist
+     `(:link t :maxlevel 2 :formula ,(format "$5=ceil(($3+$4)*60/%s);N" org-pomodoro-length)))
+  (defun +org/switch-task (&optional arg)
+    (interactive "P")
+    (org-agenda-clock-out)
+    (org-agenda-clock-in arg))
+  (map! :after org-agenda
+        :leader
+        (:prefix "n"
+         :desc "pomodoro" "p" #'org-pomodoro)
+        :map org-agenda-mode-map
+        :localleader
+        (:prefix ("c" . "clock")
+         :desc "switch task" "w" #'+org/switch-task
+         :desc "pomodoro" "p" #'org-pomodoro)))
 
 (setq org-tag-alist
       '(
