@@ -53,8 +53,8 @@
 (defun +literate-patch/literate--guard-env-fn (category module)
   "Generate an env name to guard from re-running `org-babel-tangle-file'.
 
-For example: `(+literate-patch/literate--guard-env-fn 'config 'my-literate-module)'
-generates `__NOTANGLE_CONFIG_MY_LITERATE_MODULE'"
+ For example: `(+literate-patch/literate--guard-env-fn 'config 'my-literate-module)'
+ generates `__NOTANGLE_CONFIG_MY_LITERATE_MODULE'"
   (upcase
    (replace-regexp-in-string "-" "_"
                              (format "__NOTANGLE_%s_%s" category module))))
