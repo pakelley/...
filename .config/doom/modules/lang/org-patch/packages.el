@@ -8,7 +8,6 @@
 (package! org-pretty-table
   :recipe (:host github :repo "Fuco1/org-pretty-table") :pin "87772a9469d91770f87bfa788580fca69b9e697a")
 
-(use-package! org-super-agenda
-  :commands org-super-agenda-mode)
+
 (package! org-modern)
 (package! origami)

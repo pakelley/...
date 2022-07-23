@@ -158,15 +158,6 @@
            :olp ("Log")
            :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n"))))
 
-(defun org-roam-protocol-open-daily (info)
-  (let ((goto (plist-get info :goto))
-        (keys (plist-get info :keys)))
-       (org-roam-dailies-capture-today goto keys))
- nil)
-
-(push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
-      org-protocol-protocol-alist)
-
 (use-package! org-ref
   :defer
   :config
@@ -279,60 +270,61 @@
 
 (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
 
-(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
-(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3))
-
 (after! org-agenda
   (org-super-agenda-mode))
 
-; TODO review these config options
-(setq org-agenda-skip-scheduled-if-done t
-      org-agenda-skip-deadline-if-done t
-      org-agenda-include-deadlines t
-      ;; org-agenda-block-separator nil
-      org-agenda-tags-column 100 ;; from testing this seems to be a good value
-      org-agenda-compact-blocks t)
+(use-package! org-super-agenda
+  :after org-ql
+  :commands org-super-agenda-mode
+  :config
+  ; TODO review these config options
+  (setq org-agenda-skip-scheduled-if-done t
+        org-agenda-skip-deadline-if-done t
+        org-agenda-include-deadlines t
+        ;; org-agenda-block-separator nil
+        org-agenda-tags-column 100 ;; from testing this seems to be a good value
+        org-agenda-compact-blocks t)
 
-(setq org-agenda-custom-commands
-      `(("." "What's happening"
-         ((agenda "" ((org-agenda-span 'day)
-                      (org-agenda-start-day "+0d")
-                      (org-super-agenda-groups
-                       '((:name "Today"
-                          :time-grid t
-                          :discard (:todo "NEXT"
-                                    :todo "WAIT")
-                          :and (:not (:todo "NEXT")
-                                :not (:todo "WAIT"))
-                          :order 0)))))
-          (alltodo "" ((org-agenda-overriding-header "")
-                       (org-agenda-span 'week)
-                       (org-agenda-start-day "+0d")
-                       (org-super-agenda-groups
-                        '((:name "Waiting"
-                           :todo "WAIT"
-                           :order 2)
-                          (:name "Overdue"
-                           :scheduled past
-                           :face error
-                           :order 3)
-                          (:name "Unscheduled"
-                           :scheduled nil
-                           :face error
-                           :order 3)
-                          (:name "Remove NEXT tasks that will already appear in clock agenda"
-                           :discard (:regexp ,org-ql-regexp-scheduled-with-time))
-                          (:name "Quick"
-                           :and (:scheduled today
-                                 :todo "NEXT")
-                           :discard (:and (:scheduled today
-                                           :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
-                           :order 1)
-                          (:name "Could pull in"
-                           :order 4
-                           :todo "NEXT")
-                          (:name "Remove anything else"
-                            :discard (:anything t)))))))))
+  (setq org-agenda-custom-commands
+        `(("." "What's happening"
+           ((agenda "" ((org-agenda-span 'day)
+                        (org-agenda-start-day "+0d")
+                        (org-super-agenda-groups
+                         '((:name "Today"
+                            :time-grid t
+                            :discard (:todo "NEXT"
+                                      :todo "WAIT")
+                            :and (:not (:todo "NEXT")
+                                  :not (:todo "WAIT"))
+                            :order 0)))))
+            (alltodo "" ((org-agenda-overriding-header "")
+                         (org-agenda-span 'week)
+                         (org-agenda-start-day "+0d")
+                         (org-super-agenda-groups
+                          '((:name "Waiting"
+                             :todo "WAIT"
+                             :order 2)
+                            (:name "Overdue"
+                             :scheduled past
+                             :face error
+                             :order 3)
+                            (:name "Unscheduled"
+                             :scheduled nil
+                             :face error
+                             :order 3)
+                            (:name "Remove NEXT tasks that will already appear in clock agenda"
+                             :discard (:regexp ,org-ql-regexp-scheduled-with-time))
+                            (:name "Quick"
+                             :and (:scheduled today
+                                   :todo "NEXT")
+                             :discard (:and (:scheduled today
+                                             :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
+                             :order 1)
+                            (:name "Could pull in"
+                             :order 4
+                             :todo "NEXT")
+                            (:name "Remove anything else"
+                             :discard (:anything t)))))))))))
 
 (use-package! origami
   :after org-agenda
@@ -350,17 +342,6 @@
 (setq org-directory "~/.local/share/notes")
 
 (setq org-startup-with-latex-preview t)
-
-;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
-(add-to-list 'exec-path "/Library/TeX/texbin/")
-
-(defun set-exec-path-from-shell-PATH ()
-  (let ((path-from-shell
-      (replace-regexp-in-string "[[:space:]\n]*$" ""
-        (shell-command-to-string "$SHELL -l -c 'echo $PATH'"))))
-    (setenv "PATH" path-from-shell)
-    (setq exec-path (split-string path-from-shell path-separator))))
-(when (equal system-type 'darwin) (set-exec-path-from-shell-PATH))
 
 ;(setq org-startup-truncated nil)
 ;(setq org-startup-indented t)
@@ -449,3 +430,29 @@
   :config
   (add-hook 'org-mode-hook #'org-modern-mode)
   (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
+
+(after! org-protocol
+  (defun org-roam-protocol-open-daily (info)
+    (let ((goto (plist-get info :goto))
+          (keys (plist-get info :keys)))
+      (org-roam-dailies-capture-today goto keys))
+    nil)
+
+  (push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
+        org-protocol-protocol-alist))
+
+(use-package! org-refile
+  :config
+  ;(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
+
+;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
+(add-to-list 'exec-path "/Library/TeX/texbin/")
+
+(defun set-exec-path-from-shell-PATH ()
+  (let ((path-from-shell
+      (replace-regexp-in-string "[[:space:]\n]*$" ""
+        (shell-command-to-string "$SHELL -l -c 'echo $PATH'"))))
+    (setenv "PATH" path-from-shell)
+    (setq exec-path (split-string path-from-shell path-separator))))
+(when (equal system-type 'darwin) (set-exec-path-from-shell-PATH))
