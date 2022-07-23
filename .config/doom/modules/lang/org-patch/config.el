@@ -156,7 +156,19 @@
            "* %<%I:%M %p> - %^{Meeting Title}  :meetings:\n\n%?\n\n"
            :file-name "Journal/%<%Y-%m-%d>"
            :olp ("Log")
-           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n"))))
+           :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
+  ; start org-roam on startup
+  (org-roam-db-autosync-mode))
+
+(after! org-protocol
+  (defun org-roam-protocol-open-daily (info)
+    (let ((goto (plist-get info :goto))
+          (keys (plist-get info :keys)))
+      (org-roam-dailies-capture-today goto keys))
+    nil)
+
+  (push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
+        org-protocol-protocol-alist))
 
 (use-package! org-ref
   :defer
@@ -270,6 +282,11 @@
 
 (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
 
+(use-package! org-refile
+  :config
+  ;(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
+
 (after! org-agenda
   (org-super-agenda-mode))
 
@@ -342,6 +359,17 @@
 (setq org-directory "~/.local/share/notes")
 
 (setq org-startup-with-latex-preview t)
+
+;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
+(add-to-list 'exec-path "/Library/TeX/texbin/")
+
+(defun set-exec-path-from-shell-PATH ()
+  (let ((path-from-shell
+      (replace-regexp-in-string "[[:space:]\n]*$" ""
+        (shell-command-to-string "$SHELL -l -c 'echo $PATH'"))))
+    (setenv "PATH" path-from-shell)
+    (setq exec-path (split-string path-from-shell path-separator))))
+(when (equal system-type 'darwin) (set-exec-path-from-shell-PATH))
 
 ;(setq org-startup-truncated nil)
 ;(setq org-startup-indented t)
@@ -431,28 +459,3 @@
   (add-hook 'org-mode-hook #'org-modern-mode)
   (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
 
-(after! org-protocol
-  (defun org-roam-protocol-open-daily (info)
-    (let ((goto (plist-get info :goto))
-          (keys (plist-get info :keys)))
-      (org-roam-dailies-capture-today goto keys))
-    nil)
-
-  (push '("org-roam-daily"  :protocol "roam-daily"   :function org-roam-protocol-open-daily)
-        org-protocol-protocol-alist))
-
-(use-package! org-refile
-  :config
-  ;(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
-  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
-
-;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
-(add-to-list 'exec-path "/Library/TeX/texbin/")
-
-(defun set-exec-path-from-shell-PATH ()
-  (let ((path-from-shell
-      (replace-regexp-in-string "[[:space:]\n]*$" ""
-        (shell-command-to-string "$SHELL -l -c 'echo $PATH'"))))
-    (setenv "PATH" path-from-shell)
-    (setq exec-path (split-string path-from-shell path-separator))))
-(when (equal system-type 'darwin) (set-exec-path-from-shell-PATH))
