@@ -93,7 +93,7 @@ On the fence about this one, need to check on the performance. Makes linking roa
 #+begin_src elisp :tangle no
 (org-roam-completion-everywhere t)
 #+end_src
-** Capture templates [0/1]
+** Capture templates
 It takes some work to get `doct` to work with org roam... but from [[https://gist.github.com/vherrmann/f9b21eeea7d7c9123dc400a30599d50d][this gist]], we get the `doct-org-roam` function:
 #+name: doct-org-roam
 #+begin_src elisp :tangle no
@@ -379,13 +379,26 @@ Appending to existing templates to keep project templates
                         ("Repo" :keys "r" :olp ("Repos"))))))))
 #+end_src
 * Agenda
-** Agenda Files (only include GTD-related files)
-#+begin_src elisp
-(setq org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
+#+begin_src emacs-lisp :noweb no-export
+(use-package! org-agenda
+  :commands org-agenda
+  :custom
+  <<agenda-files>>
+  :config
+  <<sync-buffer-to-file>>
+  <<sync-file-to-agenda>>
+  <<agenda-reschedule>>)
+#+end_src
+** Agenda Files
+Only track my task-related files in the agenda
+#+name: agenda-files
+#+begin_src elisp :tangle no
+(org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
 #+end_src
 ** Sync
 *** Save buffers when modifying todos (taken from [[https://emacs.stackexchange.com/a/33063/15634][this SO answer]])
-#+begin_src elisp
+#+name: sync-buffer-to-file
+#+begin_src elisp :tangle no
 (defmacro η (fnc)
   "Return function that ignores its arguments and invokes FNC."
   `(lambda (&rest _rest)
@@ -397,16 +410,30 @@ Appending to existing templates to keep project templates
 (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
 (advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
 #+end_src
-*** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]])
-#+begin_src elisp
+*** Update agenda after 5mins of idle time (inspired by [[https://emacs.stackexchange.com/a/47266/15634][this SO answer]]) [0/1]
+- [ ] need to also sync file to buffer
+#+name: sync-file-to-agenda
+#+begin_src elisp :tangle no
 (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
 #+end_src
 ** Change refile targets so I can refile to wherever I want from the agenda (e.g. my reference org files, and the inbox if I just want to reprocess a task completely)
 #+begin_src emacs-lisp
 (use-package! org-refile
   :config
-  ;(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
+#+end_src
+** Quick Action for rescheduling to today (used pretty commonly when things roll over)
+#+name: agenda-reschedule
+#+begin_src emacs-lisp :tangle no
+(defun org-agenda-reschedule-to-today (&optional arg)
+  "Reschedule selected task(s) for today."
+  (interactive "P")
+  (org-agenda-schedule arg "."))
+
+(setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)))
+(map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
+      (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today))
 #+end_src
 ** Super Agenda [0/7]
 A few notes on this:
@@ -425,7 +452,7 @@ Future enhancements
   (org-super-agenda-mode))
 
 (use-package! org-super-agenda
-  :after org-ql
+  :after org-ql org-agenda
   :commands org-super-agenda-mode
   :config
   ; TODO review these config options
@@ -480,7 +507,7 @@ Future enhancements
 (use-package! origami
   :after org-agenda
   :hook
-  (org-agenda . origami-mode)
+  (org-agenda-mode . origami-mode)
   :config
   (map! (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node) (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)))
 #+end_src

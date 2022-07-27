@@ -267,31 +267,41 @@
 ;;          :hook my/org-property-drawer
 ;;          :properties (:anki_deck "${category}"))))
 
-(setq org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
-
-(defmacro η (fnc)
-  "Return function that ignores its arguments and invokes FNC."
-  `(lambda (&rest _rest)
-     (funcall ,fnc)))
-
-(advice-add 'org-deadline       :after (η #'org-save-all-org-buffers))
-(advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
-(advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
-(advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
-(advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
-
-(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
+(use-package! org-agenda
+  :commands org-agenda
+  :custom
+  (org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
+  :config
+  (defmacro η (fnc)
+    "Return function that ignores its arguments and invokes FNC."
+    `(lambda (&rest _rest)
+       (funcall ,fnc)))
+  
+  (advice-add 'org-deadline       :after (η #'org-save-all-org-buffers))
+  (advice-add 'org-schedule       :after (η #'org-save-all-org-buffers))
+  (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
+  (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
+  (advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
+  (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil "."))))
+  (defun org-agenda-reschedule-to-today (&optional arg)
+    "Reschedule selected task(s) for today."
+    (interactive "P")
+    (org-agenda-schedule arg "."))
+  
+  (setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)))
+  (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
+        (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)))
 
 (use-package! org-refile
   :config
-  ;(add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 
 (after! org-agenda
   (org-super-agenda-mode))
 
 (use-package! org-super-agenda
-  :after org-ql
+  :after org-ql org-agenda
   :commands org-super-agenda-mode
   :config
   ; TODO review these config options
@@ -346,7 +356,7 @@
 (use-package! origami
   :after org-agenda
   :hook
-  (org-agenda . origami-mode)
+  (org-agenda-mode . origami-mode)
   :config
   (map! (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node) (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)))
 
