@@ -1,0 +1,36 @@
+#+TITLE: Config
+* packages
+#+begin_src elisp :tangle packages.el
+(package! magit-arcanist
+  :recipe (:host github :repo "sideshowcoder/magit-arcanist"))
+#+end_src
+* speed up magit for monorepo [0/1]
+Various things that speed magit up when working with a monorepo.
+#+begin_src elisp
+(use-package! magit
+  :commands magit-status
+  :config
+  (remove-hook 'magit-refs-sections-hook 'magit-insert-tags)
+  (remove-hook 'magit-status-headers-hook 'magit-insert-tags-header)
+  (magit-add-section-hook
+   'magit-status-sections-hook
+   'magit-insert-unpushed-cherries
+   'magit-insert-unpushed-to-upstream-or-recent
+   'replace)
+  (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-upstream))
+#+end_src
+Additionally, useful to add the following to your `.git/config`
+#+begin_src toml :tangle no
+[log]
+	decorate = false
+[status]
+	showUntrackedFiles = no
+#+end_src
+* magit-arcanist
+#+begin_src elisp
+(use-package! magit-arcanist
+  :after magit
+  :ghook ('magit-mode-hook #'magit-arcanist-enable)
+  :custom
+  (magit-arcanist-key (kbd "#")))
+#+end_src
