@@ -353,15 +353,50 @@
                             (:name "Remove anything else"
                              :discard (:anything t)))))))))))
 
+(after! evil-org-agenda
+  (setq org-super-agenda-header-map evil-org-agenda-mode-map))
+
 (use-package! origami
   :after org-agenda
   :hook
   (org-agenda-mode . origami-mode)
+  (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default)
   :config
-  (map! (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node) (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node) (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)))
 
-(after! evil-org-agenda
-  (setq org-super-agenda-header-map evil-org-agenda-mode-map))
+  (setq +patch/agenda-auto-show-groups
+    '("Today" "Quick" "Waiting"))
+
+  (defun +patch/org-super-agenda-origami-fold-default ()
+    "Fold certain groups by default in Org Super Agenda buffer."
+    (forward-line 2)
+    (cl-loop do (origami-forward-toggle-node (current-buffer) (point))
+             while (numberp (org-agenda-forward-block)))
+    (--each +patch/agenda-auto-show-groups
+      (goto-char (point-min))
+      (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
+        (origami-show-node (current-buffer) (point)))))
+
+  (defun +patch/dont-show-waiting-in-agenda ()
+    (interactive)
+    (setq +patch/agenda-auto-show-groups
+          (remove "Waiting" +patch/agenda-auto-show-groups))
+    (org-agenda-redo))
+
+  (defun +patch/show-waiting-in-agenda ()
+    (interactive)
+    (setq +patch/agenda-auto-show-groups
+          (cons "Waiting" +patch/agenda-auto-show-groups))
+    (org-agenda-redo))
+
+  (map!
+   (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node)
+   (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node)
+   (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node)
+   (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)
+   :map org-agenda-mode-map
+   :localleader
+   ("w" #'+patch/show-waiting-in-agenda)
+   ("W" #'+patch/dont-show-waiting-in-agenda)))
 
 (setq deft-directory "~/.local/share/notes")
 (setq deft-recursive t)
