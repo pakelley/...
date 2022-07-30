@@ -85,7 +85,7 @@ Right now this is only the recommendations from `org-gtd`, but I'll probably add
 Store `org-roam` files in XDG-based path, sync-ed by Syncthing
 #+name: org-roam-directory
 #+begin_src elisp :tangle no
-(org-roam-directory "~/.local/share/notes/org-roam/")
+(org-roam-directory "~/.local/share/notes/zettelkasten/")
 #+end_src
 ** Roam completion everywhere
 On the fence about this one, need to check on the performance. Makes linking roam notes together simple though, so I'm enabling it for now: it just provides tab completion for roam note titles.
@@ -205,7 +205,7 @@ Notably, the backtick is crucial for setting the hook in my anki template
            :template ("* ${title}"
                       "%?"))))))
 
-(setq org-roam-dailies-directory "dailies/"
+(setq org-roam-dailies-directory "journals/"
       org-roam-dailies-capture-templates
       '(("d" "default" entry
          #'org-roam-capture--get-point

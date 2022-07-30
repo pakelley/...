@@ -18,7 +18,7 @@
 (use-package! org-roam
   :after doct
   :custom
-  (org-roam-directory "~/.local/share/notes/org-roam/")
+  (org-roam-directory "~/.local/share/notes/zettelkasten/")
   (org-roam-completion-everywhere t)
   :config
   (defun doct-org-roam-convert (groups)
@@ -125,7 +125,7 @@
              :template ("* ${title}"
                         "%?"))))))
   
-  (setq org-roam-dailies-directory "dailies/"
+  (setq org-roam-dailies-directory "journals/"
         org-roam-dailies-capture-templates
         '(("d" "default" entry
            #'org-roam-capture--get-point
