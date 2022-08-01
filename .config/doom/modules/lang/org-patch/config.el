@@ -171,7 +171,7 @@
         org-protocol-protocol-alist))
 
 (use-package! org-ref
-  :defer
+  :defer t
   :config
   (setq bibtex-completion-bibliography "/Users/pakelley/.local/share/bibtex/references.bib"
         bibtex-completion-library-path "/Users/pakelley/.local/share/bibtex/pdfs/"
@@ -255,18 +255,6 @@
                           ("Repo" :keys "r" :olp ("Repos"))))))))
   )
 
-(defun my/doct-properties ()
-                   "Add declaration's :properties to current entry."
-                   (let ((properties (doct-get :properties)))
-                     (dolist (keyword (seq-filter #'keywordp properties))
-                       (org-set-property (substring (symbol-name keyword) 1)
-                                         (plist-get properties keyword)))))
-;; Usage:
-;; (doct '(("My capture template"
-;;          ...
-;;          :hook my/org-property-drawer
-;;          :properties (:anki_deck "${category}"))))
-
 (use-package! org-agenda
   :commands org-agenda
   :custom
@@ -293,6 +281,7 @@
         (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)))
 
 (use-package! org-refile
+  :after org-agenda
   :config
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
@@ -301,7 +290,7 @@
   (org-super-agenda-mode))
 
 (use-package! org-super-agenda
-  :after org-ql org-agenda
+  :after (org-ql org-agenda)
   :commands org-super-agenda-mode
   :config
   ; TODO review these config options
@@ -423,16 +412,17 @@
 ;      '((nil :maxlevel . 3)
 ;        (org-agenda-files :maxlevel . 3)))
 
-(setq org-confirm-babel-evaluate nil)
-
-(add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
+(after! org
+  (setq org-confirm-babel-evaluate nil)
+  (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append))
 
 (use-package! ob-mermaid
-  :defer
+  :defer t
   :config
   (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 
 (use-package! org-pomodoro
+  :after org-agenda
   :custom
   ; my personal pomodoro lengths
   (org-pomodoro-length 40)

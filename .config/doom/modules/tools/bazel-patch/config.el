@@ -1,4 +1,5 @@
 (use-package! bazel
+  :after python
   :defines local-bazel-test +bazel-patch/activate-venv +bazel-patch/build-venv
   :commands local-bazel-test +bazel-patch/activate-venv +bazel-patch/build-venv
   :init
@@ -121,14 +122,12 @@
       (if (and (boundp '+bazel-patch/local-target) +bazel-patch/local-target)
         (bazel-test +bazel-patch/local-target)
         (call-interactively 'bazel-test)))
-  )
-
-(defun +bazel-patch/open-ipython (local-target)
-  (interactive (list (bazel--read-target-pattern "target" nil)))
-  (eval-when-compile (require 'python))
-  (let ((python-shell-interpreter (concat (+bazel-patch/gen-venv-location local-target)
-                                          "/bin/ipython"))
-        (python-shell-interpreter-args "-i --matplotlib=inline --automagic --simple-prompt --pprint"))
-    (pop-to-buffer
-     (process-buffer
-      (run-python nil nil t)))))
+  (defun +bazel-patch/open-ipython (local-target)
+    (interactive (list (bazel--read-target-pattern "target" nil)))
+    (eval-when-compile (require 'python))
+    (let ((python-shell-interpreter (concat (+bazel-patch/gen-venv-location local-target)
+                                            "/bin/ipython"))
+          (python-shell-interpreter-args "-i --matplotlib=inline --automagic --simple-prompt --pprint"))
+      (pop-to-buffer
+       (process-buffer
+        (run-python nil nil t))))))

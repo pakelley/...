@@ -9,6 +9,7 @@
 * bazel
 #+begin_src elisp :noweb no-export
 (use-package! bazel
+  :after python
   :defines local-bazel-test +bazel-patch/activate-venv +bazel-patch/build-venv
   :commands local-bazel-test +bazel-patch/activate-venv +bazel-patch/build-venv
   :init
@@ -22,7 +23,8 @@
   <<bazel-build-env-dir-locals>>
   <<bazel-activate-env-dir-locals>>
   <<bazel-test>>
-  )
+  <<bazel-ipython>>)
+
 #+end_src
 Example .dir-locals.el:
 #+begin_src elisp :tangle no
@@ -176,8 +178,8 @@ Run this command from a buffer in your `.dir-locals.el` directory to activate yo
   (+bazel-patch/refresh-venv-dir-locals local-target))
 #+end_src
 
-#+name: bazel-activate-env-dir-locals
-#+begin_src elisp
+#+name: bazel-ipython
+#+begin_src elisp :tangle no
 (defun +bazel-patch/open-ipython (local-target)
   (interactive (list (bazel--read-target-pattern "target" nil)))
   (eval-when-compile (require 'python))

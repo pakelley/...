@@ -8,6 +8,7 @@
 Various things that speed magit up when working with a monorepo.
 #+begin_src elisp
 (use-package! magit
+  :defer t
   :commands magit-status
   :config
   (remove-hook 'magit-refs-sections-hook 'magit-insert-tags)
@@ -29,6 +30,7 @@ Additionally, useful to add the following to your `.git/config`
 * magit-arcanist
 #+begin_src elisp
 (use-package! magit-arcanist
+  :defer t
   :after magit
   :ghook ('magit-mode-hook #'magit-arcanist-enable)
   :custom

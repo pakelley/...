@@ -256,7 +256,7 @@ Notably, the backtick is crucial for setting the hook in my anki template
 Use org-ref and bibtex for bibliographic references
 #+begin_src elisp
 (use-package! org-ref
-  :defer
+  :defer t
   :config
   (setq bibtex-completion-bibliography "/Users/pakelley/.local/share/bibtex/references.bib"
         bibtex-completion-library-path "/Users/pakelley/.local/share/bibtex/pdfs/"
@@ -301,7 +301,7 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
   )
 #+end_src
 Nice function for passing properties to `doct`
-#+begin_src elisp
+#+begin_src elisp :tangle no
 (defun my/doct-properties ()
                    "Add declaration's :properties to current entry."
                    (let ((properties (doct-get :properties)))
@@ -419,6 +419,7 @@ Only track my task-related files in the agenda
 ** Change refile targets so I can refile to wherever I want from the agenda (e.g. my reference org files, and the inbox if I just want to reprocess a task completely)
 #+begin_src emacs-lisp
 (use-package! org-refile
+  :after org-agenda
   :config
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
@@ -452,7 +453,7 @@ Future enhancements
   (org-super-agenda-mode))
 
 (use-package! org-super-agenda
-  :after org-ql org-agenda
+  :after (org-ql org-agenda)
   :commands org-super-agenda-mode
   :config
   ; TODO review these config options
@@ -601,14 +602,21 @@ Commenting this out for now, unless I decide I need it
 #+end_src
 * Babel [0/1]
 - [ ] TODO revisit these
+  #+begin_src emacs-lisp :noweb no-export
+(after! org
+  <<babel-evaluate>>
+  <<babel-inline-images>>)
+  #+end_src
 ** Confirm evaluate
 Don't prompt me to confirm every time I want to evaluate a block
-#+begin_src elisp
+#+name: babel-evaluate
+#+begin_src elisp :tangle no
 (setq org-confirm-babel-evaluate nil)
 #+end_src
 ** Inline images
 Display/udate images in the buffer after I evaluate a block
-#+begin_src elisp
+#+name: babel-inline-images
+#+begin_src elisp :tangle no
 (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
 #+end_src
 ** Mermaid
@@ -616,7 +624,7 @@ Use [[https://mermaid-js.github.io/mermaid/#/][mermaid.js]] to generate diagrams
 Notably, you'll need to install [[https://github.com/mermaid-js/mermaid-cli][mermaid-cli]].
 #+begin_src elisp
 (use-package! ob-mermaid
-  :defer
+  :defer t
   :config
   (setq ob-mermaid-cli-path "/usr/local/bin/mmdc"))
 #+end_src
@@ -624,6 +632,7 @@ Notably, you'll need to install [[https://github.com/mermaid-js/mermaid-cli][mer
 - [ ] need to see if I can set slack status in pomodoro hooks
 #+begin_src elisp :noweb no-export
 (use-package! org-pomodoro
+  :after org-agenda
   :custom
   ; my personal pomodoro lengths
   (org-pomodoro-length 40)
