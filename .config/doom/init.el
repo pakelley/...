@@ -97,6 +97,7 @@
        ;;ein               ; tame Jupyter notebooks with emacs
        (eval +overlay)     ; run code, run (also, repls)
        ;;gist              ; interacting with github gists
+       git-patch
        kubernetes-patch
        (lookup +docsets)   ; navigate your code and its documentation
        lsp                 ; M-x vscode
