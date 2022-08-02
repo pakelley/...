@@ -35,3 +35,11 @@ plutil -replace AppleSymbolicHotKeys.79.enabled -bool NO ~/Library/Preferences/c
 plutil -replace AppleSymbolicHotKeys.80.enabled -bool NO ~/Library/Preferences/com.apple.symbolichotkeys.plist
 plutil -replace AppleSymbolicHotKeys.81.enabled -bool NO ~/Library/Preferences/com.apple.symbolichotkeys.plist
 plutil -replace AppleSymbolicHotKeys.82.enabled -bool NO ~/Library/Preferences/com.apple.symbolichotkeys.plist
+
+# Input Sources (programmer dvorak)
+if defaults read com.apple.HIToolbox AppleEnabledInputSources | grep "KeyboardLayout Name" | awk '{print $4}' | grep -c '"Brogrammer';
+then
+    echo "Programmer Dvorak already configured, skipping setup."
+else
+    defaults write com.apple.HIToolbox AppleEnabledInputSources -array-add '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>6454</integer><key>KeyboardLayout Name</key><string>Programmer Dvorak</string></dict>'
+fi
