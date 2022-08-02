@@ -56,12 +56,12 @@ else:
 
 # Install programs with brew
 brewpath = pathlib.Path.home() / ".config" / "homebrew"
-brewfiles = [path.name for path in brewpath.iterdir()]
-brew_groups = list({
-    brew_group.group("module")
-    for brewfile in brewfiles
-    if (brew_group := re.match(r"(?P<module>[a-zA-Z]+)\.Brewfile", brewfile))
-})
+brew_specs = [
+    (brew_group.group("module"), path.name)
+    for path in brewpath.iterdir()
+    if (brew_group := re.match(r"(?P<module>[a-zA-Z]+)\.Brewfile$", path.name))
+]
+brew_groups, brewfiles = zip(*brew_specs)
 
 terminal_menu = TerminalMenu(
     brew_groups,
