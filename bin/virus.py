@@ -101,7 +101,7 @@ subprocess.run(
     ["git", "clone", "https://github.com/hlissner/doom-emacs", str(pathlib.Path.home() / ".config/doom-emacs")]
 )
 subprocess.run(
-    ["doom", "install"]
+    ["doom", "install", "-!"]
 )
 
 LOG.info("Adding `dots` alias for `...` dir so nushell can find it (without 'smart'ly resolving the ...)")
