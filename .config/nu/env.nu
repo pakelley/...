@@ -61,7 +61,7 @@ let-env NU_PLUGIN_DIRS = [
 let-env PATH = ($env.PATH | prepend /opt/homebrew/bin)
 
 # pyenv
-let-env PYENV_ROOT = "~/.pyenv"
+let-env PYENV_ROOT = ("~/.pyenv" | path expand)
 let-env PATH = ($env.PATH | prepend $"($env.PYENV_ROOT)/bin" | prepend ([(pyenv root | str trim) "shims"] | path join))
 # may need to add something here for `pyenv shell` to be able to change env vars eventually
 
@@ -70,3 +70,9 @@ let-env EDITOR = "emacs -nw"
 
 # twitter bin
 let-env PATH = ($env.PATH | prepend /opt/twitter_mde/bin)
+
+# doom
+let-env PATH = ($env.PATH | prepend ("~/.config/doom-emacs/bin" | path expand))
+
+# dots
+let-env PATH = ($env.PATH | prepend ("~/.config/dots/bin" | path expand))
