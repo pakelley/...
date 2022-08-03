@@ -57,6 +57,9 @@ let-env NU_PLUGIN_DIRS = [
 # To add entries to PATH (on Windows you might use Path), you can use the following pattern:
 # let-env PATH = ($env.PATH | prepend '/some/path')
 
+# homebrew
+let-env PATH = ($env.PATH | prepend /opt/homebrew/bin)
+
 # pyenv
 let-env PYENV_ROOT = "~/.pyenv"
 let-env PATH = ($env.PATH | prepend $"($env.PYENV_ROOT)/bin" | prepend ([(pyenv root | str trim) "shims"] | path join))
@@ -64,3 +67,6 @@ let-env PATH = ($env.PATH | prepend $"($env.PYENV_ROOT)/bin" | prepend ([(pyenv 
 
 # EDITOR
 let-env EDITOR = "emacs -nw"
+
+# twitter bin
+let-env PATH = ($env.PATH | prepend /opt/twitter_mde/bin)
