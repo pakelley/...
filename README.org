@@ -7,7 +7,7 @@ There's a few things configured here, and they change relatively often, but the 
 The pièce de résistance. I use doom emacs with a focus on org mode, and python/scala development. I have a modular literate config set up, so each major component of my config can be viewed separately.
 I also have chemacs set up, which I only really use when I have to declare emacs bankruptcy and start up a new config.
 ** wezterm/nushell
-My terminal set up uses wezterm (a quick/modern shell with a real config file) and nushell (quick shell with nice semantics).
+My terminal set up uses wezterm (a quick/modern terminal emulator with a real config file and modular keybindings) and nushell (quick shell with nice semantics).
 ** mackup
 bootstrapping tool for linking configurations to the appropriate place
 ** yabai/skhd
