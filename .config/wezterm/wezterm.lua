@@ -3,6 +3,8 @@ local wezterm = require 'wezterm';
 return {
   default_prog = { '/opt/homebrew/bin/nu' },
 
+  font = wezterm.font 'Fira Code',
+
   -- color_scheme = "Gruvbox Light",
   color_scheme = "Japanesque",
   -- color_scheme = "Tomorrow Night Burns",
