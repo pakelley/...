@@ -12,8 +12,8 @@
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
-                  :desc "Archive Done"        "a" #'org-gtd-archive-completed-items)
-         (:map org-gtd-command-map       "C-c C-c" #'org-gtd-choose))))
+                  :desc "Archive Done"        "a" #'org-gtd-archive-completed-items))
+        (:map org-gtd-process-map       "C-c C-c" #'org-gtd-choose)))
 
 (use-package! org-roam
   :after doct
