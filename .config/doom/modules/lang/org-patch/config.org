@@ -436,6 +436,38 @@ Only track my task-related files in the agenda
 (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
       (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today))
 #+end_src
+** Quick actions for sending back to "incubate"
+#+begin_src emacs-lisp :tangle yes
+(defun gen-org-refile-rfloc (file headline)
+  "Format a specified file/heading for passing to org-refile and org-refile-agenda"
+  (let ((pos (save-excursion
+               (find-file file)
+               (org-find-exact-headline-in-buffer headline))))
+    (list headline file nil pos)))
+
+(defun org-agenda-incubate (&optional arg)
+  "Incubate a specified task (includes refiling to incubate section, and specifiying a date to review the task)"
+  (interactive "P")
+  (org-agenda-schedule arg)
+  (save-window-excursion
+    (org-agenda-refile nil (gen-org-refile-rfloc (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org") "Incubate"))))
+
+(defun org-agenda-hatch (&optional arg)
+  "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
+  (interactive "P")
+  (org-agenda-schedule arg)
+  (save-window-excursion
+    (org-agenda-refile nil (gen-org-refile-rfloc (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org") "Calendar"))))
+
+(setq org-agenda-bulk-custom-functions '((?i org-agenda-incubate))
+      org-agenda-bulk-custom-functions '((?h org-agenda-hatch)))
+(map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
+      (:map org-agenda-mode-map "h" #'org-agenda-hatch)
+      (:map org-agenda-keymap "h" #'org-agenda-hatch)
+      (:map evil-org-agenda-mode-map "h" #'org-agenda-hatch)
+      (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
+      (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch))
+#+end_src
 ** Super Agenda [0/7]
 A few notes on this:
 - including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
