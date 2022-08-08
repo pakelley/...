@@ -40,6 +40,7 @@ return {
       action = act{ActivateKeyTable={
         name = 'resize_pane',
         one_shot = false,
+        replace_current=false,
       }},
     },
 
@@ -52,6 +53,8 @@ return {
       action = act{ActivateKeyTable={
         name = 'activate_pane',
         timeout_milliseconds = 1000,
+        one_shot = false,
+        replace_current=false,
       }},
     },
     {
