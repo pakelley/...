@@ -11,3 +11,4 @@
 
 (package! org-modern)
 (package! origami)
+(package! ox-pandoc)

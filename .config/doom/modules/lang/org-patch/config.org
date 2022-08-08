@@ -17,6 +17,7 @@
 
 (package! org-modern)
 (package! origami)
+(package! ox-pandoc)
 #+end_src
 
 * GTD
@@ -437,7 +438,7 @@ Only track my task-related files in the agenda
       (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today))
 #+end_src
 ** Quick actions for sending back to "incubate"
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp
 (defun gen-org-refile-rfloc (file headline)
   "Format a specified file/heading for passing to org-refile and org-refile-agenda"
   (let ((pos (save-excursion
@@ -589,6 +590,12 @@ Also allow myself to (semi-permanently) expand sections that are useful to regul
    ("w" #'+patch/show-waiting-in-agenda)
    ("W" #'+patch/dont-show-waiting-in-agenda)))
   #+end_src
+* Export
+** Set pandoc executeable, so it looks at the right one
+#+begin_src emacs-lisp
+(use-package! ox-pandoc
+  :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
+#+end_src
 * Deft
 #+begin_src elisp
 (setq deft-directory "~/.local/share/notes")

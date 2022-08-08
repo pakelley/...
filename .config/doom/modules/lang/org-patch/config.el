@@ -416,6 +416,9 @@
    ("w" #'+patch/show-waiting-in-agenda)
    ("W" #'+patch/dont-show-waiting-in-agenda)))
 
+(use-package! ox-pandoc
+  :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
+
 (setq deft-directory "~/.local/share/notes")
 (setq deft-recursive t)
 
