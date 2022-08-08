@@ -280,6 +280,13 @@
   (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
         (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)))
 
+(setq org-agenda-prefix-format
+      '((agenda . "  %?-12t")
+        (todo   . " ")
+        ;; should maybe come back to these next two, but haven't had a need for it yet
+        (tags   . " %i %-12:c")
+        (search . " %i %-12:c")))
+
 (use-package! org-refile
   :after org-agenda
   :config
@@ -382,7 +389,7 @@
   :config
 
   (setq +patch/agenda-auto-show-groups
-    '("Today" "Quick" "Waiting"))
+    '("Today" "Quick" "Waiting" "Overdue" "Unscheduled"))
 
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
