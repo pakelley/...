@@ -490,23 +490,11 @@
          :desc "switch task" "w" #'+org/switch-task
          :desc "pomodoro" "p" #'org-pomodoro)))
 
-(setq org-tag-alist
-      '(
-        ("Configuration")
-        ; GTD
-        (:startgrouptag)
-        ("GTD")
-        (:grouptags)
-        ("Control")
-        ("Persp")
-        (:endgrouptag)
-        (:startgrouptag)
-        ("Control")
-        (:grouptags)
-        ("Context")
-        ("Task")
-        (:endgrouptag)
-        ("Circuit Theory")))
+(setq org-tag-alist '(("@home")
+                      ("@work")
+                      ("@cheryls")
+                      ("@parents")
+                      ("@errands")))
 
 (after! org-superstar
   (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")

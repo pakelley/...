@@ -722,26 +722,14 @@ The save-window-excursion is here bc for some reason formatting the clockreport 
    `(:link t :maxlevel 2 :formula ,(format "$5=ceil(($3+$4)*60/%s);N" org-pomodoro-length)))
   #+end_src
 
-* Tags [0/1]
-- [ ] TODO figure out a better way of updating this
+* Tags
+Make my most frequently used tags quickly available
 #+begin_src elisp
-(setq org-tag-alist
-      '(
-        ("Configuration")
-        ; GTD
-        (:startgrouptag)
-        ("GTD")
-        (:grouptags)
-        ("Control")
-        ("Persp")
-        (:endgrouptag)
-        (:startgrouptag)
-        ("Control")
-        (:grouptags)
-        ("Context")
-        ("Task")
-        (:endgrouptag)
-        ("Circuit Theory")))
+(setq org-tag-alist '(("@home")
+                      ("@work")
+                      ("@cheryls")
+                      ("@parents")
+                      ("@errands")))
 #+end_src
 * Styling
 ** Bullets
