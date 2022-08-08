@@ -70,6 +70,8 @@ let-env EDITOR = "emacs -nw"
 
 # twitter bin
 let-env PATH = ($env.PATH | prepend /opt/twitter_mde/bin)
+let-env PATH = ($env.PATH | prepend /opt/twitter_mde/data/gcloud/current/mde_bin)
+
 
 # doom
 let-env PATH = ($env.PATH | prepend ("~/.config/doom-emacs/bin" | path expand))
