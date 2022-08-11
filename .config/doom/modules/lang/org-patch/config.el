@@ -1,5 +1,7 @@
 (use-package! org-gtd
   :after org
+  :custom
+  (+patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
   :init
   (setq org-gtd-directory "~/.local/share/notes/gtd/")
   (setq org-gtd-process-item-hooks '(org-set-tags-command))
@@ -278,7 +280,49 @@
   
   (setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)))
   (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
-        (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)))
+        (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today))
+  (defun +patch/gen-org-refile-rfloc (file headline)
+    "Format a specified file/heading for passing to org-refile and org-agenda-refile.
+  
+   FILE is the file to refile into.
+  
+   HEADLINE is the headline (inside FILE) to refile into."
+    (let ((pos (save-excursion
+                 (find-file file)
+                 (org-find-exact-headline-in-buffer headline))))
+      (list headline file nil pos)))
+  
+  (defun +patch/org-agenda-refile (file headline)
+    "Refile item at point to a particular place via org-agenda-refile, but
+   with a simpler interface.
+  
+   FILE is the file to refile into.
+  
+   HEADLINE is the headline (inside FILE) to refile into."
+    (save-window-excursion
+      (org-agenda-refile nil (+patch/gen-org-refile-rfloc file headline))))
+  
+  (defun org-agenda-incubate (&optional arg)
+    "Incubate a specified task (includes refiling to incubate section, and specifiying a date to review the task)"
+    (interactive "P")
+    (org-agenda-schedule arg)
+    (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Incubate"))
+  
+  (defun org-agenda-hatch (&optional arg)
+    "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
+    (interactive "P")
+    (org-agenda-schedule arg)
+    (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar"))
+  
+  (setq org-agenda-bulk-custom-functions
+        (append org-agenda-bulk-custom-functions '((?i org-agenda-incubate)
+                                                   (?h org-agenda-hatch))))
+  (map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
+        (:map org-agenda-mode-map "h" #'org-agenda-hatch)
+        (:map org-agenda-keymap "h" #'org-agenda-hatch)
+        (:map evil-org-agenda-mode-map "h" #'org-agenda-hatch)
+        (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
+        (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch)))
 
 (setq org-agenda-prefix-format
       '((agenda . "  %?-12t")
@@ -293,35 +337,6 @@
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 
-(defun gen-org-refile-rfloc (file headline)
-  "Format a specified file/heading for passing to org-refile and org-refile-agenda"
-  (let ((pos (save-excursion
-               (find-file file)
-               (org-find-exact-headline-in-buffer headline))))
-    (list headline file nil pos)))
-
-(defun org-agenda-incubate (&optional arg)
-  "Incubate a specified task (includes refiling to incubate section, and specifiying a date to review the task)"
-  (interactive "P")
-  (org-agenda-schedule arg)
-  (save-window-excursion
-    (org-agenda-refile nil (gen-org-refile-rfloc (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org") "Incubate"))))
-
-(defun org-agenda-hatch (&optional arg)
-  "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
-  (interactive "P")
-  (org-agenda-schedule arg)
-  (save-window-excursion
-    (org-agenda-refile nil (gen-org-refile-rfloc (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org") "Calendar"))))
-
-(setq org-agenda-bulk-custom-functions '((?i org-agenda-incubate))
-      org-agenda-bulk-custom-functions '((?h org-agenda-hatch)))
-(map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
-      (:map org-agenda-mode-map "h" #'org-agenda-hatch)
-      (:map org-agenda-keymap "h" #'org-agenda-hatch)
-      (:map evil-org-agenda-mode-map "h" #'org-agenda-hatch)
-      (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
-      (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch))
 (after! org-agenda
   (org-super-agenda-mode))
 
