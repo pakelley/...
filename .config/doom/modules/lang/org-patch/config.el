@@ -511,6 +511,10 @@
                       ("@parents")
                       ("@errands")))
 
+(use-package! parinfer-rust-mode
+  :custom
+  (parinfer-rust-check-before-enable nil))
+
 (after! org-superstar
   (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")
         org-superstar-prettify-item-bullets t ))

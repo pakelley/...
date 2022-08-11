@@ -748,6 +748,13 @@ Make my most frequently used tags quickly available
                       ("@parents")
                       ("@errands")))
 #+end_src
+* Codeblocks
+** Keep parinfer from constantly asking if it can indent things
+#+begin_src emacs-lisp
+(use-package! parinfer-rust-mode
+  :custom
+  (parinfer-rust-check-before-enable nil))
+#+end_src
 * Styling
 ** Bullets
 #+begin_src elisp
