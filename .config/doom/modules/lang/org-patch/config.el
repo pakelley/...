@@ -342,44 +342,47 @@
   :after (org-ql org-agenda)
   :commands org-super-agenda-mode
   :hook (org-agenda-mode . org-super-agenda-mode)
-  :config
-  (setq org-agenda-include-deadlines t
-        org-agenda-tags-column 100 ;; from testing this seems to be a good value
-        org-agenda-compact-blocks t)
-  (setq org-agenda-custom-commands
-        `(("." "What's happening"
-           ((agenda "" ((org-agenda-span 'day)
-                        (org-agenda-start-day "+0d")
-                        (org-super-agenda-groups
-                         '((:name "Today"
-                            :time-grid t
-                            :and (:not (:todo "NEXT")
-                                  :not (:todo "WAIT")
-                                  :not (:todo "DONE"))
-                            :order 0)
-                           (:name "Remove anything else"
-                            :discard (:anything t))))))
-            (org-ql-block '(and (todo "NEXT")
-                                (ts-a :on today)
-                                (not (regexp ,org-ql-regexp-scheduled-with-time)))
-                          ((org-ql-block-header "\n Quick")))
-            (org-ql-block '(and (ts-a :to today)
-                                (not (todo "WAIT"))
-                                (not (done))
-                                (level 2))
-                          ((org-ql-block-header "\n Overdue")))
-            (org-ql-block '(and (not (scheduled))
-                                (not (done))
-                                (level 2))
-                          ((org-ql-block-header "\n Unscheduled")))
-            (org-ql-block '(and (todo "WAIT"))
-                          ((org-ql-block-header "\n Waiting")))
-            (org-ql-block '(and (todo "DONE")
-                                (ts-a :on today))
-                          ((org-ql-block-header "\n Completed today")))
-            (org-ql-block '(and (todo "NEXT")
-                                (ts-a :from +1 :to +3))
-                          ((org-ql-block-header "\n Could pull in"))))))))
+  :custom
+  (org-agenda-include-deadlines t)
+  (org-agenda-tags-column 100) ;; from testing this seems to be a good value
+  (org-agenda-compact-blocks t)
+  (org-agenda-custom-commands
+   `(("." "What's happening"
+      ((agenda "" ((org-agenda-span 'day)
+                   (org-agenda-start-day "+0d")
+                   (org-super-agenda-groups
+                    '((:name "Today"
+                       :time-grid t
+                       :and (:not (:todo "NEXT")
+                             :not (:todo "WAIT")
+                             :not (:todo "DONE"))
+                       :order 0)
+                      (:name "Remove anything else"
+                       :discard (:anything t))))))
+       (org-ql-block '(and (todo "NEXT")
+                           (ts-a :on today)
+                           (not (regexp ,org-ql-regexp-scheduled-with-time)))
+                     ((org-ql-block-header "\n Quick")))
+       (org-ql-block '(and (ts-a :to -1)
+                           (not (todo "WAIT"))
+                           (not (done))
+                           (level 2))
+                     ((org-ql-block-header "\n Overdue")))
+       (org-ql-block '(and (not (scheduled))
+                           (not (done))
+                           (level 2))
+                     ((org-ql-block-header "\n Unscheduled")))
+       (org-ql-block '(and (todo "WAIT"))
+                     ((org-ql-block-header "\n Waiting")))
+       (org-ql-block '(and (todo "DONE")
+                           (ts-a :on today))
+                     ((org-ql-block-header "\n Completed today")))
+       (org-ql-block '(and (todo "NEXT")
+                           (ts-a :from +1 :to +3))
+                     ((org-ql-block-header "\n Could pull in"))))))))
+
+(after! evil-org-agenda
+  (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map)))
 
 (use-package! org-ql
   :after org-agenda
@@ -400,84 +403,27 @@
                        :face error
                        :order 0)
                       (:auto-planning t)))))
-(after! org-agenda
-  (org-super-agenda-mode))
-
-(use-package! org-super-agenda
-  :after (org-ql org-agenda)
-  :commands org-super-agenda-mode
-  :config
-  ; TODO review these config options
-  (setq org-agenda-skip-scheduled-if-done t
-        org-agenda-skip-deadline-if-done t
-        org-agenda-include-deadlines t
-        ;; org-agenda-block-separator nil
-        org-agenda-tags-column 100 ;; from testing this seems to be a good value
-        org-agenda-compact-blocks t)
-
-  (setq org-agenda-custom-commands
-        `(("." "What's happening"
-           ((agenda "" ((org-agenda-span 'day)
-                        (org-agenda-start-day "+0d")
-                        (org-super-agenda-groups
-                         '((:name "Today"
-                            :time-grid t
-                            :discard (:todo "NEXT"
-                                      :todo "WAIT")
-                            :and (:not (:todo "NEXT")
-                                  :not (:todo "WAIT"))
-                            :order 0)))))
-            (alltodo "" ((org-agenda-overriding-header "")
-                         (org-agenda-span 'week)
-                         (org-agenda-start-day "+0d")
-                         (org-super-agenda-groups
-                          '((:name "Waiting"
-                             :todo "WAIT"
-                             :order 2)
-                            (:name "Overdue"
-                             :scheduled past
-                             :face error
-                             :order 3)
-                            (:name "Unscheduled"
-                             :scheduled nil
-                             :face error
-                             :order 3)
-                            (:name "Remove NEXT tasks that will already appear in clock agenda"
-                             :discard (:regexp ,org-ql-regexp-scheduled-with-time))
-                            (:name "Quick"
-                             :and (:scheduled today
-                                   :todo "NEXT")
-                             :discard (:and (:scheduled today
-                                             :and (:not (:todo "NEXT") :not (:todo "WAIT"))))
-                             :order 1)
-                            (:name "Could pull in"
-                             :order 4
-                             :todo "NEXT")
-                            (:name "Remove anything else"
-                             :discard (:anything t)))))))))))
-
-(after! evil-org-agenda
-  (setq org-super-agenda-header-map evil-org-agenda-mode-map))
 
 (use-package! origami
-  :after org-agenda
+  :after (org-agenda evil-nerd-commenter)
   :hook
   (org-agenda-mode . origami-mode)
   (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default)
   :config
 
   (setq +patch/agenda-auto-show-groups
-    '("Today" "Quick" "Waiting" "Overdue" "Unscheduled"))
+    '("Today" "Quick" "Overdue" "Unscheduled"))
 
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
-    (forward-line 2)
-    (cl-loop do (origami-forward-toggle-node (current-buffer) (point))
-             while (numberp (org-agenda-forward-block)))
+    (forward-line 1)
+    (evilnc-do-paragraphs
+     (lambda (& _rest) (origami-forward-toggle-node (current-buffer) (point))) 10)
     (--each +patch/agenda-auto-show-groups
       (goto-char (point-min))
       (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
-        (origami-show-node (current-buffer) (point)))))
+        (origami-show-node (current-buffer) (point))))
+    (beginning-of-buffer))
 
   (defun +patch/dont-show-waiting-in-agenda ()
     (interactive)
