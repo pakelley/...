@@ -1,5 +1,5 @@
 (use-package! org-gtd
-  :after org
+  :after (org org-ql)
   :custom
   (+patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
   :init
@@ -11,6 +11,7 @@
                   :desc "Capture"             "c" #'org-gtd-capture
                   :desc "Engage"              "e" #'org-gtd-engage
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
+                  :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
@@ -337,6 +338,68 @@
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 
+(use-package! org-super-agenda
+  :after (org-ql org-agenda)
+  :commands org-super-agenda-mode
+  :hook (org-agenda-mode . org-super-agenda-mode)
+  :config
+  (setq org-agenda-include-deadlines t
+        org-agenda-tags-column 100 ;; from testing this seems to be a good value
+        org-agenda-compact-blocks t)
+  (setq org-agenda-custom-commands
+        `(("." "What's happening"
+           ((agenda "" ((org-agenda-span 'day)
+                        (org-agenda-start-day "+0d")
+                        (org-super-agenda-groups
+                         '((:name "Today"
+                            :time-grid t
+                            :and (:not (:todo "NEXT")
+                                  :not (:todo "WAIT")
+                                  :not (:todo "DONE"))
+                            :order 0)
+                           (:name "Remove anything else"
+                            :discard (:anything t))))))
+            (org-ql-block '(and (todo "NEXT")
+                                (ts-a :on today)
+                                (not (regexp ,org-ql-regexp-scheduled-with-time)))
+                          ((org-ql-block-header "\n Quick")))
+            (org-ql-block '(and (ts-a :to today)
+                                (not (todo "WAIT"))
+                                (not (done))
+                                (level 2))
+                          ((org-ql-block-header "\n Overdue")))
+            (org-ql-block '(and (not (scheduled))
+                                (not (done))
+                                (level 2))
+                          ((org-ql-block-header "\n Unscheduled")))
+            (org-ql-block '(and (todo "WAIT"))
+                          ((org-ql-block-header "\n Waiting")))
+            (org-ql-block '(and (todo "DONE")
+                                (ts-a :on today))
+                          ((org-ql-block-header "\n Completed today")))
+            (org-ql-block '(and (todo "NEXT")
+                                (ts-a :from +1 :to +3))
+                          ((org-ql-block-header "\n Could pull in"))))))))
+
+(use-package! org-ql
+  :after org-agenda
+  :config
+  (defun gen-planning-agenda ()
+    (org-ql-search (org-agenda-files)
+      '(and
+        ;; Get upcoming and unscheduled tasks
+        (or (ts :from today :to +45)
+            (and (not (scheduled)) (level 2)))
+        ;; only get tasks that are still "todo"
+        ;; (not (tags "Incubate"))
+        (not (todo "WAIT" "DONE" "CNCL")))
+      :title "Planning"
+      :sort '(priority todo)
+      :super-groups '((:name "Unscheduled"
+                       :scheduled nil
+                       :face error
+                       :order 0)
+                      (:auto-planning t)))))
 (after! org-agenda
   (org-super-agenda-mode))
 

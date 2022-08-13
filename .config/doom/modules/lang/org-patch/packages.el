@@ -10,5 +10,6 @@
 
 
 (package! org-modern)
+(package! org-ql)
 (package! origami)
 (package! ox-pandoc)

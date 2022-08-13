@@ -16,6 +16,7 @@
 
 
 (package! org-modern)
+(package! org-ql)
 (package! origami)
 (package! ox-pandoc)
 #+end_src
@@ -28,6 +29,7 @@ Global keybindings:
 | c          | Capture (to inbox file)      |
 | e          | Engage (go to GTD agenda)    |
 | p          | Process inbox                |
+| P          | Open planning agenda         |
 | n          | Show all NEXT tasks          |
 | s          | Show projects that are stuck |
 | a          | Archive completed tasks      |
@@ -37,7 +39,7 @@ Keybindings while processing a task:
 | C-c C-c    | Finalize task |
 #+begin_src elisp :noweb no-export
 (use-package! org-gtd
-  :after org
+  :after (org org-ql)
   :custom
   (+patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
   :init
@@ -48,6 +50,7 @@ Keybindings while processing a task:
                   :desc "Capture"             "c" #'org-gtd-capture
                   :desc "Engage"              "e" #'org-gtd-engage
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
+                  :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
@@ -496,18 +499,17 @@ Simplify the agenda prefix to only include what I need to see
       (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
       (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch))
 #+end_src
-** Super Agenda [0/7]
+** Super Agenda [0/9]
 A few notes on this:
 - including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
 - I keep my active TODOs (i.e. the ones scheduled for today, except for "NEXT" and "WAIT") in the agenda, and everything else in the todo list (I keep "NEXT" separate because I treat them as things I can do whenever I have a chance, and I just want to declutter my agenda be removing anything I have to wait on, and therefore probably can't accurately predict when I can get it done)
 - I use the order to split the view into 3 sections: the timeboxed agenda, the regular todo list, and the degenerate todos (unscheduled or overdue)
 Future enhancements
-- [ ] fix priority icons
 - [ ] review the other org props I'm setting here
 - [ ] filter "other tasks" after [[https://github.com/alphapapa/org-super-agenda/pull/149][this PR]] is merged (only include NEXT items for the next week or so)
 - [ ] maybe change TODO/NEXT logic to use one of the auto grouping features (maybe auto-group, or auto-property and set "quick" tag?)
-- [ ] don't mark subtasks as unscheduled if the parent is
-- [ ] maybe use org-ql (might help solve some of the above)
+- [ ] format overdue/unscheduled once [[https://github.com/alphapapa/org-ql/pull/44][org-ql formatting changes]] are merged
+- [ ] sort sections once [[https://github.com/alphapapa/org-ql/issues/79][org-ql-block sorting]] is merged
 #+begin_src elisp
 (after! org-agenda
   (org-super-agenda-mode))
@@ -571,6 +573,28 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
 #+begin_src elisp
 (after! evil-org-agenda
   (setq org-super-agenda-header-map evil-org-agenda-mode-map))
+#+end_src
+** Planning Agenda
+#+begin_src emacs-lisp
+(use-package! org-ql
+  :after org-agenda
+  :config
+  (defun gen-planning-agenda ()
+    (org-ql-search (org-agenda-files)
+      '(and
+        ;; Get upcoming and unscheduled tasks
+        (or (ts :from today :to +45)
+            (and (not (scheduled)) (level 2)))
+        ;; only get tasks that are still "todo"
+        ;; (not (tags "Incubate"))
+        (not (todo "WAIT" "DONE" "CNCL")))
+      :title "Planning"
+      :sort '(priority todo)
+      :super-groups '((:name "Unscheduled"
+                       :scheduled nil
+                       :face error
+                       :order 0)
+                      (:auto-planning t)))))
 #+end_src
 ** Automatically collapse sections of my daily agenda I don't need often
 Also allow myself to (semi-permanently) expand sections that are useful to regularly see depending on what's in them.
