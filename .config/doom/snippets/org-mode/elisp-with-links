@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: elisp-with-links
+# key: ewl
+# condition: t
+# --
+#+begin_src elisp :noweb no-export
+$0
+#+end_src

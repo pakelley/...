@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: linked-elisp
+# key: lel
+# condition: t
+# --
+#+name: ${1:name}
+#+begin_src emacs-lisp :tangle no
+$0
+#+end_src
