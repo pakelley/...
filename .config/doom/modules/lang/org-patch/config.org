@@ -564,23 +564,27 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
 #+begin_src emacs-lisp
 (use-package! org-ql
   :after org-agenda
-  :config
-  (defun gen-planning-agenda ()
-    (org-ql-search (org-agenda-files)
-      '(and
+  :custom
+  (org-ql-views
+   '(("Planning" :buffers-files
+      ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query
+      (and
         ;; Get upcoming and unscheduled tasks
         (or (ts :from today :to +45)
             (and (not (scheduled)) (level 2)))
         ;; only get tasks that are still "todo"
         ;; (not (tags "Incubate"))
         (not (todo "WAIT" "DONE" "CNCL")))
-      :title "Planning"
-      :sort '(priority todo)
-      :super-groups '((:name "Unscheduled"
-                       :scheduled nil
-                       :face error
-                       :order 0)
-                      (:auto-planning t)))))
+      :sort
+      (priority todo)
+      :narrow nil
+      :super-groups ((:name "Unscheduled"
+                      :scheduled nil
+                      :face error
+                      :order 0)
+                     (:auto-planning t))
+      :title "Planning"))))
 #+end_src
 ** Automatically collapse sections of my daily agenda I don't need often [0/1]
 Also allow myself to (semi-permanently) expand sections that are useful to regularly see depending on what's in them.

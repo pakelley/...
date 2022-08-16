@@ -386,23 +386,27 @@
 
 (use-package! org-ql
   :after org-agenda
-  :config
-  (defun gen-planning-agenda ()
-    (org-ql-search (org-agenda-files)
-      '(and
+  :custom
+  (org-ql-views
+   '(("Planning" :buffers-files
+      ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query
+      (and
         ;; Get upcoming and unscheduled tasks
         (or (ts :from today :to +45)
             (and (not (scheduled)) (level 2)))
         ;; only get tasks that are still "todo"
         ;; (not (tags "Incubate"))
         (not (todo "WAIT" "DONE" "CNCL")))
-      :title "Planning"
-      :sort '(priority todo)
-      :super-groups '((:name "Unscheduled"
-                       :scheduled nil
-                       :face error
-                       :order 0)
-                      (:auto-planning t)))))
+      :sort
+      (priority todo)
+      :narrow nil
+      :super-groups ((:name "Unscheduled"
+                      :scheduled nil
+                      :face error
+                      :order 0)
+                     (:auto-planning t))
+      :title "Planning"))))
 
 (use-package! origami
   :after (org-agenda evil-nerd-commenter)
