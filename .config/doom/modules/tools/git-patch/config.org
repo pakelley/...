@@ -3,6 +3,7 @@
 #+begin_src elisp :tangle packages.el
 (package! magit-arcanist
   :recipe (:host github :repo "sideshowcoder/magit-arcanist"))
+(package! git-link)
 #+end_src
 * speed up magit for monorepo [0/1]
 Various things that speed magit up when working with a monorepo.
@@ -35,4 +36,20 @@ Additionally, useful to add the following to your `.git/config`
   :ghook ('magit-mode-hook #'magit-arcanist-enable)
   :custom
   (magit-arcanist-key (kbd "#")))
+#+end_src
+* git link (for quickly getting a sourcegraph link)
+| Keybinding        | Description                     |
+|-------------------+---------------------------------|
+| <leader> g <left> | git link: copy url to clipboard |
+#+begin_src emacs-lisp
+(use-package! git-link
+  :general (:keymaps 'doom-leader-git-map
+            "<left>" 'git-link))
+#+end_src
+And then in your `.git/config`:
+#+begin_src toml :tangle no
+[remote "sourcegraph"]
+	url = https://your.sourcegraph.url/your-repo-name
+[git-link]
+	remote = sourcegraph
 #+end_src

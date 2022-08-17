@@ -17,3 +17,7 @@
   :ghook ('magit-mode-hook #'magit-arcanist-enable)
   :custom
   (magit-arcanist-key (kbd "#")))
+
+(use-package! git-link
+  :general (:keymaps 'doom-leader-git-map
+            "<left>" 'git-link))
