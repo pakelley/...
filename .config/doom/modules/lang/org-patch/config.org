@@ -19,6 +19,7 @@
 (package! org-ql)
 (package! origami)
 (package! ox-pandoc)
+(package! poly-org)
 #+end_src
 
 * GTD
@@ -770,6 +771,11 @@ Make my most frequently used tags quickly available
 (use-package! parinfer-rust-mode
   :custom
   (parinfer-rust-check-before-enable nil))
+#+end_src
+** poly-org for better language support in code blocks
+Not starting automatically, as I'm still running into a few issues so far.
+#+begin_src emacs-lisp :tangle yes
+(use-package! poly-org)
 #+end_src
 * Styling
 ** Bullets
