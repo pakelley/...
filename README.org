@@ -4,6 +4,7 @@ Configuring the universe, one spilled coffee at a time.
 * What?
 There's a few things configured here, and they change relatively often, but the mojor components are:
 ** emacs
+#+html: <a href="https://orgmode.org"><img src="https://img.shields.io/badge/Org-literate%20config-%2377aa99?style=flat-square&logo=org&logoColor=white"></a>
 The pièce de résistance. I use doom emacs with a focus on org mode, and python/scala development. I have a modular literate config set up, so each major component of my config can be viewed separately.
 I also have chemacs set up, which I only really use when I have to declare emacs bankruptcy and start up a new config.
 ** wezterm/nushell
