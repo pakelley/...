@@ -1,0 +1,5 @@
+# Track org files, instead of generated elisp files, for literate config
+*.org linguist-detectable=true
+*.el linguist-generated
+# ...but include the elisp written for modular literate config
+.config/doom/modules/config/literate-patch/*.el -linguist-generated
