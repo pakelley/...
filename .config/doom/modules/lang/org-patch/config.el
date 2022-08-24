@@ -427,24 +427,25 @@
       :title "Planning"))))
 
 (use-package! origami
-  :after (org-agenda evil-nerd-commenter)
-  :hook
-  (org-agenda-mode . origami-mode)
-  (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default)
+  :after (org-agenda)
+  :hook ((org-agenda-mode . origami-mode)
+         (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
+  :custom (+patch/agenda-auto-show-groups
+        '("Today" "Quick" "Overdue" "Unscheduled"))
   :config
-
-  (setq +patch/agenda-auto-show-groups
-    '("Today" "Quick" "Overdue" "Unscheduled"))
-
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
-    (forward-line 1)
-    (evilnc-do-paragraphs
-     (lambda (& _rest) (origami-forward-toggle-node (current-buffer) (point))) 10)
+    (origami-close-all-nodes (current-buffer))
+    (evil-goto-first-line)
+    (origami-forward-toggle-node (current-buffer) (point))
+
     (--each +patch/agenda-auto-show-groups
       (goto-char (point-min))
       (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
+        (origami-show-node (current-buffer) (point))
+        (forward-line 1)
         (origami-show-node (current-buffer) (point))))
+
     (beginning-of-buffer))
 
   (defun +patch/dont-show-waiting-in-agenda ()
@@ -461,9 +462,15 @@
 
   (map!
    (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node)
+   (:map evil-org-agenda-mode-map :m "<tab>" #'origami-toggle-node)
+   (:map evil-org-agenda-mode-map :m "TAB" #'origami-toggle-node)
    (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node)
    (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node)
    (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)
+   (:map org-agenda-keymap "TAB" #'origami-toggle-node)
+   (:map org-agenda-keymap "<tab>" #'origami-toggle-node)
+   (:map org-agenda-mode-map "TAB" #'origami-toggle-node)
+   (:map org-agenda-mode-map "<tab>" #'origami-toggle-node)
    :map org-agenda-mode-map
    :localleader
    ("w" #'+patch/show-waiting-in-agenda)
