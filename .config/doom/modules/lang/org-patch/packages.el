@@ -1,3 +1,4 @@
+(package! deft)
 (package! ob-mermaid)
 (package! org-anki)
 (package! org-gtd)
@@ -13,3 +14,4 @@
 (package! org-ql)
 (package! origami)
 (package! ox-pandoc)
+(package! poly-org)

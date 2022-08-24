@@ -20,5 +20,6 @@
   (magit-arcanist-key (kbd "#")))
 
 (use-package! git-link
+  :after git-gutter-mode
   :general (:keymaps 'doom-leader-git-map
             "<left>" 'git-link))

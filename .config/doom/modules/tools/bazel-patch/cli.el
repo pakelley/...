@@ -1,4 +1,4 @@
-;;; lang/python-patch/cli.el -*- lexical-binding: t; -*-
+;;; tools/bazel-patch/cli.el -*- lexical-binding: t; -*-
 
 (load! "autoload")
 

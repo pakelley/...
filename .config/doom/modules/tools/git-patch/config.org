@@ -44,6 +44,7 @@ Additionally, useful to add the following to your `.git/config`
 | <leader> g <left> | git link: copy url to clipboard |
 #+begin_src emacs-lisp
 (use-package! git-link
+  :after git-gutter-mode
   :general (:keymaps 'doom-leader-git-map
             "<left>" 'git-link))
 #+end_src

@@ -160,7 +160,7 @@
            :file-name "Journal/%<%Y-%m-%d>"
            :olp ("Log")
            :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
-  ; start org-roam on startup
+  ;; start org-roam on startup
   (org-roam-db-autosync-mode))
 
 (after! org-protocol
@@ -183,16 +183,6 @@
   (setq org-ref-default-bibliography '("/Users/pakelley/.local/share/bibtex/references.bib")
         org-ref-pdf-directory "/Users/pakelley/.local/share/bibtex/pdfs/"
         org-ref-bibliography-notes "/Users/pakelley/.local/share/bibtex/notes.org"))
-
-(setq org-todo-keywords
-      '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
-(setq org-todo-keyword-faces
-      '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
-        ("WAIT" . (:foreground "#dc8cc3" :weight bold))
-        ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
-        ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
-
-(define-key global-map "\C-cc" 'org-capture)
 
 (use-package! doct
   :after (org org-capture)
@@ -281,6 +271,12 @@
   :custom
   (org-agenda-files '("~/.local/share/notes/gtd/org-gtd-tasks.org"))
   :config
+  (setq org-agenda-prefix-format
+        '((agenda . "  %?-12t")
+          (todo   . " ")
+          ;; should maybe come back to these next two, but haven't had a need for it yet
+          (tags   . " %i %-12:c")
+          (search . " %i %-12:c")))
   (defmacro η (fnc)
     "Return function that ignores its arguments and invokes FNC."
     `(lambda (&rest _rest)
@@ -342,13 +338,6 @@
         (:map evil-org-agenda-mode-map "h" #'org-agenda-hatch)
         (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
         (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch)))
-
-(setq org-agenda-prefix-format
-      '((agenda . "  %?-12t")
-        (todo   . " ")
-        ;; should maybe come back to these next two, but haven't had a need for it yet
-        (tags   . " %i %-12:c")
-        (search . " %i %-12:c")))
 
 (use-package! org-refile
   :after org-agenda
@@ -430,9 +419,8 @@
   :after (org-agenda)
   :hook ((org-agenda-mode . origami-mode)
          (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
-  :custom (+patch/agenda-auto-show-groups
-        '("Today" "Quick" "Overdue" "Unscheduled"))
   :config
+  (setq +patch/agenda-auto-show-groups '("Today" "Quick" "Overdue" "Unscheduled"))
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
     (origami-close-all-nodes (current-buffer))
@@ -477,14 +465,14 @@
    ("W" #'+patch/dont-show-waiting-in-agenda)))
 
 (use-package! ox-pandoc
+  :after ox
   :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
 
-(setq deft-directory "~/.local/share/notes")
-(setq deft-recursive t)
-
-(setq org-directory "~/.local/share/notes")
-
-(setq org-startup-with-latex-preview t)
+(use-package! deft
+  :after org
+  :custom
+  (deft-directory "~/.local/share/notes")
+  (deft-recursive t))
 
 ;; (setenv "PATH" (concat ":/Library/TeX/texbin/" (getenv "PATH")))
 (add-to-list 'exec-path "/Library/TeX/texbin/")
@@ -543,38 +531,58 @@
          :desc "switch task" "w" #'+org/switch-task
          :desc "pomodoro" "p" #'org-pomodoro)))
 
-(setq org-tag-alist '(("@home")
-                      ("@work")
-                      ("@cheryls")
-                      ("@parents")
-                      ("@errands")))
-
 (use-package! parinfer-rust-mode
+  :after parinfer
   :custom
   (parinfer-rust-check-before-enable nil))
 
+(use-package! poly-org
+  :after org)
+
 (after! org-superstar
   (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")
-        org-superstar-prettify-item-bullets t ))
+        org-superstar-prettify-item-bullets t))
 
-(setq org-ellipsis " ▾ "
-      org-hide-leading-stars t
-      org-priority-highest ?A
-      org-priority-lowest ?E
-      org-fancy-priorities-list
-      `(,(list ?A (all-the-icons-octicon "flame" :face 'all-the-icons-red))
-        ,(list ?B (all-the-icons-faicon "bolt" :face 'all-the-icons-orange))
-        ,(list ?C (all-the-icons-faicon "check" :face 'all-the-icons-yellow))
-        ,(list ?D (all-the-icons-faicon "beer" :face 'all-the-icons-green))
-        ,(list ?E (all-the-icons-faicon "bed" :face 'all-the-icons-blue)))
-      )
+(after! org-fancy-priorities
+  (setq org-ellipsis " ▾ "
+        org-hide-leading-stars t
+        org-priority-highest ?A
+        org-priority-lowest ?E
+        org-fancy-priorities-list
+        `(,(list ?A (all-the-icons-octicon "flame" :face 'all-the-icons-red))
+          ,(list ?B (all-the-icons-faicon "bolt" :face 'all-the-icons-orange))
+          ,(list ?C (all-the-icons-faicon "check" :face 'all-the-icons-yellow))
+          ,(list ?D (all-the-icons-faicon "beer" :face 'all-the-icons-green))
+          ,(list ?E (all-the-icons-faicon "bed" :face 'all-the-icons-blue)))))
 
 (use-package! org-modern
   :after org
+  :hook
+  (org-mode . org-modern-mode)
+  ;; until I figure out how to keep org-modern from inverting face on agenda priorities, leave off org-modern-agenda
+  ;;(org-agenda . org-modern-agenda)
   :custom
   (org-modern-priority nil)
   (org-modern-internal-target `(,(all-the-icons-material "redo" :face 'all-the-icons-blue) t " "))
-  :config
-  (add-hook 'org-mode-hook #'org-modern-mode)
-  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
+  (org-modern-star ["◉" "○" "✸" "✿" "✤" "✜" "◆"])
+  (org-modern-list '((43 . "➤")
+                     (45 . "–")
+                     (42 . "•"))))
 
+(use-package! org
+  :commands org-mode
+  :config
+  (setq org-tag-alist '(("@home")
+                        ("@work")
+                        ("@cheryls")
+                        ("@parents")
+                        ("@errands")))
+  (setq org-startup-with-latex-preview t)
+  (setq org-directory "~/.local/share/notes")
+  (setq org-todo-keywords
+        '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
+  (setq org-todo-keyword-faces
+        '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
+          ("WAIT" . (:foreground "#dc8cc3" :weight bold))
+          ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
+          ("TRASH" . (:foreground "#dfaf8f" :weight bold)))))

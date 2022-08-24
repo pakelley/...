@@ -1,1 +1,1 @@
-;;; lang/org-patch/autoload.el -*- lexical-binding: t; -*-
+;;; lang/ess-patch/autoload.el -*- lexical-binding: t; -*-
