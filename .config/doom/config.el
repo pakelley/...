@@ -15,4 +15,9 @@
 
 (setq display-line-numbers-type 'relative)
 
+(after! doom-modeline
+  (setq doom-modeline-major-mode-icon t)
+  (setq doom-modeline-buffer-encoding nil)
+  (setq doom-modeline-buffer-file-name-style 'truncate-with-project))
+
 (setq-default evil-kill-on-visual-paste nil)

@@ -36,6 +36,14 @@ Makes it easier to prefix commands with numbers (e.g. `5 j` would go 5 down, and
 #+begin_src elisp
 (setq display-line-numbers-type 'relative)
 #+end_src
+* Shorten path in modeline
+Makes working in a monorepo less terrible
+#+begin_src emacs-lisp
+(after! doom-modeline
+  (setq doom-modeline-major-mode-icon t)
+  (setq doom-modeline-buffer-encoding nil)
+  (setq doom-modeline-buffer-file-name-style 'truncate-with-project))
+#+end_src
 * Make evil-paste not kill (because it's usually more annoying than helpful for me)
 #+begin_src elisp
 (setq-default evil-kill-on-visual-paste nil)
