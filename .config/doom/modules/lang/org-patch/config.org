@@ -326,64 +326,82 @@ Appending to existing templates to keep project templates
 - [ ] figure out where existing templates are coming from, and migrate useful ones here
 #+name: org-capture-templates
 #+begin_src elisp :tangle no
-; setq
+;; setq
 (org-capture-templates
-      (append org-capture-templates
-              (doct '(("Inbox"
-                       :keys "i"
-                       :file "~/.local/share/notes/gtd/inbox.org"
-                       :template "* %?"
-                       :kill-buffer t)
-                      ("Today"
-                       :keys "2"
-                       :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
-                       :olp ("Calendar")
-                       :template ("* TODO %?"
-                                  "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
-                       :prepare-finalize (lambda () (progn (org-priority)
-                                                           (org-set-tags-command)))
-                       :kill-buffer t)
-                      ("Meeting"
-                       :keys "m"
-                       :children
-                       (("Retro"
-                         :keys "r"
-                         :file "~/.local/share/notes/meetings/retro.org"
-                         :datetree t
-                         :template "* %?"
-                         :kill-buffer t)
-                        ("Nico 1-on-1"
-                         :keys "n"
-                         :file "~/.local/share/notes/meetings/nico.org"
-                         :datetree t
-                         :template "* %?"
-                         :kill-buffer t)))
-                      ("Shopping" :keys "s"
-                       :file "~/.local/share/notes/reference/shopping.org"
-                       :template "* %?"
-                       :children
-                       (("Home" :keys "h" :olp ("Home"))
-                        ("Christmas" :keys "c" :olp ("Christmas"))
-                        ("Gift" :keys "g" :olp ("Gifts")) ; TODO either add recipient as tag or in olp
-                        ("Groceries" :keys "o" :olp ("Groceries"))))
-                      (:group "Reference"
-                       :file "~/.local/share/notes/reference/capture.org"
-                       :template "* %?"
-                       :children
-                       (("Food"
-                         :keys "f"
-                         :children
-                         (("Recipe"     :keys "r" :olp ("Recipes"))
-                          ("Cocktail"   :keys "c" :olp ("Cocktails"))
-                          ("Restaurant" :keys "s" :olp ("Restaurants"))))
-                        ("Media" :keys "e"
-                         :children
-                         (("Movie"   :keys "m" :olp ("Movies"))
-                          ("Show"    :keys "s" :olp ("Shows"))
-                          ("Book"    :keys "b" :olp ("Books"))
-                          ("Article" :keys "a" :olp ("Articles"))
-                          ("Album"   :keys "l" :olp ("Albums"))))
-                        ("Repo" :keys "r" :olp ("Repos"))))))))
+ (append org-capture-templates
+         (doct '(("Inbox"
+                  :keys "i"
+                  :file "~/.local/share/notes/gtd/inbox.org"
+                  :template "* %?"
+                  :kill-buffer t)
+                 ("Today"
+                  :keys "2"
+                  :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                  :olp ("Calendar")
+                  :template ("* TODO %?"
+                             "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                  :prepare-finalize (lambda () (progn (org-priority)
+                                                      (org-set-tags-command)))
+                  :kill-buffer t)
+                 ("Meeting"
+                  :keys "m"
+                  :children
+                  (("Retro"
+                    :keys "r"
+                    :file "~/.local/share/notes/meetings/retro.org"
+                    :datetree t
+                    :template "* %?"
+                    :kill-buffer t)
+                   ("Nico 1:1"
+                    :keys "n"
+                    :file "~/.local/share/notes/meetings/nico.org"
+                    :datetree t
+                    :template "* %?"
+                    :kill-buffer t)
+                   ("Haotian 1:1"
+                    :keys "h"
+                    :file "~/.local/share/notes/meetings/haotian.org"
+                    :datetree t
+                    :template "* %?"
+                    :kill-buffer t)
+                   ("Parking Lot"
+                    :keys "p"
+                    :file "~/.local/share/notes/meetings/parking-lot.org"
+                    :datetree t
+                    :template "* %?"
+                    :kill-buffer t)
+                   ("Kinso"
+                    :keys "k"
+                    :file "~/.local/share/notes/meetings/kinso.org"
+                    :datetree t
+                    :template "* %?"
+                    :kill-buffer t)))
+                 ("Shopping" :keys "s"
+                  :file "~/.local/share/notes/reference/shopping.org"
+                  :template "* %?"
+                  :children
+                  (("Home" :keys "h" :olp ("Home"))
+                   ("Christmas" :keys "c" :olp ("Christmas"))
+                   ("Gift" :keys "g" :olp ("Gifts")) ; TODO either add recipient as tag or in olp
+                   ("Groceries" :keys "o" :olp ("Groceries"))))
+                 (:group "Reference"
+                  :file "~/.local/share/notes/reference/capture.org"
+                  :template "* %?"
+                  :children
+                  (("Food"
+                    :keys "f"
+                    :children
+                    (("Recipe"     :keys "r" :olp ("Recipes"))
+                     ("Cocktail"   :keys "c" :olp ("Cocktails"))
+                     ("Restaurant" :keys "s" :olp ("Restaurants"))))
+                   ("Media" :keys "e"
+                    :children
+                    (("Movie"   :keys "m" :olp ("Movies"))
+                     ("Show"    :keys "s" :olp ("Shows"))
+                     ("Book"    :keys "b" :olp ("Books"))
+                     ("Article" :keys "a" :olp ("Articles"))
+                     ("Album"   :keys "l" :olp ("Albums"))))
+                   ("Repo" :keys "r" :olp ("Repos"))))))))
 #+end_src
 * Agenda
 #+begin_src emacs-lisp :noweb no-export
