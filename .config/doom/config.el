@@ -21,3 +21,10 @@
   (setq doom-modeline-buffer-file-name-style 'truncate-with-project))
 
 (setq-default evil-kill-on-visual-paste nil)
+
+(use-package! persp-mode
+  :commands persp-add-buffer
+  :config
+  (map! :leader
+        (:prefix ("TAB" . "workspace")
+         :desc "Add buffer to a workspace" "a" #'persp-add-buffer)))

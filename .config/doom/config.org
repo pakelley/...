@@ -48,3 +48,12 @@ Makes working in a monorepo less terrible
 #+begin_src elisp
 (setq-default evil-kill-on-visual-paste nil)
 #+end_src
+* Keybinding to add buffer to a workspace (via persp)
+#+begin_src emacs-lisp :tangle yes
+(use-package! persp-mode
+  :commands persp-add-buffer
+  :config
+  (map! :leader
+        (:prefix ("TAB" . "workspace")
+         :desc "Add buffer to a workspace" "a" #'persp-add-buffer)))
+#+end_src
