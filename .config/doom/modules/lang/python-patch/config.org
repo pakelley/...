@@ -4,6 +4,7 @@
 
 * Packages
 #+begin_src elisp :tangle packages.el
+(package! numpydoc)
 #+end_src
 
 * conda
@@ -29,4 +30,12 @@ which would tell `conda.el` to use that environment. Notably, you can use the na
 #+name: conda-autoactivate
 #+begin_src elisp :tangle no
 (conda-env-autoactivate-mode t)
+#+end_src
+* numpydoc
+#+begin_src emacs-lisp :tangle yes
+(use-package! numpydoc
+  :custom
+  (numpydoc-insertion-style 'yas)
+  :config
+  (map! :localleader ("d" #'numpydoc-generate)))
 #+end_src
