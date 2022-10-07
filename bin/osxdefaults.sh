@@ -37,9 +37,18 @@ plutil -replace AppleSymbolicHotKeys.81.enabled -bool NO ~/Library/Preferences/c
 plutil -replace AppleSymbolicHotKeys.82.enabled -bool NO ~/Library/Preferences/com.apple.symbolichotkeys.plist
 
 # Input Sources (programmer dvorak)
-if defaults read com.apple.HIToolbox AppleEnabledInputSources | grep "KeyboardLayout Name" | awk '{print $4}' | grep -c '"Brogrammer';
+if defaults read com.apple.HIToolbox AppleEnabledInputSources | grep "KeyboardLayout Name" | awk '{print $4}' | grep -c '"Programmer';
 then
     echo "Programmer Dvorak already configured, skipping setup."
 else
     defaults write com.apple.HIToolbox AppleEnabledInputSources -array-add '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>6454</integer><key>KeyboardLayout Name</key><string>Programmer Dvorak</string></dict>'
 fi
+
+# hide spotlight from menu bar
+defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+
+# get rid of Now Playing icon in menu bar
+defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying" 0
+
+# analog clock
+defaults write com.apple.menuextra.clock IsAnalog -bool true
