@@ -52,3 +52,8 @@ defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying" 0
 
 # analog clock
 defaults write com.apple.menuextra.clock IsAnalog -bool true
+
+# f.lux settings (set to San Diego)
+defaults write org.herf.Flux location "32.715330,-117.157260"
+defaults write org.herf.Flux locationTextField "San Diego"
+defaults write org.herf.Flux locationType L
