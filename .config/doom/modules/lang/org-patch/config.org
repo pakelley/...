@@ -42,12 +42,14 @@ Keybindings while processing a task:
 #+begin_src elisp :noweb no-export
 (use-package! org-gtd
   :after (org org-ql)
-  :custom
-  (+patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
+  ;; TODO this isn't being set properly using :custom, need to debug why when I have a chance
+  ;;:custom
+  ;;(+patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
   :init
   <<org-gtd-directory>>
   <<org-gtd-recommendations>>
   <<org-gtd-edna>>
+  <<agenda-incubate-and-hatch>>
   (map! (:leader (:prefix-map ("G" . "GTD")
                   :desc "Capture"             "c" #'org-gtd-capture
                   :desc "Engage"              "e" #'org-gtd-engage
@@ -414,8 +416,7 @@ Appending to existing templates to keep project templates
   <<agenda-prefix>>
   <<sync-buffer-to-file>>
   <<sync-file-to-agenda>>
-  <<agenda-reschedule>>
-  <<agenda-incubate-and-hatch>>)
+  <<agenda-reschedule>>)
 #+end_src
 ** Agenda Files
 Only track my task-related files in the agenda
@@ -463,7 +464,7 @@ Simplify the agenda prefix to only include what I need to see
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 #+end_src
-** Quick Action for rescheduling to today (used pretty commonly when things roll over)
+** Quick actions for rescheduling to today/tomorrow (used pretty commonly when things roll over)
 #+name: agenda-reschedule
 #+begin_src emacs-lisp :tangle no
 (defun org-agenda-reschedule-to-today (&optional arg)
@@ -471,9 +472,17 @@ Simplify the agenda prefix to only include what I need to see
   (interactive "P")
   (org-agenda-schedule arg "."))
 
-(setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)))
+(defun org-agenda-reschedule-to-tomorrow (&optional arg)
+  "Reschedule selected task(s) for tomorrow."
+  (interactive "P")
+  (org-agenda-schedule arg "+1d"))
+
+(setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)
+                                         (?> org-agenda-reschedule-to-tomorrow)))
 (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
-      (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today))
+      (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)
+      (:map org-agenda-mode-map ">" #'org-agenda-reschedule-to-tomorrow)
+      (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow))
 #+end_src
 ** Quick actions for sending back to "incubate"
 #+name: agenda-incubate-and-hatch
@@ -498,6 +507,9 @@ Simplify the agenda prefix to only include what I need to see
  HEADLINE is the headline (inside FILE) to refile into."
   (save-window-excursion
     (org-agenda-refile nil (+patch/gen-org-refile-rfloc file headline))))
+
+;; FIXME setting here instead of in :custom becuase it's not working in :custom (see note above)
+(setq +patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
 
 (defun org-agenda-incubate (&optional arg)
   "Incubate a specified task (includes refiling to incubate section, and specifiying a date to review the task)"
