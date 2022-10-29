@@ -59,10 +59,11 @@
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
                   :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
                   :desc "Daily Agenda"        "d" (lambda () (interactive) (org-ql-view "Daily"))
+                  :desc "Action List"         "a" #'org-ql-action-list
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
-                  :desc "Archive Done"        "a" #'org-gtd-archive-completed-items))
+                  :desc "Archive Done"        "A" #'org-gtd-archive-completed-items))
         (:map org-gtd-process-map       "C-c C-c" #'org-gtd-choose)))
 
 (use-package! org-roam
@@ -478,6 +479,19 @@
       :narrow nil
       :super-groups ,+patch/daily-agenda-super-groups
       :title "Daily")))
+
+  (defun org-ql-action-list (action-list-name)
+    (interactive (list (completing-read "Action List: " (--filter (string-match-p "^\@.*" it) (mapcar #'car org-tag-alist)))))
+    (org-ql-search "~/.local/share/notes/gtd/org-gtd-tasks.org"
+      `(and ,+patch/daily-agenda-query
+            (tags "@anywhere" ,action-list-name))
+      :title (format "%s action list" action-list-name)
+      :super-groups +patch/daily-agenda-super-groups))
+
+  (defun org-ql-refine-view (query)
+    (interactive "xQuery: ")
+    (let ((org-ql-view-query `(and ,query ,org-ql-view-query)))
+      (org-ql-view-refresh))))
 
 (use-package! origami
   :after (org-agenda)
