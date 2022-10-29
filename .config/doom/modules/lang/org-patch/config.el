@@ -58,6 +58,7 @@
                   :desc "Engage"              "e" #'org-gtd-engage
                   :desc "Process Inbox"       "p" #'org-gtd-process-inbox
                   :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
+                  :desc "Daily Agenda"        "d" (lambda () (interactive) (org-ql-view "Daily"))
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
@@ -405,18 +406,62 @@
 
 (use-package! org-ql
   :after org-agenda
-  :custom
-  (org-ql-views
-   '(("Planning" :buffers-files
+  :config
+  ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
+  (setq
+   +patch/daily-agenda-super-groups
+   `((:name "Today"
+      :time-grid t
+      :and (:scheduled today
+            :not (:todo "NEXT")
+            :not (:todo "WAIT")
+            :not (:todo "DONE"))
+      :order 0)
+     (:name "Quick"
+      :and (:todo "NEXT"
+            :scheduled today
+            :not (:regexp ,org-ql-regexp-scheduled-with-time)))
+     (:name "Overdue"
+      :and (:scheduled past
+            :face error
+            :not (:todo "WAIT")
+            :not (:todo "DONE")))
+     ;; TODO omiting this for now, until I decide on semantics for unscheduled project items and action list items
+     ;; (:name "Unscheduled"
+     ;;  :face error
+     ;;  :and (:scheduled nil
+     ;;        :not (:todo "DONE")))
+     (:name "Waiting"
+      :todo "WAIT")
+     (:name "Completed Today"
+      :and (:todo "DONE"
+            :scheduled today))
+     (:name "Could Pull In"
+      :and (:todo "NEXT"
+            ;; scheduled in the next 3 days
+            :scheduled future
+            :scheduled (before ,(org-read-date nil nil "+3"))))
+     (:name "Remove anything else"
+      :discard (:anything t)))
+
+   +patch/daily-agenda-query
+   '(and (or (ts-active :on today)
+             (scheduled :to today)
+             (scheduled :before today))
+         (not (children))
+         (not (todo "CNCL")))
+
+   org-ql-views
+   `(("Planning" :buffers-files
       ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query
       (and
-        ;; Get upcoming and unscheduled tasks
-        (or (ts :from today :to +45)
-            (and (not (scheduled)) (level 2)))
-        ;; only get tasks that are still "todo"
-        ;; (not (tags "Incubate"))
-        (not (todo "WAIT" "DONE" "CNCL")))
+       ;; Get upcoming and unscheduled tasks
+       (or (ts :from today :to +45)
+           (and (not (scheduled)) (level 2)))
+       ;; only get tasks that are still "todo"
+       ;; (not (tags "Incubate"))
+       (not (todo "WAIT" "DONE" "CNCL")))
       :sort
       (priority todo)
       :narrow nil
@@ -425,7 +470,14 @@
                       :face error
                       :order 0)
                      (:auto-planning t))
-      :title "Planning"))))
+      :title "Planning")
+     ("Daily"
+      :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query ,+patch/daily-agenda-query
+      :sort (priority todo)
+      :narrow nil
+      :super-groups ,+patch/daily-agenda-super-groups
+      :title "Daily")))
 
 (use-package! origami
   :after (org-agenda)
