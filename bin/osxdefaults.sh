@@ -10,9 +10,10 @@ defaults write com.apple.screencapture type -string "png"
 sudo nvram SystemAudioVolume=" "
 
 ### Dock
-# Hide dock
-defaults write com.apple.dock tilesize -int 1
-defaults write com.apple.dock pinning -string start
+# shrink icons
+defaults write com.apple.dock tilesize -int 36
+# hide dock
+defaults write com.apple.dock autohide -bool true
 # Only show open apps
 defaults write com.apple.dock static-only -bool TRUE
 # Align left
