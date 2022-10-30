@@ -1,7 +1,8 @@
 #!/usr/bin/sh
 
-# Finder: show hidden files by default
+# Finder: show hidden files by default, show pathbar at bottom of window
 defaults write com.apple.finder AppleShowAllFiles -bool true
+defaults write com.apple.finder ShowPathbar -bool true
 
 # Save screenshots in PNG format (other options: BMP, GIF, JPG, PDF, TIFF)
 defaults write com.apple.screencapture type -string "png"
