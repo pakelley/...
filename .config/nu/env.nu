@@ -66,7 +66,7 @@ let-env PATH = ($env.PATH | prepend $"($env.PYENV_ROOT)/bin" | prepend ([(pyenv 
 # may need to add something here for `pyenv shell` to be able to change env vars eventually
 
 # EDITOR
-let-env EDITOR = "emacs -nw"
+let-env EDITOR = "emacsclient -a ''"
 
 # twitter bin
 let-env PATH = ($env.PATH | prepend /opt/twitter_mde/bin)
