@@ -78,3 +78,9 @@ let-env PATH = ($env.PATH | prepend ("~/.config/doom-emacs/bin" | path expand))
 
 # dots
 let-env PATH = ($env.PATH | prepend ("~/.config/dots/bin" | path expand))
+
+# usr/local/bin
+let-env PATH = ($env.PATH | append /usr/local/bin)
+
+# texbin
+let-env PATH = ($env.PATH | append /Library/TeX/texbin)
