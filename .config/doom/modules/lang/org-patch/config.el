@@ -643,6 +643,10 @@
   (org-modern-priority nil)
   (org-modern-internal-target `(,(all-the-icons-material "redo" :face 'all-the-icons-blue) t " "))
   (org-modern-star ["◉" "○" "✸" "✿" "✤" "✜" "◆"])
+  (org-modern-todo-faces
+      '(("NEXT" . (:background "#f0dfaf" :foreground "black" :weight semibold))
+        ("WAIT" . (:background "#dc8cc3" :foreground "black" :weight semibold))
+        ("CNCL" . (:background "#8cd0d3" :foreground "black" :weight semibold))))
   (org-modern-list '((43 . "➤")
                      (45 . "–")
                      (42 . "•"))))
