@@ -375,13 +375,14 @@
                     '((:name "Today"
                        :time-grid t
                        :and (:not (:tag "%low")
-                             :not (:todo "WAIT")
-                             :not (:todo "DONE"))
+                             :not (:todo ("DONE" "CNCL" "WAIT")))
                        :order 0)
                       (:name "Remove anything else"
                        :discard (:anything t))))))
        (org-ql-block '(and (tags "%low")
                            (ts-a :on today)
+                           (not (todo "WAIT"))
+                           (not (done))
                            (not (regexp ,org-ql-regexp-scheduled-with-time)))
                      ((org-ql-block-header "\n Quick")))
        (org-ql-block '(and (ts-a :to -1)
@@ -415,18 +416,17 @@
       :time-grid t
       :and (:scheduled today
             :not (:tag "%low")
-            :not (:todo "WAIT")
-            :not (:todo "DONE"))
+            :not (:todo ("DONE" "CNCL" "WAIT")))
       :order 0)
      (:name "Quick"
       :and (:tag "%low"
             :scheduled today
+            :not (:todo ("DONE" "CNCL" "WAIT"))
             :not (:regexp ,org-ql-regexp-scheduled-with-time)))
      (:name "Overdue"
       :and (:scheduled past
             :face error
-            :not (:todo "WAIT")
-            :not (:todo "DONE")))
+            :not (:todo ("DONE" "CNCL" "WAIT"))))
      ;; TODO omiting this for now, until I decide on semantics for unscheduled project items and action list items
      ;; (:name "Unscheduled"
      ;;  :face error
