@@ -441,13 +441,13 @@
       :and (:tag "%low"
             ;; scheduled in the next 3 days
             :scheduled future
-            :scheduled (before ,(org-read-date nil nil "+3"))))
+            :scheduled (before ,(org-read-date nil nil "+4"))))
      (:name "Remove anything else"
       :discard (:anything t)))
 
    +patch/daily-agenda-query
    '(and (or (ts-active :on today)
-             (scheduled :to today)
+             (scheduled :to +3)
              (scheduled :before today))
          (not (children))
          (not (todo "CNCL")))
@@ -475,7 +475,7 @@
      ("Daily"
       :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query ,+patch/daily-agenda-query
-      :sort (priority todo)
+      :sort (priority todo date)
       :narrow nil
       :super-groups ,+patch/daily-agenda-super-groups
       :title "Daily")))
