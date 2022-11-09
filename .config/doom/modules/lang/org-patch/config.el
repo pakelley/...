@@ -374,13 +374,13 @@
                    (org-super-agenda-groups
                     '((:name "Today"
                        :time-grid t
-                       :and (:not (:todo "NEXT")
+                       :and (:not (:tag "%low")
                              :not (:todo "WAIT")
                              :not (:todo "DONE"))
                        :order 0)
                       (:name "Remove anything else"
                        :discard (:anything t))))))
-       (org-ql-block '(and (todo "NEXT")
+       (org-ql-block '(and (tags "%low")
                            (ts-a :on today)
                            (not (regexp ,org-ql-regexp-scheduled-with-time)))
                      ((org-ql-block-header "\n Quick")))
@@ -398,7 +398,7 @@
        (org-ql-block '(and (todo "DONE")
                            (ts-a :on today))
                      ((org-ql-block-header "\n Completed today")))
-       (org-ql-block '(and (todo "NEXT")
+       (org-ql-block '(and (tags "%low")
                            (ts-a :from +1 :to +3))
                      ((org-ql-block-header "\n Could pull in"))))))))
 
@@ -414,12 +414,12 @@
    `((:name "Today"
       :time-grid t
       :and (:scheduled today
-            :not (:todo "NEXT")
+            :not (:tag "%low")
             :not (:todo "WAIT")
             :not (:todo "DONE"))
       :order 0)
      (:name "Quick"
-      :and (:todo "NEXT"
+      :and (:tag "%low"
             :scheduled today
             :not (:regexp ,org-ql-regexp-scheduled-with-time)))
      (:name "Overdue"
@@ -438,7 +438,7 @@
       :and (:todo "DONE"
             :scheduled today))
      (:name "Could Pull In"
-      :and (:todo "NEXT"
+      :and (:tag "%low"
             ;; scheduled in the next 3 days
             :scheduled future
             :scheduled (before ,(org-read-date nil nil "+3"))))

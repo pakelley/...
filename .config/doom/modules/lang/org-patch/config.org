@@ -287,7 +287,7 @@ Use org-ref and bibtex for bibliographic references
 - [ ] TODO: do I need both `CANCELLED` and `TRASH`?
 The sequence of stages my tasks go through. See the [[https://orgmode.org/manual/Tracking-TODO-state-changes.html][org manual]] for more info, but `!` gives a timestamp, `@` lets you leave a note when transitioning through that state, and `/` denotes whether the other symbols happen when transitioning in vs out of the state (before `/` is for transitioning into the state, which is the default).
 - TODO: on the agenda, but not something to immediately work on
-- NEXT: something I can immediately pick up
+- NEXT: the next tag in a project (in the GTD sense)
 - WAIT: blocked by something, don't even consider it a todo until it's unblocked
 - DONE: finished, congrats
 - CANCELLED: decided not to do this while working on it
@@ -540,7 +540,7 @@ Simplify the agenda prefix to only include what I need to see
 ** Super Agenda [0/9]
 A few notes on this:
 - including both "agenda" and "alltodo" lets you have both the agenda (with the time grid) /and/ the todo list
-- I keep my active TODOs (i.e. the ones scheduled for today, except for "NEXT" and "WAIT") in the agenda, and everything else in the todo list (I keep "NEXT" separate because I treat them as things I can do whenever I have a chance, and I just want to declutter my agenda be removing anything I have to wait on, and therefore probably can't accurately predict when I can get it done)
+- I keep my active TODOs (i.e. the ones scheduled for today, except for "WAIT") in the agenda, and everything else in the todo list (I just want to declutter my agenda be removing anything I have to wait on, and therefore probably can't accurately predict when I can get it done)
 - I use the order to split the view into 3 sections: the timeboxed agenda, the regular todo list, and the degenerate todos (unscheduled or overdue)
 Future enhancements
 - [ ] review the other org props I'm setting here
@@ -564,13 +564,13 @@ Future enhancements
                    (org-super-agenda-groups
                     '((:name "Today"
                        :time-grid t
-                       :and (:not (:todo "NEXT")
+                       :and (:not (:tag "%low")
                              :not (:todo "WAIT")
                              :not (:todo "DONE"))
                        :order 0)
                       (:name "Remove anything else"
                        :discard (:anything t))))))
-       (org-ql-block '(and (todo "NEXT")
+       (org-ql-block '(and (tags "%low")
                            (ts-a :on today)
                            (not (regexp ,org-ql-regexp-scheduled-with-time)))
                      ((org-ql-block-header "\n Quick")))
@@ -588,7 +588,7 @@ Future enhancements
        (org-ql-block '(and (todo "DONE")
                            (ts-a :on today))
                      ((org-ql-block-header "\n Completed today")))
-       (org-ql-block '(and (todo "NEXT")
+       (org-ql-block '(and (tags "%low")
                            (ts-a :from +1 :to +3))
                      ((org-ql-block-header "\n Could pull in"))))))))
   #+end_src
@@ -609,12 +609,12 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
    `((:name "Today"
       :time-grid t
       :and (:scheduled today
-            :not (:todo "NEXT")
+            :not (:tag "%low")
             :not (:todo "WAIT")
             :not (:todo "DONE"))
       :order 0)
      (:name "Quick"
-      :and (:todo "NEXT"
+      :and (:tag "%low"
             :scheduled today
             :not (:regexp ,org-ql-regexp-scheduled-with-time)))
      (:name "Overdue"
@@ -633,7 +633,7 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
       :and (:todo "DONE"
             :scheduled today))
      (:name "Could Pull In"
-      :and (:todo "NEXT"
+      :and (:tag "%low"
             ;; scheduled in the next 3 days
             :scheduled future
             :scheduled (before ,(org-read-date nil nil "+3"))))
