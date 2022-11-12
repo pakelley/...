@@ -564,7 +564,8 @@ Future enhancements
                    (org-super-agenda-groups
                     '((:name "Today"
                        :time-grid t
-                       :and (:not (:tag "%low")
+                       :and (:scheduled today
+                             :not (:tag "%low")
                              :not (:todo ("DONE" "CNCL" "WAIT")))
                        :order 0)
                       (:name "Remove anything else"
