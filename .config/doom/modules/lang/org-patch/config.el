@@ -498,32 +498,28 @@
   :hook ((org-agenda-mode . origami-mode)
          (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
   :config
-  (setq +patch/agenda-auto-show-groups '("Today" "Quick" "Overdue" "Unscheduled"))
+  (setq +patch/agenda-auto-hide-groups '("Waiting" "Completed Today" "Could Pull In"))
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
-    (origami-close-all-nodes (current-buffer))
     (evil-goto-first-line)
-    (origami-forward-toggle-node (current-buffer) (point))
 
-    (--each +patch/agenda-auto-show-groups
+    (--each +patch/agenda-auto-hide-groups
       (goto-char (point-min))
       (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
-        (origami-show-node (current-buffer) (point))
-        (forward-line 1)
-        (origami-show-node (current-buffer) (point))))
+        (origami-close-node (current-buffer) (point))))
 
     (beginning-of-buffer))
 
   (defun +patch/dont-show-waiting-in-agenda ()
     (interactive)
-    (setq +patch/agenda-auto-show-groups
-          (remove "Waiting" +patch/agenda-auto-show-groups))
+    (setq +patch/agenda-auto-hide-groups
+          (cons "Waiting" +patch/agenda-auto-show-groups))
     (org-agenda-redo))
 
   (defun +patch/show-waiting-in-agenda ()
     (interactive)
-    (setq +patch/agenda-auto-show-groups
-          (cons "Waiting" +patch/agenda-auto-show-groups))
+    (setq +patch/agenda-hide-show-groups
+          (remove "Waiting" +patch/agenda-auto-show-groups))
     (org-agenda-redo))
 
   (map!
