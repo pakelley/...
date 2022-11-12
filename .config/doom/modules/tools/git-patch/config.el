@@ -1,6 +1,5 @@
 (use-package! magit
   :defer t
-  :custom (magit-git-executable "/opt/twitter_mde/bin/git")
   :commands magit-status
   :config
   (remove-hook 'magit-refs-sections-hook 'magit-insert-tags)
