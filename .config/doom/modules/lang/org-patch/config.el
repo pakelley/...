@@ -375,17 +375,23 @@
                     '((:name "Today"
                        :time-grid t
                        :and (:scheduled today
-                             :not (:tag "%low")
+                             :not (:tag ("%quick" "%easy"))
                              :not (:todo ("DONE" "CNCL" "WAIT")))
                        :order 0)
                       (:name "Remove anything else"
                        :discard (:anything t))))))
-       (org-ql-block '(and (tags "%low")
+       (org-ql-block '(and (tags "%quick")
                            (ts-a :on today)
                            (not (todo "WAIT"))
                            (not (done))
                            (not (regexp ,org-ql-regexp-scheduled-with-time)))
                      ((org-ql-block-header "\n Quick")))
+       (org-ql-block '(and (tags "%easy")
+                           (ts-a :on today)
+                           (not (todo "WAIT"))
+                           (not (done))
+                           (not (regexp ,org-ql-regexp-scheduled-with-time)))
+                     ((org-ql-block-header "\n Easy")))
        (org-ql-block '(and (ts-a :to -1)
                            (not (todo "WAIT"))
                            (not (done))
@@ -400,7 +406,7 @@
        (org-ql-block '(and (todo "DONE")
                            (ts-a :on today))
                      ((org-ql-block-header "\n Completed today")))
-       (org-ql-block '(and (tags "%low")
+       (org-ql-block '(and (tags ("%quick" "%easy"))
                            (ts-a :from +1 :to +3))
                      ((org-ql-block-header "\n Could pull in"))))))))
 
@@ -416,11 +422,16 @@
    `((:name "Today"
       :time-grid t
       :and (:scheduled today
-            :not (:tag "%low")
+            :not (:tag ("%quick" "%easy"))
             :not (:todo ("DONE" "CNCL" "WAIT")))
       :order 0)
      (:name "Quick"
-      :and (:tag "%low"
+      :and (:tag "%quick"
+            :scheduled today
+            :not (:todo ("DONE" "CNCL" "WAIT"))
+            :not (:regexp ,org-ql-regexp-scheduled-with-time)))
+     (:name "Easy"
+      :and (:tag "%easy"
             :scheduled today
             :not (:todo ("DONE" "CNCL" "WAIT"))
             :not (:regexp ,org-ql-regexp-scheduled-with-time)))
@@ -439,7 +450,7 @@
       :and (:todo "DONE"
             :scheduled today))
      (:name "Could Pull In"
-      :and (:tag "%low"
+      :and (:tag ("%quick" "%easy")
             ;; scheduled in the next 3 days
             :scheduled future
             :scheduled (before ,(org-read-date nil nil "+4"))))
@@ -655,7 +666,9 @@
                         ("@work")
                         ("@cheryls")
                         ("@parents")
-                        ("@errands")))
+                        ("@errands")
+                        ("%quick")
+                        ("%easy")))
   (setq org-startup-with-latex-preview t)
   (setq org-directory "~/.local/share/notes")
   (setq org-todo-keywords
