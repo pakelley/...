@@ -667,6 +667,7 @@
                         ("@parents")
                         ("@errands")
                         ("@phone")
+                        ("@email")
                         ("%quick")
                         ("%easy")))
   (setq org-startup-with-latex-preview t)

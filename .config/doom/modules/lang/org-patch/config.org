@@ -887,6 +887,7 @@ Make my most frequently used tags quickly available
                       ("@parents")
                       ("@errands")
                       ("@phone")
+                      ("@email")
                       ("%quick")
                       ("%easy")))
 #+end_src
