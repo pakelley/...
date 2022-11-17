@@ -23,4 +23,4 @@ For reference, this is what I still need after running the script:
 - Add Keepass database
 - Log into whatever needs it (spotify, anki (web), etc)
 - Add anki connect plugin
-  - tools -> addons -> get addons -> 2055492159 (code for anki connect addon) -> restart anki
+  - tools -> addons -> get addons -> 2055492159 (code for anki connect addon) -> 1030875226 (code for auto markdown addon) -> restart anki
