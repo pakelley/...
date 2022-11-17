@@ -668,6 +668,7 @@
                         ("@errands")
                         ("@phone")
                         ("@email")
+                        ("@anywhere")
                         ("%quick")
                         ("%easy")))
   (setq org-startup-with-latex-preview t)
