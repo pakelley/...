@@ -313,6 +313,42 @@
                        ("Album"   :keys "l" :olp ("Albums"))))
                      ("Repo" :keys "r" :olp ("Repos")))))))))
 
+(after! emacs-everywhere
+  (defun get-app-name ()
+    "Get the name of the current app (useful for returning to that app later). Currently uses osascript, so only useful on macos."
+    (let ((default-directory emacs-everywhere--dir))
+      (with-temp-buffer
+        (call-process "osascript" nil t nil "app-name")
+        (string-trim (buffer-string)))))
+
+  (defun capture-everywhere ()
+    "Create a new frame and run `org-capture'."
+    (interactive)
+    (require 'noflet)
+    (make-frame `((name . "capture")
+                  (top . 300)
+                  (left . 700)
+                  (width . 80)
+                  (height . 25)
+                  (emacs-everywhere-prior-app . ,(get-app-name))))
+
+    (select-frame-by-name "capture")
+    (delete-other-windows)
+    (noflet ((switch-to-buffer-other-window (buf) (switch-to-buffer buf)))
+            (org-capture)))
+
+
+  (defadvice org-capture-finalize
+      (after delete-capture-frame activate)
+    "Advise capture-finalize to close the frame and return to the app we came from"
+    (when emacs-everywhere-window-focus-command
+      (apply #'call-process (car emacs-everywhere-window-focus-command)
+             nil nil nil
+             (mapcar (lambda (arg)
+                       (replace-regexp-in-string "%w" (frame-parameter nil 'emacs-everywhere-prior-app) arg))
+                     (cdr emacs-everywhere-window-focus-command))))
+    (delete-frame)))
+
 (use-package! org-agenda
   :commands org-agenda
   :custom

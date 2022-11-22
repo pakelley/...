@@ -1,4 +1,5 @@
 (package! deft)
+(package! noflet)
 (package! ob-mermaid)
 (package! org-anki)
 (package! org-gtd)
