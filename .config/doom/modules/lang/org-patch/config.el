@@ -450,6 +450,8 @@
 
 (use-package! org-ql
   :after org-agenda
+  :custom
+  (org-super-agenda-date-format "%e %B %Y - %A")
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
   (setq
