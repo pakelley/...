@@ -414,6 +414,7 @@ Appending to existing templates to keep project templates
 ** capture everywhere
 When I'm doing things outside of emacs, it would be nice to still use the same capture interface. I used to use org protocol plus an alfred command, but I opted for something that utilizes org-mode's typical capture interface, by popping up a new emacs frame and capturing from there.
 Heavily inspired by [[https://macowners.club/posts/org-capture-from-everywhere-macos/][this blog post]] (for the majority of the logic) and [[https://github.com/tecosaur/emacs-everywhere][emacs-everywhere]] (borrowed the logic for getting back to the app I was in before capturing).
+Similar to my setup for emacs-everywhere, I have an algfred workflow that uses a keybinding to trigger a script running `/usr/local/bin/emacsclient --eval "(capture-everywhere)"`.
 #+begin_src elisp
 (after! emacs-everywhere
   (defun get-app-name ()
