@@ -2,7 +2,9 @@ local wezterm = require 'wezterm';
 local act = wezterm.action
 
 return {
-  default_prog = { '/opt/homebrew/bin/nu' },
+  -- m1 path
+  -- default_prog = { '/opt/homebrew/bin/nu' },
+  default_prog = { '/usr/local/bin/nu' },
 
   font = wezterm.font 'Fira Code',
 

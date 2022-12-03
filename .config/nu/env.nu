@@ -57,8 +57,11 @@ let-env NU_PLUGIN_DIRS = [
 # To add entries to PATH (on Windows you might use Path), you can use the following pattern:
 # let-env PATH = ($env.PATH | prepend '/some/path')
 
-# homebrew
-let-env PATH = ($env.PATH | prepend /opt/homebrew/bin)
+# usr/local/bin
+let-env PATH = ($env.PATH | append /usr/local/bin)
+
+# m1 homebrew
+# let-env PATH = ($env.PATH | prepend /opt/homebrew/bin)
 
 # pyenv
 let-env PYENV_ROOT = ("~/.pyenv" | path expand)
@@ -78,9 +81,6 @@ let-env PATH = ($env.PATH | prepend ("~/.config/doom-emacs/bin" | path expand))
 
 # dots
 let-env PATH = ($env.PATH | prepend ("~/.config/dots/bin" | path expand))
-
-# usr/local/bin
-let-env PATH = ($env.PATH | append /usr/local/bin)
 
 # texbin
 let-env PATH = ($env.PATH | append /Library/TeX/texbin)
