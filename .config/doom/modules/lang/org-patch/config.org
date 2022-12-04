@@ -648,6 +648,9 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
   (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map)))
 #+end_src
 ** Planning Agenda
+Notably, this is where I'm defining what a task vs project are:
+- a task is any task without children
+- a project is a task under the "Projects" header that has children
 #+begin_src emacs-lisp
 (use-package! org-ql
   :after org-agenda
@@ -702,11 +705,15 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
          (not (children))
          (not (todo "CNCL")))
 
+   is-project '(and (ancestors "Planning") (children))
+   is-task '(not (children))
    org-ql-views
    `(("Planning" :buffers-files
       ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query
       (and
+       ;; only include tasks
+       ,is-task
        ;; Get upcoming and unscheduled tasks
        (or (ts :from today :to +45)
            (and (not (scheduled)) (level 2)))

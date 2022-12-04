@@ -501,11 +501,15 @@
          (not (children))
          (not (todo "CNCL")))
 
+   is-project '(and (ancestors "Planning") (children))
+   is-task '(not (children))
    org-ql-views
    `(("Planning" :buffers-files
       ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query
       (and
+       ;; only include tasks
+       ,is-task
        ;; Get upcoming and unscheduled tasks
        (or (ts :from today :to +45)
            (and (not (scheduled)) (level 2)))
