@@ -940,21 +940,27 @@ The save-window-excursion is here bc for some reason formatting the clockreport 
 #+end_src
 
 * Tags
-Make my most frequently used tags quickly available
+Make my most frequently used tags quickly available.
+Use [[https://orgmode.org/guide/Tags.html][fast tag selection]] to make this a little easier. Notably, you can use TAB from the fast tag interface to enter a tag free-form.
+Use [[https://orgmode.org/manual/Setting-Tags.html][tag groups]] to make contexts mutually exclusive.
+The system here is that "@" tags denote context (e.g. I can only do this task at home), and "%" tags denote restrictions (e.g. I only have time to do a quick task). The "@@someday_maybe" is sort of a meta-context, because any project with this tag is it's own context (e.g. these are recipes I want to try one day).
+- [ ] need to link to someday/maybe docs here when I have them semi-polished.
 #+name: tag-list
 #+begin_src elisp :tangle no
-(setq org-tag-alist '(("@home")
-                      ("@work")
-                      ("@comp")
-                      ("@cheryls")
-                      ("@parents")
-                      ("@errands")
-                      ("@phone")
-                      ("@email")
-                      ("@anywhere")
-                      ("@someday_maybe")
-                      ("%quick")
-                      ("%easy")))
+(setq org-tag-alist '((:startgroup . nil)
+                      ("@home"           . ?h)
+                      ("@work"           . ?w)
+                      ("@comp"           . ?c)
+                      ("@cheryls"        . ?y)
+                      ("@parents"        . ?p)
+                      ("@errands"        . ?r)
+                      ("@phone"          . ?o)
+                      ("@email"          . ?m)
+                      ("@anywhere"       . ?a)
+                      (:endgroup . nil)
+                      ("@@someday_maybe" . ?s)
+                      ("%quick"          . ?q)
+                      ("%easy"           . ?e)))
 #+end_src
 * Codeblocks
 ** Keep parinfer from constantly asking if it can indent things
