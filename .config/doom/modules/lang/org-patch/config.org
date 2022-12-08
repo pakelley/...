@@ -286,7 +286,8 @@ Use org-ref and bibtex for bibliographic references
 * Todos
 ** Todo keywords [0/1]
 - [ ] TODO: do I need both `CANCELLED` and `TRASH`?
-The sequence of stages my tasks go through. See the [[https://orgmode.org/manual/Tracking-TODO-state-changes.html][org manual]] for more info, but `!` gives a timestamp, `@` lets you leave a note when transitioning through that state, and `/` denotes whether the other symbols happen when transitioning in vs out of the state (before `/` is for transitioning into the state, which is the default).
+The sequence of stages my tasks go through. See the [[https://orgmode.org/manual/Tracking-TODO-state-changes.html][tracking TODO state changes]] and [[https://orgmode.org/manual/Fast-access-to-TODO-states.html][fast access to TODO states]] for more info, but `!` gives a timestamp, `@` lets you leave a note when transitioning through that state, and `/` denotes whether the other symbols happen when transitioning in vs out of the state (before `/` is for transitioning into the state, which is the default).
+- INCUBATE: (WIP) things that aren't currently in progress. still working on the semantics of this, especially how it differs from what I currently put in my "Incubate" section of my GTD file.
 - TODO: on the agenda, but not something to immediately work on
 - NEXT: the next tag in a project (in the GTD sense)
 - WAIT: blocked by something, don't even consider it a todo until it's unblocked
@@ -297,12 +298,22 @@ The sequence of stages my tasks go through. See the [[https://orgmode.org/manual
 #+name: todo-keywords
 #+begin_src elisp :tangle no
 (setq org-todo-keywords
-      '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
+      '((sequence "INCUBATE(i)" "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CNCL(c@!)" "TRASH(r!)")))
 (setq org-todo-keyword-faces
-      '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
+      '(("INCUBATE" . (:foreground "#dfaf8f" :weight bold))
+        ("NEXT" . (:foreground "#f0dfaf" :weight bold))
         ("WAIT" . (:foreground "#dc8cc3" :weight bold))
-        ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
+        ("CNCL" . (:foreground "#8cd0d3" :weight bold))
         ("TRASH" . (:foreground "#dfaf8f" :weight bold))))
+#+end_src
+
+#+name: org-modern-todo-faces
+#+begin_src emacs-lisp :tangle no
+(org-modern-todo-faces
+      '(("INCUBATE" . (:background "#dfaf8f" :foreground "black" :weight semibold))
+        ("NEXT"     . (:background "#f0dfaf" :foreground "black" :weight semibold))
+        ("WAIT"     . (:background "#dc8cc3" :foreground "black" :weight semibold))
+        ("CNCL"     . (:background "#8cd0d3" :foreground "black" :weight semibold))))
 #+end_src
 * Capture
 ** Capture Templates [0/1]
@@ -983,7 +994,7 @@ Not starting automatically, as I'm still running into a few issues so far.
 
 #+end_src
 ** org-modern
-#+begin_src elisp
+#+begin_src elisp :noweb no-export
 (use-package! org-modern
   :after org
   :hook
@@ -994,10 +1005,8 @@ Not starting automatically, as I'm still running into a few issues so far.
   (org-modern-priority nil)
   (org-modern-internal-target `(,(all-the-icons-material "redo" :face 'all-the-icons-blue) t " "))
   (org-modern-star ["◉" "○" "✸" "✿" "✤" "✜" "◆"])
-  (org-modern-todo-faces
-      '(("NEXT" . (:background "#f0dfaf" :foreground "black" :weight semibold))
-        ("WAIT" . (:background "#dc8cc3" :foreground "black" :weight semibold))
-        ("CNCL" . (:background "#8cd0d3" :foreground "black" :weight semibold))))
+  <<org-modern-todo-faces>>
+
   (org-modern-list '((43 . "➤")
                      (45 . "–")
                      (42 . "•"))))

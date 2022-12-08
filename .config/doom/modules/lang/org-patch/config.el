@@ -693,9 +693,11 @@
   (org-modern-internal-target `(,(all-the-icons-material "redo" :face 'all-the-icons-blue) t " "))
   (org-modern-star ["◉" "○" "✸" "✿" "✤" "✜" "◆"])
   (org-modern-todo-faces
-      '(("NEXT" . (:background "#f0dfaf" :foreground "black" :weight semibold))
-        ("WAIT" . (:background "#dc8cc3" :foreground "black" :weight semibold))
-        ("CNCL" . (:background "#8cd0d3" :foreground "black" :weight semibold))))
+        '(("INCUBATE" . (:background "#dfaf8f" :foreground "black" :weight semibold))
+          ("NEXT"     . (:background "#f0dfaf" :foreground "black" :weight semibold))
+          ("WAIT"     . (:background "#dc8cc3" :foreground "black" :weight semibold))
+          ("CNCL"     . (:background "#8cd0d3" :foreground "black" :weight semibold))))
+
   (org-modern-list '((43 . "➤")
                      (45 . "–")
                      (42 . "•"))))
@@ -718,9 +720,10 @@
   (setq org-startup-with-latex-preview t)
   (setq org-directory "~/.local/share/notes")
   (setq org-todo-keywords
-        '((sequence "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELED(c@!)" "TRASH(r!)")))
+        '((sequence "INCUBATE(i)" "NEXT(n)" "TODO(t!)" "WAIT(w@/!)" "|" "DONE(d!)" "CNCL(c@!)" "TRASH(r!)")))
   (setq org-todo-keyword-faces
-        '(("NEXT" . (:foreground "#f0dfaf" :weight bold))
+        '(("INCUBATE" . (:foreground "#dfaf8f" :weight bold))
+          ("NEXT" . (:foreground "#f0dfaf" :weight bold))
           ("WAIT" . (:foreground "#dc8cc3" :weight bold))
-          ("CANCELED" . (:foreground "#8cd0d3" :weight bold))
+          ("CNCL" . (:foreground "#8cd0d3" :weight bold))
           ("TRASH" . (:foreground "#dfaf8f" :weight bold)))))
