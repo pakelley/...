@@ -934,12 +934,14 @@ Make my most frequently used tags quickly available
 #+begin_src elisp :tangle no
 (setq org-tag-alist '(("@home")
                       ("@work")
+                      ("@comp")
                       ("@cheryls")
                       ("@parents")
                       ("@errands")
                       ("@phone")
                       ("@email")
                       ("@anywhere")
+                      ("@someday_maybe")
                       ("%quick")
                       ("%easy")))
 #+end_src
