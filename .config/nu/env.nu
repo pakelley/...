@@ -84,3 +84,8 @@ let-env PATH = ($env.PATH | prepend ("~/.config/dots/bin" | path expand))
 
 # texbin
 let-env PATH = ($env.PATH | append /Library/TeX/texbin)
+
+# rust
+let-env PATH = ($env.PATH | append ("~/.cargo/bin" | path expand))
+
+let-env NVM_DIR = ("~/.nvm" | path expand)
