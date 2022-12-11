@@ -1,20 +1,30 @@
 #+title: dots
 
 Configuring the universe, one spilled coffee at a time.
+
 * What?
-There's a few things configured here, and they change relatively often, but the mojor components are:
+There's a few things configured here, and they change relatively often, but the major components are:
 ** emacs
 #+html: <a href="https://orgmode.org"><img src="https://img.shields.io/badge/Org-literate%20config-%2377aa99?style=flat-square&logo=org&logoColor=white"></a>
-Doom emacs with a focus on org mode, and python/scala development. I have a modular literate config, so each major component of my config can be viewed separately.
-I also have chemacs set up, which I only really use for declaring emacs bankruptcy and start a new config.
+Doom emacs with a focus on org mode and python/scala development.
+
+I have a modular/literate config, so docs are included in the code and each major component of my config can be viewed separately.
+
+I also have chemacs set up, which I only really use to declare emacs bankruptcy and start a new config.
+
 ** wezterm/nushell
-For a terminal emulator, I use wezterm (a quick/modern terminal emulator with a real config file and modular keybindings), and nushell (quick shell with nice semantics).
+For a terminal emulator, I use wezterm (a quick and modern terminal emulator with a human readble/editable config file and modular keybindings).
+
+For a shell, I use nushell (a quick shell with nice semantics).
+
 ** mackup
 bootstrapping tool for linking configurations to the appropriate place
+
 ** yabai/skhd
 tiling window manager for macos, and its keybinding software
+
 * Installation
-The `bin/virus.exe` script is made to be idempotent, so you should be able to safely re-run at any point.
+The `bin/virus.exe` script is made to be idempotent, so I can safely re-run at any point.
 Also, notably, the script is only set up for configuring a mac for now.
 For reference, this is what I still need after running the script:
 - Allow a few apps access to various things (yabai, skhd, karabiner, etc)
