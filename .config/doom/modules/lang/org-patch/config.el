@@ -526,6 +526,26 @@
                       :order 0)
                      (:auto-planning t))
       :title "Planning")
+     ("Last Month" :buffers-files
+      ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query
+      (and
+       ;; Get upcoming and unscheduled tasks
+       (or (ts :from (ts-format "%Y-%m-%d" (make-ts :day 1 :month (ts-month (ts-now)) :year (ts-year (ts-now))))
+                                :to +45)
+           (and (not (scheduled)) (level 2)))
+       ;; only get tasks that are still "todo"
+       ;; (not (tags "Incubate"))
+       (not (todo "WAIT" "DONE" "CNCL")))
+      :sort
+      (priority todo)
+      :narrow nil
+      :super-groups ((:name "Unscheduled"
+                      :scheduled nil
+                      :face error
+                      :order 0)
+                     (:auto-planning t))
+      :title "Last Month")
      ("Daily"
       :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query ,+patch/daily-agenda-query
