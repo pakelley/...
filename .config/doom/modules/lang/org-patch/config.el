@@ -641,7 +641,9 @@
 
 (use-package! ox-pandoc
   :after ox
-  :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
+  :custom (org-pandoc-command "/usr/local/bin/pandoc"))
+  ;; m1 path
+  ;; :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
 
 (use-package! deft
   :after org

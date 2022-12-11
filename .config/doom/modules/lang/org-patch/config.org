@@ -864,7 +864,9 @@ Also allow myself to (semi-permanently) expand sections that are useful to regul
 #+begin_src emacs-lisp
 (use-package! ox-pandoc
   :after ox
-  :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
+  :custom (org-pandoc-command "/usr/local/bin/pandoc"))
+  ;; m1 path
+  ;; :custom (org-pandoc-command "/opt/homebrew/bin/pandoc"))
 #+end_src
 * Deft
 #+begin_src elisp
