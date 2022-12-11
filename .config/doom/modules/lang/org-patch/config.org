@@ -60,6 +60,7 @@ Keybindings while processing a task:
                   :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
                   :desc "Daily Agenda"        "d" (lambda () (interactive) (org-ql-view "Daily"))
                   :desc "Action List"         "a" #'org-ql-action-list
+                  :desc "Views"               "v" #'org-ql-view
                   :desc "Show all next"       "n" #'org-gtd-show-all-next
                   :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
                   :desc "Capture"             "c" #'org-gtd-capture
@@ -746,7 +747,31 @@ Notably, this is where I'm defining what a task vs project are:
       :sort (priority todo date)
       :narrow nil
       :super-groups ,+patch/daily-agenda-super-groups
-      :title "Daily")))
+      :title "Daily")
+     ("Home"
+      :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query '(and (tags "@home" "@work" "@anywhere")
+               ,+patch/daily-agenda-query)
+      :sort (priority todo date)
+      :narrow nil
+      :super-groups ,+patch/daily-agenda-super-groups
+      :title "Home")
+     ("Work"
+      :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query '(and (tags "@work" "@anywhere")
+               ,+patch/daily-agenda-query)
+      :sort (priority todo date)
+      :narrow nil
+      :super-groups ,+patch/daily-agenda-super-groups
+      :title "Work")
+     ("Email"
+      :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+      :query '(and (tags "@email")
+               ,+patch/daily-agenda-query)
+      :sort (priority todo date)
+      :narrow nil
+      :super-groups ,+patch/daily-agenda-super-groups
+      :title "Email")))
 
   (defun org-ql-action-list (action-list-name)
     (interactive (list (completing-read "Action List: " (--filter (string-match-p "^\@.*" it) (mapcar #'car org-tag-alist)))))
