@@ -288,31 +288,31 @@
                       :template "* %?"
                       :kill-buffer t)))
                    ("Shopping" :keys "s"
-                    :file "~/.local/share/notes/reference/shopping.org"
+                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                     :template "* %?"
                     :children
-                    (("Home" :keys "h" :olp ("Home"))
-                     ("Christmas" :keys "c" :olp ("Christmas"))
-                     ("Gift" :keys "g" :olp ("Gifts")) ; TODO either add recipient as tag or in olp
-                     ("Groceries" :keys "o" :olp ("Groceries"))))
+                    (("Home" :keys "h" :olp ("Projects" "home improvement"))
+                     ("Christmas" :keys "c" :olp ("Projects" "christmas"))
+                     ("Gift" :keys "g" :olp ("Projects" "gifts")) ; TODO either add recipient as tag or in olp
+                     ("Groceries" :keys "o" :olp ("Projects" "groceries"))))
                    (:group "Reference"
-                    :file "~/.local/share/notes/reference/capture.org"
+                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                     :template "* %?"
                     :children
                     (("Food"
                       :keys "f"
                       :children
-                      (("Recipe"     :keys "r" :olp ("Recipes"))
-                       ("Cocktail"   :keys "c" :olp ("Cocktails"))
-                       ("Restaurant" :keys "s" :olp ("Restaurants"))))
+                      (("Recipe"     :keys "r" :olp ("Projects" "recipes"))
+                       ("Cocktail"   :keys "c" :olp ("Projects" "cocktails"))
+                       ("Restaurant" :keys "s" :olp ("Projects" "restaurants"))))
                      ("Media" :keys "e"
                       :children
-                      (("Movie"   :keys "m" :olp ("Movies"))
-                       ("Show"    :keys "s" :olp ("Shows"))
-                       ("Book"    :keys "b" :olp ("Books"))
-                       ("Article" :keys "a" :olp ("Articles"))
-                       ("Album"   :keys "l" :olp ("Albums"))))
-                     ("Repo" :keys "r" :olp ("Repos")))))))))
+                      (("Movie"   :keys "m" :olp ("Projects" "movies"))
+                       ("Show"    :keys "s" :olp ("Projects" "shows"))
+                       ("Book"    :keys "b" :olp ("Projects" "books"))
+                       ("Article" :keys "a" :olp ("Projects" "articles"))
+                       ("Album"   :keys "l" :olp ("Projects" "albums"))))
+                     ("Repo" :keys "r" :olp ("Projects" "repos")))))))))
 
 (after! emacs-everywhere
   (defun get-app-name ()
@@ -435,6 +435,7 @@
                      ((org-ql-block-header "\n Overdue")))
        (org-ql-block '(and (not (scheduled))
                            (not (done))
+                           (not (tags "@@someday_maybe"))
                            (level 2))
                      ((org-ql-block-header "\n Unscheduled")))
        (org-ql-block '(and (todo "WAIT"))
@@ -516,7 +517,8 @@
            (and (not (scheduled)) (level 2)))
        ;; only get tasks that are still "todo"
        ;; (not (tags "Incubate"))
-       (not (todo "WAIT" "DONE" "CNCL")))
+       (not (todo "WAIT" "DONE" "CNCL"))
+       (not (tags "@@someday_maybe")))
       :sort
       (priority todo)
       :narrow nil
@@ -536,7 +538,8 @@
            (and (not (scheduled)) (level 2)))
        ;; only get tasks that are still "todo"
        ;; (not (tags "Incubate"))
-       (not (todo "WAIT" "DONE" "CNCL")))
+       (not (todo "WAIT" "DONE" "CNCL"))
+       (not (tags "@@someday_maybe")))
       :sort
       (priority todo)
       :narrow nil
