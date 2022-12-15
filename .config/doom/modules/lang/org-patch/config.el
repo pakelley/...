@@ -440,8 +440,7 @@
                      ((org-ql-block-header "\n Unscheduled")))
        (org-ql-block '(and (todo "WAIT"))
                      ((org-ql-block-header "\n Waiting")))
-       (org-ql-block '(and (todo "DONE")
-                           (ts-a :on today))
+       (org-ql-block '(closed :on today)
                      ((org-ql-block-header "\n Completed today")))
        (org-ql-block '(and (tags ("%quick" "%easy"))
                            (ts-a :from +1 :to +3))
@@ -486,6 +485,7 @@
      (:name "Waiting"
       :todo "WAIT")
      (:name "Completed Today"
+      ;; TODO would be nice to include "CLOSED" today, rather than basing on scheduled time (but :log closed doesn't seem to be working for me)
       :and (:todo "DONE"
             :scheduled today))
      (:name "Could Pull In"
