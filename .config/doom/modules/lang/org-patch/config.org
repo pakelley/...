@@ -86,6 +86,9 @@ Right now this is only the recommendations from `org-gtd`, but I'll probably add
 (setq org-edna-use-inheritance t)
 (org-edna-mode 1)
 #+end_src
+Notably, I use the following property for edna to keep tasks from marking DONE tasks as NEXT:
+:TRIGGER: if next-sibling match("/+DONE") then else next-sibling todo!(NEXT) endif
+I tried to get !done? to work here, but it seemed to work the opposite of how I'd expect.
 * Roam
 #+begin_src elisp :noweb no-export
 (use-package! org-roam
