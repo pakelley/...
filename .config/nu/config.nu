@@ -23,3 +23,12 @@ pyenv rehash
 
 # zoxide
 source ~/.local/share/.zoxide.nu
+
+# custom commands
+
+# Rename the current tab
+def rename-tab [
+  name: string  # The new name for the current tab
+] {
+  zsh -c $"echo -ne \"\\x1b]0;($name)\\x1b\\\\\""
+}
