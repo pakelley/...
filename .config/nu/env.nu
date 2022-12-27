@@ -89,3 +89,7 @@ let-env PATH = ($env.PATH | append /Library/TeX/texbin)
 let-env PATH = ($env.PATH | append ("~/.cargo/bin" | path expand))
 
 let-env NVM_DIR = ("~/.nvm" | path expand)
+
+# zoxide
+# have to comment this out until a new release is cut that includes https://github.com/ajeetdsouza/zoxide/pull/495
+# zoxide init nushell | save -f ~/.local/share/.zoxide.nu

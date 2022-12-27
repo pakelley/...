@@ -1,4 +1,3 @@
-source ~/.config/dots/.config/nu/zoxide/.zoxide.nu
 source ~/.config/dots/.config/nu/starship/init.nu
 
 let $config = {
@@ -21,3 +20,6 @@ let $config = {
 # pyenv
 # Typically handled py `pyenv init`, but nu isn't supported so we have to do this manually
 pyenv rehash
+
+# zoxide
+source ~/.local/share/.zoxide.nu
