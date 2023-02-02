@@ -16,3 +16,4 @@
 (package! origami)
 (package! ox-pandoc)
 (package! poly-org)
+(package! burly)
