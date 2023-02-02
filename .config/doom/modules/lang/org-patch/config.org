@@ -1443,38 +1443,57 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
 - [ ] Fix the logic here once I refine my process for planning vs scheduling tasks
 #+name: quarterly-planning-orgql-views
 #+begin_src emacs-lisp :tangle no
+(defun +patch/start-of-this-quarter-ts (&optional as-of)
+  (let* ((base-ts (or as-of (ts-now)))
+         (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
+         (this-month (ts-month base-date))
+         (last-month-of-quarter (cond ((< this-month 4) 3)
+                                      ((< this-month 7) 6)
+                                      ((< this-month 10) 9)
+                                      (t 12))))
+    (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 base-date))))
+
+(defun +patch/end-of-this-quarter-ts (&optional as-of)
+  (let* ((base-ts (or as-of (ts-now)))
+         (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
+         (this-month (ts-month base-date))
+         (last-month-of-quarter (cond ((< this-month 4) 3)
+                                      ((< this-month 7) 6)
+                                      ((< this-month 10) 9)
+                                      (t 12)))
+         (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 base-date))))
+    (ts-dec 'second 1 first-month-of-next-quarter)))
+
+(defun +patch/start-of-last-quarter-ts (&optional as-of)
+  (let* ((base-ts (or as-of (ts-now)))
+         (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
+    (ts-dec 'month 3 start-of-this-quarter)))
+
+(defun +patch/end-of-last-quarter-ts (&optional as-of)
+  (let* ((base-ts (or as-of (ts-now)))
+         (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
+    (ts-dec 'second 1 start-of-this-quarter)))
+
 (setq
- planned-for-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                 (this-month (ts-month today))
-                                 (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                              ((< this-month 7) 6)
-                                                              ((< this-month 10) 9)
-                                                              (t 12)))
-                                 (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                                 (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter)))
-                            `(or
-                              (scheduled :to ,(ts-format end-of-quarter))
-                              (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
- scheduled-for-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                   (this-month (ts-month today))
-                                   (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                                ((< this-month 7) 6)
-                                                                ((< this-month 10) 9)
-                                                                (t 12)))
-                                   (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                                   (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter))
-                                   (start-of-quarter (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 today))))
-                              `(scheduled :from ,(ts-format start-of-quarter) :to ,(ts-format end-of-quarter)))
- opened-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                            (this-month (ts-month today))
-                            (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                         ((< this-month 7) 6)
-                                                         ((< this-month 10) 9)
-                                                         (t 12)))
-                            (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                            (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter))
-                            (start-of-quarter (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 today))))
-                       `(opened :from ,(ts-format start-of-quarter) :to ,(ts-format end-of-quarter))))
+ planned-for-this-quarter (let* ((end-of-quarter (+patch/end-of-this-quarter-ts)))
+                            `(or (scheduled :to ,(ts-format end-of-quarter))
+                                 (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
+ scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                              :to ,(ts-format (+patch/end-of-this-quarter-ts)))
+ opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                       :to ,(ts-format (+patch/end-of-this-quarter-ts))))
+
+(defun +patch/num-tasks-completed-last-quarter (&optional as-of)
+  (length
+   (org-ql-query
+     :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+     :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
+
+(defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
+  (length
+   (org-ql-query
+     :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+     :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
 
 (+patch/set-orgql-view
  "This Quarter's Projects"
@@ -1499,7 +1518,7 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
    :sort (priority todo)
    :narrow nil
    :super-groups ((:auto-planning t))
-   :title "Quarterly Planning"))
+   :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter))))
 #+end_src
 
 #+name: quarterly-planning-view
@@ -1543,15 +1562,11 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
 (after! ts
   (after! org-ql
 
-
     (defun +patch/org-element-contents (element)
       "Get the contents of the partially specified 'element' that only consists of '(TYPE PROPS)'."
       (let ((beg (org-element-property :contents-begin element))
             (end (org-element-property :contents-end element)))
         (buffer-substring-no-properties beg end)))
-
-
-
 
     (defun +patch/maybe-parse-element-date (prop-name task)
       (let ((value (org-element-property prop-name task)))
@@ -1579,8 +1594,7 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
                     ;; keeping scheduled so this quarter is still accurate, but this should be removed afterward
                     ,scheduled-for-this-quarter)))))
 
-
-                    #+end_src
+#+end_src
 
 *** weekly planning
 Every week I process my inbox, check in on my progress on my quarterly goals, and schedule a rough timeline for the week (I try to limit the planning to the most important 2-ish tasks I really need to get done each day so I can be flexible about getting things done)
@@ -1629,9 +1643,8 @@ These are the babel blocks that need to be run to re-generate the burnup chart f
 #+begin_src emacs-lisp :tangle no :results silent
 (this-quarters-tasks)
 #+end_src
-# :results silent
 #+name: plot-quarters-tasks
-#+begin_src jupyter-python :session burnup :var burnup_data=quarters-tasks :tangle no
+#+begin_src jupyter-python :session burnup :var burnup_data=quarters-tasks :tangle no :results silent
 import pandas as pd
 import numpy as np
 import matplotlib

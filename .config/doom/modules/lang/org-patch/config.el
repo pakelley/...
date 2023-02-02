@@ -688,38 +688,46 @@
           :narrow nil
           :super-groups ((:auto-planning t))
           :title "Yearly Planning"))
+       (defun +patch/start-of-this-quarter-ts (&optional as-of)
+         (let* ((base-ts (or as-of (ts-now)))
+                (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
+                (this-month (ts-month base-date))
+                (last-month-of-quarter (cond ((< this-month 4) 3)
+                                             ((< this-month 7) 6)
+                                             ((< this-month 10) 9)
+                                             (t 12))))
+           (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 base-date))))
+       
+       (defun +patch/end-of-this-quarter-ts (&optional as-of)
+         (let* ((base-ts (or as-of (ts-now)))
+                (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
+                (this-month (ts-month base-date))
+                (last-month-of-quarter (cond ((< this-month 4) 3)
+                                             ((< this-month 7) 6)
+                                             ((< this-month 10) 9)
+                                             (t 12)))
+                (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 base-date))))
+           (ts-dec 'second 1 first-month-of-next-quarter)))
+       
+       (defun +patch/start-of-last-quarter-ts (&optional as-of)
+         (let* ((base-ts (or as-of (ts-now)))
+                (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
+           (ts-dec 'month 3 start-of-this-quarter)))
+       
+       (defun +patch/end-of-last-quarter-ts (&optional as-of)
+         (let* ((base-ts (or as-of (ts-now)))
+                (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
+           (ts-dec 'second 1 start-of-this-quarter)))
+       
        (setq
-        planned-for-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                        (this-month (ts-month today))
-                                        (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                                     ((< this-month 7) 6)
-                                                                     ((< this-month 10) 9)
-                                                                     (t 12)))
-                                        (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                                        (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter)))
-                                   `(or
-                                     (scheduled :to ,(ts-format end-of-quarter))
-                                     (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
-        scheduled-for-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                          (this-month (ts-month today))
-                                          (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                                       ((< this-month 7) 6)
-                                                                       ((< this-month 10) 9)
-                                                                       (t 12)))
-                                          (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                                          (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter))
-                                          (start-of-quarter (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 today))))
-                                     `(scheduled :from ,(ts-format start-of-quarter) :to ,(ts-format end-of-quarter)))
-        opened-this-quarter (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                   (this-month (ts-month today))
-                                   (last-month-of-quarter (cond ((< this-month 4) 3)
-                                                                ((< this-month 7) 6)
-                                                                ((< this-month 10) 9)
-                                                                (t 12)))
-                                   (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 today)))
-                                   (end-of-quarter (ts-dec 'second 1 first-month-of-next-quarter))
-                                   (start-of-quarter (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 today))))
-                              `(opened :from ,(ts-format start-of-quarter) :to ,(ts-format end-of-quarter))))
+        planned-for-this-quarter (let* ((end-of-quarter (+patch/end-of-this-quarter-ts)))
+                                   `(or (scheduled :to ,(ts-format end-of-quarter))
+                                        (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
+        scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                                               :to ,(ts-format (+patch/end-of-this-quarter-ts)))
+        opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                                     :to ,(ts-format (+patch/end-of-this-quarter-ts))))
+       
        
        (+patch/set-orgql-view
         "This Quarter's Projects"
@@ -1215,6 +1223,18 @@
 
 (after! ts
   (after! org-ql
+
+    (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
+      (length
+       (org-ql-query
+         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+         :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
+
+    (defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
+      (length
+       (org-ql-query
+         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+         :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
 
 
     (defun +patch/org-element-contents (element)
