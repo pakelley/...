@@ -1572,6 +1572,13 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
     (defun my-ts< (left right)
       (ts< (ts-parse (car left)) (ts-parse (car right))))
 
+    (defun num-tasks-todo ()
+      (let* ((tasks (org-ql-select (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+                      `(and (todo "TODO" "NEXT")
+                            (not (ancestors (todo "TODO" "NEXT")))))))
+
+        (length tasks)))
+
     (defun num-tasks-finished-last-quarter-by-day (&optional as-of)
       (let* ((first-of-this-month-ts (ts-apply :day 1 :hour 0 :minute 0 :second 0 (or as-of (ts-now))))
              (first-of-last-month-ts (ts-dec 'month 3 first-of-this-month-ts))
@@ -1742,7 +1749,6 @@ for col, color in zip(["opened", "scheduled", "closed", "ideal"], sns.color_pale
                 color=color)
 ax.get_figure().savefig("./quarters-burnup.png")
 #+end_src
-
 
 **** view
 The view for my weekly planning has all actions currently scheduled (up until the first day of this week) on the left (grouped by outline path). On the top right is all tasks scheduled for this week, grouped by day. On the bottom right, I have the burnup chart for this quarter.

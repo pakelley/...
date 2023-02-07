@@ -846,10 +846,23 @@
                                    `(or (scheduled :to ,(ts-format end-of-quarter))
                                         (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
         scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                                               :to ,(ts-format (+patch/end-of-this-quarter-ts)))
+                                     :to ,(ts-format (+patch/end-of-this-quarter-ts)))
         opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                                     :to ,(ts-format (+patch/end-of-this-quarter-ts))))
+                              :to ,(ts-format (+patch/end-of-this-quarter-ts))))
        
+       (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
+         (length
+          (org-ql-query
+            :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+            :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
+       
+       (defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
+         (length
+          (org-ql-query
+            :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+            :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
+       
+       ;; (setq
        
        (+patch/set-orgql-view
         "This Quarter's Projects"
@@ -874,7 +887,7 @@
           :sort (priority todo)
           :narrow nil
           :super-groups ((:auto-planning t))
-          :title "Quarterly Planning"))
+          :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter))))
        (setq
         scheduled-for-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
                                        (dow (ts-day-of-week-num today))
@@ -1346,27 +1359,11 @@
 (after! ts
   (after! org-ql
 
-    (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
-      (length
-       (org-ql-query
-         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-         :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
-
-    (defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
-      (length
-       (org-ql-query
-         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-         :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
-
-
     (defun +patch/org-element-contents (element)
       "Get the contents of the partially specified 'element' that only consists of '(TYPE PROPS)'."
       (let ((beg (org-element-property :contents-begin element))
             (end (org-element-property :contents-end element)))
         (buffer-substring-no-properties beg end)))
-
-
-
 
     (defun +patch/maybe-parse-element-date (prop-name task)
       (let ((value (org-element-property prop-name task)))
