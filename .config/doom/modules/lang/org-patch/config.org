@@ -887,8 +887,12 @@ Notably, this is where I'm defining what a task vs project are:
   :after org-agenda
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
+  :defines (+patch/set-orgql-view +patch/is-action)
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
+  <<planning-defs-orgql>>
+  <<view-planning-props-orgql>>
+  <<planning-predicates-orgql>>
   (setq
    +patch/daily-agenda-super-groups
    `((:name "Today"
@@ -1322,13 +1326,9 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
 #+begin_src emacs-lisp :noweb no-export
 (use-package burly
   :after org-ql
-  :commands (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view burly-open-bookmark +patch/gen-and-show-daily-agenda)
-  :config
-  <<yearly-planning-view>>
-  <<quarterly-planning-view>>
-  <<weekly-planning-view>>
-  <<daily-planning-cmds>>
-  <<daily-planning-view>>
+  :commands (burly-open-bookmark +patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+  :defines (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+  :init
   (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
               (:prefix-map ("DEL" . "GTD")
                            (:prefix ("V" . "Planning Views")
@@ -1343,7 +1343,14 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
               :m "<delete>" nil)
 
         (:leader
-         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark))))
+         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark)))
+  :config
+  <<yearly-planning-view>>
+  <<quarterly-planning-view>>
+  <<weekly-planning-view>>
+  <<daily-planning-cmds>>
+  <<daily-planning-view>>
+  )
 #+end_src
 *** yearly planning
 This is a process that I do yearly, where I go through all of my tasks and get everything into a good state. It takes a while, but it's getting faster and it's worth it to keep everything up-to-date (plus it doesn't take too long if you're doing it regularly). My process is to:
@@ -1393,11 +1400,18 @@ A view of my upcoming year. On the left, I can see all TODO/NEXT projects (or ac
       (add-to-list 'org-ql-views `(,view-name . ,view-spec)))))
 #+end_src
 
+#+name: planning-defs-orgql
+#+begin_src emacs-lisp :tangle no
+(setq
+  +patch/is-project '(and (ancestors "Projects") (children))
+  +patch/is-action '(not (children)))
+
+#+end_src
+
+
 #+name: yearly-planning-orgql-views
 #+begin_src emacs-lisp :tangle no
 (setq
- +patch/is-project '(and (ancestors "Projects") (children))
- +patch/is-action '(not (children))
  +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
                                          (not (ancestors (todo "TODO" "NEXT"))))
  +patch/is-planned `(and ,+patch/is-top-level-selected-task

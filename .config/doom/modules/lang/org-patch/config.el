@@ -531,8 +531,13 @@
   :after org-agenda
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
+  :defines (+patch/set-orgql-view +patch/is-action)
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
+  (setq
+    +patch/is-project '(and (ancestors "Projects") (children))
+    +patch/is-action '(not (children)))
+  
   (defun +patch--get-path (task)
     "Try to find the path to TASK by walking up ':parent' tasks (found using the
   org element API), then getting the ':path' property of the top."
@@ -784,8 +789,6 @@
                (setf (cdr view) view-spec)
              (add-to-list 'org-ql-views `(,view-name . ,view-spec)))))
        (setq
-        +patch/is-project '(and (ancestors "Projects") (children))
-        +patch/is-action '(not (children))
         +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
                                                 (not (ancestors (todo "TODO" "NEXT"))))
         +patch/is-planned `(and ,+patch/is-top-level-selected-task
@@ -1193,7 +1196,24 @@
 
 (use-package burly
   :after org-ql
-  :commands (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view burly-open-bookmark +patch/gen-and-show-daily-agenda)
+  :commands (burly-open-bookmark +patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+  :defines (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+  :init
+  (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
+              (:prefix-map ("DEL" . "GTD")
+                           (:prefix ("V" . "Planning Views")
+                            :desc "Yearly Planning"     "y" (cmd! (burly-open-bookmark "Burly: Yearly Planning"))
+                            :desc "Quarterly Planning"  "q" (cmd! (burly-open-bookmark "Burly: Quarterly Planning"))
+                            :desc "Weekly Planning"     "w" (cmd! (burly-open-bookmark "Burly: Weekly Planning"))
+                            :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
+                            :desc "Daily Planning"      "d" #'+patch/gen-and-show-daily-agenda))
+              "<backspace>" nil
+              :m "<backspace>" nil
+              "<delete>" nil
+              :m "<delete>" nil)
+
+        (:leader
+         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark)))
   :config
   (defun +patch/bookmark-org-ql-view (org-ql-view-name)
       (bookmark-store
@@ -1340,21 +1360,7 @@
     (org-agenda nil ",")
     (+patch/refresh-daily-agenda)
     (burly-open-bookmark "Burly: Daily Planning"))
-  (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
-              (:prefix-map ("DEL" . "GTD")
-                           (:prefix ("V" . "Planning Views")
-                            :desc "Yearly Planning"     "y" (cmd! (burly-open-bookmark "Burly: Yearly Planning"))
-                            :desc "Quarterly Planning"  "q" (cmd! (burly-open-bookmark "Burly: Quarterly Planning"))
-                            :desc "Weekly Planning"     "w" (cmd! (burly-open-bookmark "Burly: Weekly Planning"))
-                            :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
-                            :desc "Daily Planning"      "d" #'+patch/gen-and-show-daily-agenda))
-              "<backspace>" nil
-              :m "<backspace>" nil
-              "<delete>" nil
-              :m "<delete>" nil)
-
-        (:leader
-         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark))))
+  )
 
 (after! ts
   (after! org-ql
