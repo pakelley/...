@@ -518,21 +518,25 @@ Because all of my TODO/NEXT tasks will have at least one thing logged (because I
   :after (org org-capture)
   :commands doct
   :custom
-  <<org-capture-templates>>)
+  <<org-capture-templates>>
+  <<doct-properties-hook>>
+  )
 
 #+end_src
-Nice function for passing properties to `doct`
+Nice function for passing properties to `doct` modified from [[https://github.com/progfolio/doct/issues/13][this GH issue]].
+#+name: doct-properties-hook
 #+begin_src elisp :tangle no
-(defun my/doct-properties ()
-                   "Add declaration's :properties to current entry."
-                   (let ((properties (doct-get :properties)))
-                     (dolist (keyword (seq-filter #'keywordp properties))
-                       (org-set-property (substring (symbol-name keyword) 1)
-                                         (plist-get properties keyword)))))
+(defun +patch/doct-properties ()
+  "Add declaration's :properties to current entry."
+  (let ((properties (doct-get :properties)))
+    (dolist (keyword (seq-filter #'keywordp properties))
+      (org-set-property (substring (symbol-name keyword) 1)
+                        (replace-regexp-in-string "\n$" ""
+                                                  (org-capture-fill-template (plist-get properties keyword)))))))
 ;; Usage:
 ;; (doct '(("My capture template"
 ;;          ...
-;;          :hook my/org-property-drawer
+;;          :hook +patch/org-property-drawer
 ;;          :properties (:anki_deck "${category}"))))
 #+end_src
 See the [[https://orgmode.org/manual/Template-expansion.html][template expansion docs]] for more info on the syntax here
@@ -552,6 +556,8 @@ Appending to existing templates to keep project templates
                   :keys "2"
                   :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                   :olp ("Calendar")
+                  :hook +patch/doct-properties
+                  :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
                   :template ("* TODO %?"
                              "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
                   :prepare-finalize (lambda () (progn (org-priority)
