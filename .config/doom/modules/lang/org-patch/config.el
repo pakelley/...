@@ -533,6 +533,128 @@
   (org-super-agenda-date-format "%e %B %Y - %A")
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
+  (defun +patch--get-path (task)
+    "Try to find the path to TASK by walking up ':parent' tasks (found using the
+  org element API), then getting the ':path' property of the top."
+    (when task
+      (or (org-element-property :path task)
+          (+patch--get-path (org-element-property :parent task)))))
+  
+  (defmacro +patch--from-task-location (task &rest body)
+    "Runs BODY from the buffer of the task specified by 'task'. This will try to
+  find the buffer via the ':org-marker' property in the org element api, or by
+  walking up ':parent' tasks until the top, and getting the ':path' property and
+  getting a buffer (opening if necessary) for that file"
+     `(let ((buffer (if-let ((marker (org-element-property :org-marker ,task)))
+                       (marker-buffer marker)
+                     (find-file-noselect (+patch--get-path task)))))
+       (with-current-buffer buffer
+         ,@body)))
+  
+  (defun +patch--get-contents (task)
+    "Using the org element API, get the contents of a task (i.e. the plain text
+  after the headline).
+  
+  If there's a marker, use that (because it's more robust), otherwise recursively
+  search up the task tree for a ':path' property (and hope for the best)."
+    (+patch--from-task-location task
+      (let* ((beg (org-element-property :contents-begin task))
+             (end (org-element-property :contents-end task)))
+        (when beg (when end (buffer-substring-no-properties beg end))))))
+  
+  (defconst +patch/org-ql-opened-regexp
+    (rx bol ":OPENED:   " (group (1+ not-newline))))
+  
+  (defun +patch/get-opened-date (task)
+    "Get the date a task was opened (i.e. moved from READY to TODO/NEXT) using
+  the org element api. Requires fetching the content of the task (which I don't
+  have a reliable process for yet)."
+    (let* ((opened-prop (org-element-property :OPENED task)))
+      (when opened-prop
+        (let* ((opened-ts (ts-parse opened-prop))
+               (opened-date (ts-format "%Y-%m-%d" opened-ts)))
+          opened-date))))
+  
+  (defun +patch/set-opened-date (&optional pom date)
+    "Set the OPENED date of a task."
+    (interactive)
+    (let* ((pom (or pom (point)))
+           (date (or date (org-read-date)))
+           (date-str (ts-format "%Y-%m-%d" (ts-parse date))))
+      (org-entry-put pom "OPENED" date-str)))
+  
+  (defun +patch/agenda-set-opened-date (arg &optional date)
+    "Set the OPENED date of a task from the org agenda."
+    (interactive "P")
+    (+patch/set-opened-date (org-get-at-bol 'org-marker) date))
+  
+  (defun +patch/reopen-task (&optional pom date)
+    "Change the OPENED date of a task, and unchedule any scheduled time."
+    (org-agenda-schedule '(4))  ;; prefix arg to unschedule
+    (+patch/set-opened-date pom date))
+  
+  (defun +patch/agenda-reopen-task (arg &optional date)
+    "Change the OPENED date of a task, and unchedule any scheduled time, from the
+  org agenda."
+    (interactive "P")
+    (+patch/reopen-task (org-get-at-bol 'org-marker) date))
+  
+  (defun +patch/mark-task-for-planning (&optional pom)
+    "Mark a task (at 'pom' or 'point') to be planned in yearly planning (i.e. set
+  the 'TO-PLAN' property)."
+    (org-entry-put (or pom (point)) "TO-PLAN" ""))
+  
+  (defun +patch/mark-task-as-planned (&optional pom)
+    "Mark a task (at 'pom' or 'point') as planned in yearly planning (i.e. unset
+  the 'TO-PLAN' property)."
+    (interactive)
+    (org-entry-delete (or pom (point)) "TO-PLAN"))
+  
+  (defun +patch/open-task-after-state-change ()
+    "Open a task (by setting the 'OPENED' and 'TO-PLAN' properties). Meant to be
+  used in the 'org-after-todo-state-change-hook'."
+    (when (equal org-last-state "READY")
+      (+patch/set-opened-date (point)
+                              (format-time-string
+                               "%Y-%m-%d"
+                               org-log-note-effective-time))
+      (+patch/mark-task-for-planning)))
+  (add-hook 'org-after-todo-state-change-hook '+patch/open-task-after-state-change)
+  (org-ql-defpred opened (&key from to _on)
+    "Return non-nil if current entry contains READY state change in given period."
+    :normalizers ((`(,predicate-names ,(and num-days (pred numberp)))
+                   ;; (clocked) and (closed) implicitly look into the past.
+                   (let* ((from-day (* -1 num-days))
+                          (rest (list :from from-day)))
+                     (org-ql--normalize-from-to-on
+                       `(opened :from ,from))))
+                  (`(,predicate-names . ,rest)
+                   (org-ql--normalize-from-to-on
+                     `(opened :from ,from :to ,to))))
+    :preambles
+    ((`(,predicate-names . ,rest)
+      (list
+       ;; Predicate needs testing only when args are present.
+       :query (-let (((&keys :from :to :on) rest))
+                ;; TODO: This used to be (when (or from to on) query), but
+                ;; that doesn't seem right, so I changed it to this if, and the
+                ;; tests pass either way.  Might deserve a little scrutiny.
+                (if (or from to on)
+                    query
+                  t)))))
+    :body
+      (when-let ((opened-prop (org-entry-get (point) "OPENED")))
+        (let ((opened-at (ts-parse opened-prop)))
+          (save-excursion
+            (cond ((not (or from to)) opened-at)
+                  ((and from to) (ts-in from to opened-at))
+                  (from (ts<= from opened-at))
+                  (to (ts<= opened-at to))))))
+    )
+  
+  (org-ql-defpred to-plan (&rest names)
+    "Check whether a task needs to be planned (i.e. has a 'TO-PLAN' property)."
+    :body (property "TO-PLAN"))
   (setq
    +patch/daily-agenda-super-groups
    `((:name "Today"
@@ -667,9 +789,9 @@
         +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
                                                 (not (ancestors (todo "TODO" "NEXT"))))
         +patch/is-planned `(and ,+patch/is-top-level-selected-task
-                                (scheduled :from +1))
+                                (not to-plan))
         +patch/to-be-planned `(and ,+patch/is-top-level-selected-task
-                                   (not ,+patch/is-planned)))
+                                   (to-plan)))
        
        (+patch/set-orgql-view
         "This Year's Projects"

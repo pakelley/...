@@ -370,39 +370,47 @@ Use org modern to make todos look nice.
         ("WAIT"     . (:background "#dc8cc3" :foreground "black" :weight semibold))
         ("CNCL"     . (:background "#d26478" :foreground "black" :weight semibold))))
 #+end_src
-We'll want to be able to interact with the opened date (i.e. the date a task was moved from READY to TODO/NEXT) from org-ql, so let's make some functions for the main tasks we'll want: viewing the opened date (e.g. `:select` in `org-ql-query`), and predicate/fitering (e.g. `where` in `org-ql-query`).
-Viewing funtions:
-#+name: view-opened-date-orgql
+** Getters/Setters
+We'll want to be able to interact with the opened date (i.e. the date a task was moved from READY to TODO/NEXT) and TO-PLAN status (used during yearly planning) from org-ql, so let's make some functions for the main tasks we'll want: viewing the opened date (e.g. `:select` in `org-ql-query`), and predicate/fitering (e.g. `where` in `org-ql-query`).
+Viewing funtions for "opened":
+#+name: view-planning-props-orgql
 #+begin_src emacs-lisp :tangle no
-(defun +patch/get-task-file (task)
-  "Get the file that a task is in. Important for retrieving the content of a task. This function is definitely specific to my own task organization."
-  (let ((archive-file (org-element-property :ARCHIVE_FILE task)))
-    (or archive-file "~/.local/share/notes/gtd/org-gtd-tasks.org")))
-
-(defun +patch/get-path (task)
+(defun +patch--get-path (task)
+  "Try to find the path to TASK by walking up ':parent' tasks (found using the
+org element API), then getting the ':path' property of the top."
   (when task
     (or (org-element-property :path task)
-        (+patch/get-path (org-element-property :parent task)))))
+        (+patch--get-path (org-element-property :parent task)))))
 
-(defun +patch/get-contents (task)
-  "Using the org element API, get the contents of a task (i.e. the plain text after the headline).
+(defmacro +patch--from-task-location (task &rest body)
+  "Runs BODY from the buffer of the task specified by 'task'. This will try to
+find the buffer via the ':org-marker' property in the org element api, or by
+walking up ':parent' tasks until the top, and getting the ':path' property and
+getting a buffer (opening if necessary) for that file"
+   `(let ((buffer (if-let ((marker (org-element-property :org-marker ,task)))
+                     (marker-buffer marker)
+                   (find-file-noselect (+patch--get-path task)))))
+     (with-current-buffer buffer
+       ,@body)))
 
-If there's a marker, use that (because it's more robust), otherwise recursively search up the task tree for a ':path' property (and hope for the best)."
-  (with-current-buffer (let ((marker (org-element-property :org-marker task)))
-                         (if marker (marker-buffer marker)
-                           (find-file-noselect (+patch/get-path task))))
+(defun +patch--get-contents (task)
+  "Using the org element API, get the contents of a task (i.e. the plain text
+after the headline).
+
+If there's a marker, use that (because it's more robust), otherwise recursively
+search up the task tree for a ':path' property (and hope for the best)."
+  (+patch--from-task-location task
     (let* ((beg (org-element-property :contents-begin task))
            (end (org-element-property :contents-end task)))
       (when beg (when end (buffer-substring-no-properties beg end))))))
-
-(defconst +patch/old-org-ql-opened-regexp
-  (rx bol "- State \"" (1+ letter) "\"" (1+ blank) "from \"READY\"" (1+ blank) (group (1+ not-newline))))
 
 (defconst +patch/org-ql-opened-regexp
   (rx bol ":OPENED:   " (group (1+ not-newline))))
 
 (defun +patch/get-opened-date (task)
-  "Get the date a task was opened (i.e. moved from READY to TODO/NEXT) using the org element api. Requires fetching the content of the task (which I don't have a reliable process for yet)."
+  "Get the date a task was opened (i.e. moved from READY to TODO/NEXT) using
+the org element api. Requires fetching the content of the task (which I don't
+have a reliable process for yet)."
   (let* ((opened-prop (org-element-property :OPENED task)))
     (when opened-prop
       (let* ((opened-ts (ts-parse opened-prop))
@@ -410,6 +418,7 @@ If there's a marker, use that (because it's more robust), otherwise recursively 
         opened-date))))
 
 (defun +patch/set-opened-date (&optional pom date)
+  "Set the OPENED date of a task."
   (interactive)
   (let* ((pom (or pom (point)))
          (date (or date (org-read-date)))
@@ -417,27 +426,46 @@ If there's a marker, use that (because it's more robust), otherwise recursively 
     (org-entry-put pom "OPENED" date-str)))
 
 (defun +patch/agenda-set-opened-date (arg &optional date)
+  "Set the OPENED date of a task from the org agenda."
   (interactive "P")
   (+patch/set-opened-date (org-get-at-bol 'org-marker) date))
 
 (defun +patch/reopen-task (&optional pom date)
+  "Change the OPENED date of a task, and unchedule any scheduled time."
   (org-agenda-schedule '(4))  ;; prefix arg to unschedule
   (+patch/set-opened-date pom date))
 
 (defun +patch/agenda-reopen-task (arg &optional date)
+  "Change the OPENED date of a task, and unchedule any scheduled time, from the
+org agenda."
   (interactive "P")
   (+patch/reopen-task (org-get-at-bol 'org-marker) date))
 
-(defun +patch/set-opened-date-after-state-change ()
+(defun +patch/mark-task-for-planning (&optional pom)
+  "Mark a task (at 'pom' or 'point') to be planned in yearly planning (i.e. set
+the 'TO-PLAN' property)."
+  (org-entry-put (or pom (point)) "TO-PLAN" ""))
+
+(defun +patch/mark-task-as-planned (&optional pom)
+  "Mark a task (at 'pom' or 'point') as planned in yearly planning (i.e. unset
+the 'TO-PLAN' property)."
+  (interactive)
+  (org-entry-delete (or pom (point)) "TO-PLAN"))
+
+(defun +patch/open-task-after-state-change ()
+  "Open a task (by setting the 'OPENED' and 'TO-PLAN' properties). Meant to be
+used in the 'org-after-todo-state-change-hook'."
   (when (equal org-last-state "READY")
     (+patch/set-opened-date (point)
                             (format-time-string
                              "%Y-%m-%d"
-                             org-log-note-effective-time))))
-(add-hook 'org-after-todo-state-change-hook '+patch/set-opened-date-after-state-change)
+                             org-log-note-effective-time))
+    (+patch/mark-task-for-planning)))
+(add-hook 'org-after-todo-state-change-hook '+patch/open-task-after-state-change)
     #+end_src
+
 Predicate functions:
-#+name: planning-predicate-orgql
+#+name: planning-predicates-orgql
 #+begin_src emacs-lisp :tangle no
 (org-ql-defpred opened (&key from to _on)
   "Return non-nil if current entry contains READY state change in given period."
@@ -471,6 +499,9 @@ Predicate functions:
                 (to (ts<= opened-at to))))))
   )
 
+(org-ql-defpred to-plan (&rest names)
+  "Check whether a task needs to be planned (i.e. has a 'TO-PLAN' property)."
+  :body (property "TO-PLAN"))
 #+end_src
 
 Because all of my TODO/NEXT tasks will have at least one thing logged (because I log when tasks go from READY to TODO/NEXT), log state changes into the logbook to keep task contents tidy.
@@ -1370,9 +1401,9 @@ A view of my upcoming year. On the left, I can see all TODO/NEXT projects (or ac
  +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
                                          (not (ancestors (todo "TODO" "NEXT"))))
  +patch/is-planned `(and ,+patch/is-top-level-selected-task
-                         (scheduled :from +1))
+                         (not to-plan))
  +patch/to-be-planned `(and ,+patch/is-top-level-selected-task
-                            (not ,+patch/is-planned)))
+                            (to-plan)))
 
 (+patch/set-orgql-view
  "This Year's Projects"
