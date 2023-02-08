@@ -6,5 +6,6 @@ brew "isync"
 # brew "ledger"
 # brew "mailutils"
 # brew "mu"
+brew "notmuch"
 # brew "offlineimap", restart_service: true
 brew "railwaycat/emacsmacport/emacs-mac", args: ["with-no-title-bars", "without-modules", "with-native-comp"], link: false
