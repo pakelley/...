@@ -284,6 +284,18 @@
   :after (org org-capture)
   :commands doct
   :custom
+  (defun +patch/doct-properties ()
+    "Add declaration's :properties to current entry."
+    (let ((properties (doct-get :properties)))
+      (dolist (keyword (seq-filter #'keywordp properties))
+        (org-set-property (substring (symbol-name keyword) 1)
+                          (replace-regexp-in-string "\n$" ""
+                                                    (org-capture-fill-template (plist-get properties keyword)))))))
+  ;; Usage:
+  ;; (doct '(("My capture template"
+  ;;          ...
+  ;;          :hook +patch/org-property-drawer
+  ;;          :properties (:anki_deck "${category}"))))
   ;; setq
   (org-capture-templates
    (append org-capture-templates
@@ -297,7 +309,10 @@
                     :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                     :olp ("Calendar")
                     :hook +patch/doct-properties
-                    :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                    ;; NOTE: Timestamp needs to be inactive (using the third arg
+                    ;;       of org-insert-time-stamp) to avoid the OPENED date
+                    ;;       appearing in the agenda.
+                    :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
                     :template ("* TODO %?"
                                "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
                     :prepare-finalize (lambda () (progn (org-priority)
@@ -362,18 +377,6 @@
                        ("Article" :keys "a" :olp ("Projects" "articles"))
                        ("Album"   :keys "l" :olp ("Projects" "albums"))))
                      ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
-  (defun +patch/doct-properties ()
-    "Add declaration's :properties to current entry."
-    (let ((properties (doct-get :properties)))
-      (dolist (keyword (seq-filter #'keywordp properties))
-        (org-set-property (substring (symbol-name keyword) 1)
-                          (replace-regexp-in-string "\n$" ""
-                                                    (org-capture-fill-template (plist-get properties keyword)))))))
-  ;; Usage:
-  ;; (doct '(("My capture template"
-  ;;          ...
-  ;;          :hook +patch/org-property-drawer
-  ;;          :properties (:anki_deck "${category}"))))
   )
 
 (after! emacs-everywhere
