@@ -1,0 +1,85 @@
+# docs: https://isync.sourceforge.io/mbsync.html
+
+IMAPAccount protonmail
+Host 127.0.0.1
+Port 1143
+User pakelley@protonmail.com
+# Re-generate pass file with the following:
+# ❯ (echo (keepassxc-cli show --show-protected ~/.local/share/private/Passwords.kdbx protonmail-bridge
+# ∙        | grep Password
+# ∙        | sed 's/Password: //')
+# ∙  | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mbsync/account.protonmail.pass.gpg)
+# And you can test with:
+# gpg --decrypt --armor --local-user $env.KEYID ~/.local/share/mbsync/account.protonmail.pass.gpg
+PassCmd +"gpg --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mbsync/account.protonmail.pass.gpg"
+SSLType None # doesn't seem to be necessary, but may need to re-consider this from a privacy perspective
+
+# REMOTE STORAGE (USE THE IMAP ACCOUNT SPECIFIED ABOVE)
+IMAPStore protonmail-remote
+Account protonmail
+
+MaildirStore protonmail-local
+SubFolders Verbatim # delimit folders with a "/", as you'd expect
+Path ~/.local/share/mail/account.protonmail/
+
+# folders
+# TODO is it worth keeping "All Mail", when it duplicates all other messages?
+Channel protonmail-all
+Far :protonmail-remote:"All Mail"
+Near :protonmail-local:"all"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-archive
+Far :protonmail-remote:"Archive"
+Near :protonmail-local:"archive"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-sent
+Far :protonmail-remote:"Sent"
+Near :protonmail-local:"sent"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-spam
+Far :protonmail-remote:"Spam"
+Near :protonmail-local:"spam"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-trash
+Far :protonmail-remote:"Trash"
+Near :protonmail-local:"trash"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-inbox
+Far :protonmail-remote:"Inbox"
+Near :protonmail-local:"inbox"
+Create Both
+Expunge Both
+SyncState *
+
+Channel protonmail-other
+Far :protonmail-remote:
+Near :protonmail-local:
+Patterns "*" !"All Mail" !"all" ! "Archive" !"archive" !"Sent" !"sent" !"Spam" !"spam" !"Trash" !"trash" !"Inbox" !"inbox"
+Create Both
+Expunge Both
+SyncState *
+
+# put all of the folders into a group
+Group protonmail
+Channel protonmail-all
+Channel protonmail-archive
+Channel protonmail-sent
+Channel protonmail-spam
+Channel protonmail-trash
+Channel protonmail-inbox
+Channel protonmail-other

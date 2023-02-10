@@ -50,7 +50,7 @@ primary_email=patrick@the-kelleys.com
 
 [new]
 tags=new
-ignore=/.*[.](json|lock|bak)$/
+ignore=/.*[.](json|lock|bak)$/;.mbsyncstate;.uidvalidity
 
 # Search configuration
 #
