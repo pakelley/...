@@ -1,10 +1,20 @@
 local wezterm = require 'wezterm';
 local act = wezterm.action
 
+-- the simplest way to make this portable between m1 and non-m1 macs seems to be just checking which path exists ¯\_(ツ)_/¯
+function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+if file_exists("/opt/homebrew/bin/nu") then
+  default_prog = "/opt/homebrew/bin/nu"
+else
+  default_prog = "/usr/local/bin/nu"
+end
+
 return {
-  -- m1 path
-  -- default_prog = { '/opt/homebrew/bin/nu' },
-  default_prog = { '/usr/local/bin/nu' },
+  default_prog = { default_prog },
 
   font = wezterm.font 'Fira Code',
 

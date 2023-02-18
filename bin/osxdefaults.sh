@@ -59,3 +59,7 @@ defaults write com.apple.menuextra.clock IsAnalog -bool true
 defaults write org.herf.Flux location "32.715330,-117.157260"
 defaults write org.herf.Flux locationTextField "San Diego"
 defaults write org.herf.Flux locationType L
+
+# bluetooth and sound in menu bar
+defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth" 1
+defaults write com.apple.controlcenter "NSStatusItem Visible Sound" 1

@@ -56,11 +56,11 @@ else:
 
 # Install programs with brew
 brewpath = pathlib.Path.home() / ".config" / "homebrew"
-brew_specs = [
+brew_specs = sorted([
     (brew_group.group("module"), path.name)
     for path in brewpath.iterdir()
     if (brew_group := re.match(r"(?P<module>[a-zA-Z]+)\.Brewfile$", path.name))
-]
+], key=lambda item: item[0])
 brew_groups, brewfiles = zip(*brew_specs)
 
 terminal_menu = TerminalMenu(
@@ -68,6 +68,7 @@ terminal_menu = TerminalMenu(
     title="Which collections should brew install?",
     multi_select=True,
     show_multi_select_hint=True,
+    preselected_entries=["cli", "common", "emacs", "nushell"]
 )
 selected_indices = terminal_menu.show()
 
@@ -126,6 +127,18 @@ LOG.info("Setting MacOS settings.")
 subprocess.run(
     ["sh", str(pathlib.Path(__file__).parent / "osxdefaults.sh")]
 )
+
+# link nushell, since it doesn't support XDG-based config for some reason
+# also set up zoxide
+LOG.info("Linking nushell (for MacOS)")
+subprocess.run(
+    ["ln", "-svf", str(pathlib.Path.home() / ".config/nu"), str(pathlib.Path.home() / "Library/Application Support/nushell")]
+)
+with open(str(pathlib.Path.home() / ".local/share/.zoxide.nu"), "w") as f:
+    subprocess.call(
+        ["zoxide", "init", "nushell"],
+        stdout=f
+    )
 
 LOG.info("Starting brew services")
 BREW_SERVICES = [

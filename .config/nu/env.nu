@@ -57,11 +57,11 @@ let-env NU_PLUGIN_DIRS = [
 # To add entries to PATH (on Windows you might use Path), you can use the following pattern:
 # let-env PATH = ($env.PATH | prepend '/some/path')
 
-# usr/local/bin
-let-env PATH = ($env.PATH | append /usr/local/bin)
-
-# m1 homebrew
-# let-env PATH = ($env.PATH | prepend /opt/homebrew/bin)
+# brew bin path
+# NOTE: the simplest way to make this portable between m1 and non-m1 macs seems to be to just check whether the m1 path exists
+let brew_prefix = (if ("/opt/homebrew/bin" | path exists) { "/opt/homebrew" }
+                            else { "/usr/local" })
+let-env PATH = ($env.PATH | prepend [$"($brew_prefix)/bin", $"($brew_prefix)/sbin"])
 
 # pyenv
 let-env PYENV_ROOT = ("~/.pyenv" | path expand)
@@ -93,3 +93,9 @@ let-env NVM_DIR = ("~/.nvm" | path expand)
 # zoxide
 # have to comment this out until a new release is cut that includes https://github.com/ajeetdsouza/zoxide/pull/495
 # zoxide init nushell | save -f ~/.local/share/.zoxide.nu
+
+# xdg bin
+let-env PATH = ($env.PATH | append ("~/.local/bin" | path expand))
+
+# docker
+let-env PATH = ($env.PATH | append ("~/.docker/bin" | path expand))

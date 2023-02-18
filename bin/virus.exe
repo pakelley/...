@@ -1,13 +1,23 @@
 #!/bin/sh
 
+# install brew, make it available on PATH, and update
 if ! which brew  ; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
+eval "$(/opt/homebrew/bin/brew shellenv)"
 brew update
+
+# install mackup, for us to bootstrap configs with
 brew install mackup
-# install either way, just use latest version
+
+# install python, in a known place/configuration
 brew install pyenv
 # TODO update/test as new versions come out, but known to work with the following version
-pyenv install 3.10.4 --skip-existing
+pyenv install 3.10.10 --skip-existing
+pyenv global 3.10.10
+
+# install menu used to choose installation options
 $(pyenv which pip) install simple-term-menu
+
+# now that there's some ground underneath us, leave the rest to python
 $(pyenv which python) ~/.config/.../bin/virus.py

@@ -27,9 +27,9 @@ tiling window manager for macos, and its keybinding software
 The `bin/virus.exe` script is made to be idempotent, so I can safely re-run at any point.
 Also, notably, the script is only set up for configuring a mac for now.
 For reference, this is what I still need after running the script:
-- Allow a few apps access to various things (yabai, skhd, karabiner, etc)
-- Set up my syncthing folders (as of now, my notes, alfred preferences, and calibre library)
+- Set up my syncthing folders at http://localhost:8384 (as of now, my notes, alfred preferences, and calibre library)
 - Activate licenses for the few apps I'm willing to pay for (alfred, fantastical, dash)
+  - Enable clipboard history for alfred
 - Add Keepass database
 - Log into whatever needs it (spotify, anki (web), etc)
 - Add anki connect plugin

@@ -1,6 +1,6 @@
 source ~/.config/dots/.config/nu/starship/init.nu
 
-let $config = {
+let-env config = {
   menus: [
       {
         name: history_menu
