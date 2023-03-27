@@ -104,3 +104,7 @@ let-env PATH = ($env.PATH | append ("~/.docker/bin" | path expand))
 let-env GPG_TTY = (tty | str trim)
 let-env SSH_AUTH_SOCK = (gpgconf --list-dirs agent-ssh-socket | str trim)
 gpgconf --launch gpg-agent
+
+# go
+let-env GOPATH = ("~/go" | path expand)
+let-env PATH = ($env.PATH | append $"($env.GOPATH)/bin")
