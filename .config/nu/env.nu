@@ -99,3 +99,8 @@ let-env PATH = ($env.PATH | append ("~/.local/bin" | path expand))
 
 # docker
 let-env PATH = ($env.PATH | append ("~/.docker/bin" | path expand))
+
+# yubikey for ssh
+let-env GPG_TTY = (tty | str trim)
+let-env SSH_AUTH_SOCK = (gpgconf --list-dirs agent-ssh-socket | str trim)
+gpgconf --launch gpg-agent
