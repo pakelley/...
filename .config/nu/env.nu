@@ -97,6 +97,22 @@ let-env NVM_DIR = ("~/.nvm" | path expand)
 # xdg bin
 let-env PATH = ($env.PATH | append ("~/.local/bin" | path expand))
 
+# pdm
+def gen_pdm_pythonpath [] {
+  let pdm_path = ("/opt/homebrew/Cellar/pdm/2.4.7/libexec/lib/python3.11/site-packages/pdm/pep582" | path expand)
+  if "PYTHONPATH" in $env {
+    if (not $pdm_path in $env.PYTHONPATH) {
+      ($env.PYTHONPATH | append $pdm_path)
+    } else {
+    $env.PYTHONPATH
+    }
+  } else {
+     $pdm_path
+  }
+}
+let-env PYTHONPATH = gen_pdm_pythonpath
+
+# m1 docker
 # docker
 let-env PATH = ($env.PATH | append ("~/.docker/bin" | path expand))
 
