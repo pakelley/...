@@ -304,6 +304,12 @@
                     :file "~/.local/share/notes/gtd/inbox.org"
                     :template "* %?"
                     :kill-buffer t)
+                   ("Email"
+                    :keys "e"
+                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                    :olp ("Email")
+                    :template ("* TODO Reply: %a")
+                    :kill-buffer t)
                    ("Today"
                     :keys "2"
                     :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
@@ -369,7 +375,7 @@
                       (("Recipe"     :keys "r" :olp ("Projects" "recipes"))
                        ("Cocktail"   :keys "c" :olp ("Projects" "cocktails"))
                        ("Restaurant" :keys "s" :olp ("Projects" "restaurants"))))
-                     ("Media" :keys "e"
+                     ("Media" :keys "d"
                       :children
                       (("Movie"   :keys "m" :olp ("Projects" "movies"))
                        ("Show"    :keys "s" :olp ("Projects" "shows"))
