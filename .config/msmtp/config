@@ -1,0 +1,26 @@
+# Set default values for all following accounts.
+defaults
+logfile        ~/.msmtp.log
+
+# Protonmail
+account        protonmail
+host           127.0.0.1
+port           1025
+from           pakelley@pm.me
+user           pakelley@pm.me
+passwordeval   "gpg --quiet --no-tty --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mbsync/account.protonmail.pass.gpg"
+auth           plain
+# tls            on
+# tls_starttls   on
+# tls_trust_file /home/user/.config/protonmail/bridge/cert.pem
+
+account patrick@the-kelleys.com
+host smtp.gmail.com
+port 587
+tls on
+tls_starttls on
+auth on
+user patrick@the-kelleys.com
+from patrick@the-kelleys.com
+
+account default : protonmail
