@@ -186,6 +186,7 @@
        :email
        ;;(mu4e +org +gmail)
        notmuch
+       notmuch-patch
        ;;(wanderlust +gmail)
 
        :app

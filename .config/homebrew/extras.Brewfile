@@ -12,7 +12,6 @@ brew "mackup"
 cask "java"
 cask "java8"
 brew "m-cli"
-brew "msmtp" # smtp for mutt
 brew "mutt"
 brew "octave"
 brew "suite-sparse"

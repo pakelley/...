@@ -5,6 +5,7 @@ brew "hunspell"
 brew "isync"
 # brew "ledger"
 # brew "mailutils"
+brew "msmtp"
 # brew "mu"
 brew "notmuch"
 # brew "offlineimap", restart_service: true

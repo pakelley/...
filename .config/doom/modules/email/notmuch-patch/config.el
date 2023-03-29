@@ -1,13 +1,3 @@
-#+TITLE: Config
-#+property: header-args:emacs-lisp :tangle yes
-#+property: header-args:elisp :tangle yes
-
-* contacts
-Manage contacts with org mode, so they're easy to interact with from emacs (especially notmuch).
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-contacts)
-#+end_src
-#+begin_src elisp
 (use-package org-contacts
   :ensure nil
   :after (org doct)
@@ -27,71 +17,9 @@ Manage contacts with org mode, so they're easy to interact with from emacs (espe
                                ":EMAIL-GROUP: %^{EMAIL-GROUP|screener|imbox|feed|paper-trail}"
                                ":BIRTHDAY: %^{BIRTHDAY|yyyy-mm-dd}p"
                                ":NOTE: %^{NOTE}p"
-                               ":END:")
+                                ":END:")
                     :kill-buffer t))))))
-#+end_src
 
-#+RESULTS:
-: org-contacts
-
-I use this header in my contacts file, so that it renders as a column view (see [[https://orgmode.org/manual/Column-View.html][org's column view docs]] and [[https://orgmode.org/manual/Initial-visibility.html][on initial visibility]] for more info. Also, [[https://emacs.stackexchange.com/a/39007/15634][this SE post]] for the hack to get column views to render by default):
-#+begin_src org :tangle no
-#+COLUMNS: %20ITEM %EMAIL %EMAIL-GROUP %BIRTHDAY %NOTE
-#+STARTUP: overview
-# Local Variables:
-# eval: (org-columns t)
-# End:
-#+end_src
-Also, we'll want it to be easy to set/get an email group from notmuch for a given email, so let's define that here:
-#+name: get-email-group-for-org-contact
-#+begin_src emacs-lisp :tangle no
-(defun +patch/get-org-contact-by-email (email)
-  ;; notably, this just returns the first match
-  (car (org-contacts-filter nil nil `("EMAIL" . ,email))))
-
-(defun +patch/get-email-group-for-email (email)
-  (let* ((contact (+patch/get-org-contact-by-email email))
-         (contact-info (nth 2 contact)))
-    (cdr (assoc-string "EMAIL-GROUP" contact-info))))
-
-(defmacro +patch--from-contact-location (email &rest body)
-  `(let* ((contact (+patch/get-org-contact-by-email email))
-         (contact-marker (nth 1 contact)))
-    (with-current-buffer (marker-buffer contact-marker)
-      (save-excursion
-        (goto-char contact-marker)
-        ,@body))))
-
-(defmacro +patch--from-contact-file (&rest body)
-  `(let* ((contact (+patch/get-org-contact-by-email email))
-         (contact-marker (nth 1 contact)))
-    (with-current-buffer (find-file-noselect (car org-contacts-files))
-      (save-excursion
-        ,@body))))
-
-(defun +patch/add-org-contact (name email &optional email-group note bday)
-  (+patch--from-contact-file
-   (end-of-buffer)
-   (org-insert-heading nil nil t)  ;; force a top-level heading
-   (insert name)
-   (org-entry-put (point) "EMAIL" email)
-   (org-entry-put (point) "EMAIL-GROUP" email-group)
-   (org-entry-put (point) "NOTE" note)
-   (org-entry-put (point) "BIRTHDAY" bday)
-   ))
-
-(defun +patch/set-org-contact-email-group-by-email (email email-group name)
-  (if (+patch/get-org-contact-by-email email)
-      (+patch--from-contact-location email
-                                     (org-set-property "EMAIL-GROUP" email-group))
-    (+patch/add-org-contact name email email-group)))
-#+end_src
-
-#+RESULTS: get-email-group-for-org-contact
-: +patch/set-org-contact-email-group-by-email
-
-* keybindings
-#+begin_src emacs-lisp :tangle yes
 (defun +patch/get-email-from-notmuch-search (&optional thread-id)
   (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
   (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
@@ -188,13 +116,7 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
  ;; "P" :n nil
  ;; "I" :n nil
  )
-#+end_src
 
-#+RESULTS:
-
-* send mail
-Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tricky, and gmail auth is a moving target. As hacky as this is, I'd rather just use lieer to send for gmail accounts and msmtp for the rest.
-#+begin_src emacs-lisp :tangle yes
 ;; for some reason, the python notmuch client that gmi uses can't find my XDG notmuch config without this
 (setenv "NOTMUCH_CONFIG" (expand-file-name "~/.config/notmuch/default/config"))
 
@@ -220,16 +142,7 @@ Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tric
           ((t) (message (format "Could not find smtp client for email address: %s" email-address))))))
 
 (add-hook 'notmuch-mua-send-hook #'+patch--set-smtp-client)
-#+end_src
 
-#+RESULTS:
-| +patch--set-smtp-client |
-
-* org-msg so we can edit email from org mode, plus better formatting for outlook using org export
-#+begin_src emacs-lisp :tangle packages.el
-(package! org-msg)
-#+end_src
-#+begin_src emacs-lisp :tangle yes
 (use-package! org-msg
   :after notmuch
   :custom
@@ -263,15 +176,7 @@ Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tric
   ;; (advice-add 'org-msg-composition-parameters
   ;;         :around #'my-org-msg-composition-parameters)
   )
-  #+end_src
 
-  #+RESULTS:
-  : t
-
-* calendar invites
-this is heavily inspired by [[https://github.com/larkery/emacs][larkery's config]]
-** org agenda in message view
-#+begin_src emacs-lisp :tangle yes
 (defun notmuch-agenda-event-time (event zone-map property)
   "Given an EVENT and a ZONE-MAP, turn the icalendar timestamp
   for PROPERTY into an emacs internal time representation"
@@ -489,13 +394,7 @@ this is heavily inspired by [[https://github.com/larkery/emacs][larkery's config
     (line-end-position)))
 
 (fset 'notmuch-show-insert-part-text/calendar #'notmuch-agenda-insert-part)
-#+end_src
 
-#+RESULTS:
-: notmuch-agenda-insert-part
-
-** capture event
-#+begin_src emacs-lisp :tangle yes
 (defun notmuch-agenda-datetime-as-iso (datetime)
   "Convert a date retrieved via `icalendar--get-event-property' to ISO format."
   (if datetime
@@ -749,12 +648,6 @@ this is heavily inspired by [[https://github.com/larkery/emacs][larkery's config
 
 (advice-add 'notmuch-mua-reply :around 'notmuch-agenda-reply-advice)
 
-#+end_src
-
-#+RESULTS:
-** imip
-library for responding to cal invites
-#+begin_src emacs-lisp :tangle yes
 ;; provides icalendar message-based interoperability protocol
 ;; like rfc6047 but probably full of bugs
 
@@ -841,7 +734,3 @@ library for responding to cal invites
    ((listp (car icalendar))
     (dolist (sub-element icalendar)
       (imip-write-element sub-element)))))
-          #+end_src
-
-#+RESULTS:
-: imip-write-element

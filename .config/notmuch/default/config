@@ -48,6 +48,8 @@ primary_email=patrick@the-kelleys.com
 #		in the mail store.
 #
 
+other_email=patrick@heartex.com;pakelley@pm.me;
+
 [new]
 tags=new
 ignore=/.*[.](json|lock|bak)$/;.mbsyncstate;.uidvalidity
