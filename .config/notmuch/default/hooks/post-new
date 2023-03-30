@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 notmuch tag +protonmail -- is:new path:account.protonmail/**
 notmuch tag +kelleys -- is:new path:account.kelleys-gmail/**
+notmuch tag +heartex -- is:new path:account.heartex/**
 /Users/pakelley/.pyenv/shims/afew --tag --new
