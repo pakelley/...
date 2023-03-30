@@ -11,7 +11,7 @@ User pakelley@protonmail.com
 # ∙  | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mail/account.protonmail/pass.gpg)
 # And you can test with:
 # gpg --decrypt --armor --local-user $env.KEYID ~/.local/share/mail/account.protonmail/pass.gpg
-PassCmd +"gpg --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mail/account.protonmail/pass.gpg"
+PassCmd +"echo ${DECRYPTED_PASS}"
 SSLType STARTTLS
 SSLVersions TLSv1.2
 # get cert via `openssl s_client -starttls imap -connect 127.0.0.1:1143 -showcerts`
