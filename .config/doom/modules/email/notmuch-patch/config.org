@@ -5,21 +5,55 @@
 * setup
 need to find a good way to automate this, but for now:
 #+begin_src sh
+# install deps, general notmuch config
 go install gitlab.com/shackra/goimapnotify@latest
 pip install orgparse afew oauth2token lieer
-ln -s ~/.local/share/private/gpg/gpg.conf ~/.gnupg/gpg.conf
-ln -s ~/.local/share/private/gpg/gpg-agent.conf ~/.gnupg/gpg-agent.conf
-let-env DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/private/email/account.protonmail.pass.gpg)
-goimapnotify -conf ~/.config/goimapnotify/protonmail/mbsync-notify.conf
 let-env NOTMUCH_CONFIG = ("~/.config/notmuch/default/config" | path expand)
 notmuch
 notmuch setup # might not be necessary
 notmuch new # seems to be necessary for setting up the xapian db
+
+# setup gmail
 # for each gmail account
 mkdir ~/.local/share/mail/account.<ACCOUNT_NAME>
 cd ~/.local/share/mail/account.<ACCOUNT_NAME>
+rm -f .gmailieer.json & rm -f .credentials.gmailieer.json rm -f .lock & rm -r ./*
 gmi init your.email@gmail.com
 gmi pull
+# set up sync via cron (for now, until I get goimapnotify working)
+crontab -e
+# */5 * * * *  $HOME/.config/goimapnotify/cron.sh
+
+# set up gpg
+ln -s ~/.local/share/private/gpg/gpg.conf ~/.gnupg/gpg.conf
+ln -s ~/.local/share/private/gpg/gpg-agent.conf ~/.gnupg/gpg-agent.conf
+# or ln -s ~/.local/share/private/gpg/gpg-agent.m1.conf ~/.gnupg/gpg-agent.conf
+let-env KEYID = "0x571438EB48F2B1EA"
+gpg --recv $env.KEYID
+gpg --edit-key $env.KEYID
+> trust
+> 5
+> y
+> quit
+# remove/re-insert yubikey
+gpg --card-status
+# should have sec# for master key, and ssb> for others
+
+# set up protonmail
+# add local protonmail bridge password to keepassxc
+(echo (keepassxc-cli show --show-protected ~/.local/share/private/Passwords.kdbx protonmail-bridge
+       | grep Password
+       | sed 's/Password: //')
+ | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mail/account.protonmail/pass.gpg)
+let-env DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mail/account.protonmail/pass.gpg)
+# set up ssl
+openssl s_client -starttls imap -connect 127.0.0.1:1143 -showcerts
+# copy cert and write to file:
+sudo emacs -nw /etc/ssl/certs/mbsync.crt
+# test sync
+mbsync --all --config ~/.config/mbsync/mbsyncrc
+# start daemon
+goimapnotify -conf ~/.config/goimapnotify/protonmail/mbsync-notify.conf
 #+end_src
 * contacts
 Manage contacts with org mode, so they're easy to interact with from emacs (especially notmuch).
@@ -105,17 +139,36 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
 
 * keybindings
 #+begin_src emacs-lisp :tangle yes
-(defun +patch/get-email-from-notmuch-search (&optional thread-id)
-  (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
+;; this seems to have been removed from notmuch, but I'll keep a copy here
+(defun +patch--notmuch-query-get-threads (search-terms)
+  "Return a list of threads of messages matching SEARCH-TERMS.
+
+A thread is a forest or list of trees. A tree is a two element
+list where the first element is a message, and the second element
+is a possibly empty forest of replies."
+  (let ((args '("show" "--format=sexp" "--format-version=5")))
+    (when notmuch-show-process-crypto
+      (setq args (append args '("--decrypt=true"))))
+    (setq args (append args search-terms))
+    (apply #'notmuch-call-notmuch-sexp args)))
+
+(defun +patch/notmuch-get-thread (&optional thread-id)
   (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
-         (threads (notmuch-query-get-threads (list thread-id)))
-         (thread (caaar threads))
+         (threads (+patch--notmuch-query-get-threads (list thread-id))))
+    (caaar threads)))
+
+(defun +patch/get-email-from-notmuch-search (&optional thread-id)
+  ;; (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
+  ;; (plist-get (plist-get (+patch/notmuch-get-thread (notmuch-search-find-thread-id)) :headers) :Reply-To)
+  (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
+         (thread (+patch/notmuch-get-thread thread-id))
          (headers (plist-get thread :headers)))
     ;; (message thread-id)
     ;; (message thread)
     ;; (message headers)
-    (plist-get headers :Reply-To)
-    ))
+    (or
+     (plist-get headers :Reply-To)
+     (plist-get headers :From))))
 
 (setq +patch--always-tag-retroactively t)
 
@@ -130,7 +183,7 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
                                 (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
          (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
                             ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox" '("+imbox" "-screener" "-paper-trail" "-feed"))))))
+                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
     (+patch/set-org-contact-email-group-by-email email group name)
     (notmuch-search-tag tag-changes)
     (when tag-retroactively
@@ -152,7 +205,7 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
   (let* ((email (+patch/get-email-from-notmuch-search thread-id))
          (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
                             ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox" '("+imbox" "-screener" "-paper-trail" "-feed"))))))
+                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
     (notmuch-search-tag tag-changes)))
 
 (defun +patch/move-notmuch-thread-to-feed-group (&optional thread-id)

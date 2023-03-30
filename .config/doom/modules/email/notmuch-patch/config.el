@@ -20,17 +20,36 @@
                                 ":END:")
                     :kill-buffer t))))))
 
-(defun +patch/get-email-from-notmuch-search (&optional thread-id)
-  (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
+;; this seems to have been removed from notmuch, but I'll keep a copy here
+(defun +patch--notmuch-query-get-threads (search-terms)
+  "Return a list of threads of messages matching SEARCH-TERMS.
+
+A thread is a forest or list of trees. A tree is a two element
+list where the first element is a message, and the second element
+is a possibly empty forest of replies."
+  (let ((args '("show" "--format=sexp" "--format-version=5")))
+    (when notmuch-show-process-crypto
+      (setq args (append args '("--decrypt=true"))))
+    (setq args (append args search-terms))
+    (apply #'notmuch-call-notmuch-sexp args)))
+
+(defun +patch/notmuch-get-thread (&optional thread-id)
   (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
-         (threads (notmuch-query-get-threads (list thread-id)))
-         (thread (caaar threads))
+         (threads (+patch--notmuch-query-get-threads (list thread-id))))
+    (caaar threads)))
+
+(defun +patch/get-email-from-notmuch-search (&optional thread-id)
+  ;; (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
+  ;; (plist-get (plist-get (+patch/notmuch-get-thread (notmuch-search-find-thread-id)) :headers) :Reply-To)
+  (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
+         (thread (+patch/notmuch-get-thread thread-id))
          (headers (plist-get thread :headers)))
     ;; (message thread-id)
     ;; (message thread)
     ;; (message headers)
-    (plist-get headers :Reply-To)
-    ))
+    (or
+     (plist-get headers :Reply-To)
+     (plist-get headers :From))))
 
 (setq +patch--always-tag-retroactively t)
 
@@ -45,7 +64,7 @@
                                 (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
          (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
                             ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox" '("+imbox" "-screener" "-paper-trail" "-feed"))))))
+                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
     (+patch/set-org-contact-email-group-by-email email group name)
     (notmuch-search-tag tag-changes)
     (when tag-retroactively
@@ -67,7 +86,7 @@
   (let* ((email (+patch/get-email-from-notmuch-search thread-id))
          (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
                             ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox" '("+imbox" "-screener" "-paper-trail" "-feed"))))))
+                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
     (notmuch-search-tag tag-changes)))
 
 (defun +patch/move-notmuch-thread-to-feed-group (&optional thread-id)

@@ -8,10 +8,10 @@ User pakelley@protonmail.com
 # ❯ (echo (keepassxc-cli show --show-protected ~/.local/share/private/Passwords.kdbx protonmail-bridge
 # ∙        | grep Password
 # ∙        | sed 's/Password: //')
-# ∙  | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mbsync/account.protonmail.pass.gpg)
+# ∙  | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mail/account.protonmail/pass.gpg)
 # And you can test with:
-# gpg --decrypt --armor --local-user $env.KEYID ~/.local/share/mbsync/account.protonmail.pass.gpg
-PassCmd +"gpg --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mbsync/account.protonmail.pass.gpg"
+# gpg --decrypt --armor --local-user $env.KEYID ~/.local/share/mail/account.protonmail/pass.gpg
+PassCmd +"gpg --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mail/account.protonmail/pass.gpg"
 SSLType STARTTLS
 SSLVersions TLSv1.2
 # get cert via `openssl s_client -starttls imap -connect 127.0.0.1:1143 -showcerts`
@@ -63,7 +63,7 @@ Expunge Both
 SyncState *
 
 Channel protonmail-inbox
-Far :protonmail-remote:"Inbox"
+Far :protonmail-remote:"INBOX"
 Near :protonmail-local:"inbox"
 Create Both
 Expunge Both
@@ -72,7 +72,7 @@ SyncState *
 Channel protonmail-other
 Far :protonmail-remote:
 Near :protonmail-local:
-Patterns "*" !"All Mail" !"all" ! "Archive" !"archive" !"Sent" !"sent" !"Spam" !"spam" !"Trash" !"trash" !"Inbox" !"inbox"
+Patterns "*" !"All Mail" !"all" !"Archive" !"archive" !"Sent" !"sent" !"Spam" !"spam" !"Trash" !"trash" !"Inbox" !"inbox"
 Create Both
 Expunge Both
 SyncState *

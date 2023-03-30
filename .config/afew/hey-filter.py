@@ -45,7 +45,8 @@ class HeyFilter(Filter):
 
     # @staticmethod
     def get_address(self, message):
-        reply_to = message.get_header("Reply-To").strip()
+        reply_to = (message.get_header("Reply-To") or message.get_header("From")).strip()
+        # reply_to = message.get_header("Reply-To").strip()
         # gotta be a better syntax, but haven't bothered with it yet
         match = re.match(f".*<{NAMED_EMAIL_REGEX}>.*", reply_to) or re.match(NAMED_EMAIL_REGEX, reply_to)
 
