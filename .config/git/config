@@ -1,0 +1,15 @@
+[user]
+	email = pakelley@pm.me
+	name = pakelley
+	signingkey = 0x571438EB48F2B1EA
+[github]
+	user = pakelley
+[pull]
+	rebase = true
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[commit]
+	gpgsign = true
