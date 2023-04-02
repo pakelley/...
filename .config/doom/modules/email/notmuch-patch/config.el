@@ -17,158 +17,184 @@
                                ":EMAIL-GROUP: %^{EMAIL-GROUP|screener|imbox|feed|paper-trail}"
                                ":BIRTHDAY: %^{BIRTHDAY|yyyy-mm-dd}p"
                                ":NOTE: %^{NOTE}p"
-                                ":END:")
-                    :kill-buffer t))))))
+                               ":END:")
+                    :kill-buffer t)))))
+  :commands (+patch/get-email-group-for-email-sender +patch/set-email-group-for-email-sender)
+  :defines (+patch/get-email-group-for-email-sender +patch/set-email-group-for-email-sender)
+  :config
+  (defun +patch/get-org-contact-by-email (email)
+    ;; notably, this just returns the first match
+    (car (org-contacts-filter nil nil `("EMAIL" . ,email))))
+
+  (defun +patch/get-email-group-for-email-sender (email)
+    (let* ((contact (+patch/get-org-contact-by-email email))
+           (contact-info (nth 2 contact)))
+      (cdr (assoc-string "EMAIL-GROUP" contact-info))))
+
+  (defmacro +patch--from-contact-location (email &rest body)
+    `(let* ((contact (+patch/get-org-contact-by-email email))
+            (contact-marker (nth 1 contact)))
+       (with-current-buffer (marker-buffer contact-marker)
+         (save-excursion
+           (goto-char contact-marker)
+           ,@body))))
+
+  (defmacro +patch--from-contact-file (email &rest body)
+    `(let* ((contact (+patch/get-org-contact-by-email email))
+            (contact-marker (nth 1 contact)))
+       (with-current-buffer (find-file-noselect (car org-contacts-files))
+         (save-excursion
+           ,@body))))
+
+  (defun +patch/add-org-contact (name email &optional email-group note bday)
+    (+patch--from-contact-file email
+     (end-of-buffer)
+     (org-insert-heading nil nil t)  ;; force a top-level heading
+     (insert name)
+     (org-entry-put (point) "EMAIL" email)
+     (org-entry-put (point) "EMAIL-GROUP" email-group)
+     (org-entry-put (point) "NOTE" note)
+     (org-entry-put (point) "BIRTHDAY" bday)))
+
+  (defun +patch/set-email-group-for-email-sender (name email email-group)
+    (if (+patch/get-org-contact-by-email email)
+        (+patch--from-contact-location email
+                                       (org-set-property "EMAIL-GROUP" email-group))
+      (+patch/add-org-contact name email email-group))))
 
 ;; this seems to have been removed from notmuch, but I'll keep a copy here
-(defun +patch--notmuch-query-get-threads (search-terms)
-  "Return a list of threads of messages matching SEARCH-TERMS.
+(after! notmuch
+
+  (general-define-key
+   :keymaps 'notmuch-search-mode-map
+   :states '(normal)
+   "f" (cmd! (+patch-notmuch/move-thread-to-group "feed"))
+   "F" (cmd! (+patch-notmuch/add-sender-to-group "feed"))
+   "i" (cmd! (+patch-notmuch/move-thread-to-group "imbox"))
+   "I" (cmd! (+patch-notmuch/add-sender-to-group "imbox"))
+   "p" (cmd! (+patch-notmuch/move-thread-to-group "paper-trail"))
+   "P" (cmd! (+patch-notmuch/add-sender-to-group "paper-trail"))
+   "t" #'+patch-notmuch/move-thread-to-group
+   "T" #'+patch-notmuch/add-sender-to-group
+   "-" nil)
+  (general-define-key
+   :keymaps 'notmuch-search-mode-map
+   :states '(normal)
+   :prefix "-"
+   "t" #'notmuch-search-filter-by-tag)
+
+  (defgroup patch-notmuch nil
+    "My personal notmuch config group"
+    :group 'convenience
+    :prefix "+patch-notmuch")
+  ;; making this custom while I'm thinking about it, in case I ever get around
+  ;; to breaking this into it's own package.
+  (defcustom +patch-notmuch/tag-retroactively 'prompt
+    "When adding a sender to a group, always set all existing emails"
+    :group 'patch-notmuch
+    :type '(choice (const :tag "Always" always)
+            (const :tag "Never" never)
+            (const :tag "Prompt" prompt)))
+  (setq +patch-notmuch/tag-retroactively 'always)
+
+  (defun +patch-notmuch--query-get-threads (search-terms)
+    "Return a list of threads of messages matching SEARCH-TERMS.
 
 A thread is a forest or list of trees. A tree is a two element
 list where the first element is a message, and the second element
 is a possibly empty forest of replies."
-  (let ((args '("show" "--format=sexp" "--format-version=5")))
-    (when notmuch-show-process-crypto
-      (setq args (append args '("--decrypt=true"))))
-    (setq args (append args search-terms))
-    (apply #'notmuch-call-notmuch-sexp args)))
+    (let ((args '("show" "--format=sexp" "--format-version=5")))
+      (when notmuch-show-process-crypto
+        (setq args (append args '("--decrypt=true"))))
+      (setq args (append args search-terms))
+      (apply #'notmuch-call-notmuch-sexp args)))
 
-(defun +patch/notmuch-get-thread (&optional thread-id)
-  (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
-         (threads (+patch--notmuch-query-get-threads (list thread-id))))
-    (caaar threads)))
+  (defun +patch-notmuch/get-thread (&optional thread-id)
+    (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
+           (threads (+patch-notmuch--query-get-threads (list thread-id))))
+      (caaar threads)))
 
-(defun +patch/get-email-from-notmuch-search (&optional thread-id)
-  ;; (plist-get (plist-get (caaar (notmuch-query-get-threads (list (notmuch-search-find-thread-id)))) :headers) :Reply-To)
-  ;; (plist-get (plist-get (+patch/notmuch-get-thread (notmuch-search-find-thread-id)) :headers) :Reply-To)
-  (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
-         (thread (+patch/notmuch-get-thread thread-id))
-         (headers (plist-get thread :headers)))
-    ;; (message thread-id)
-    ;; (message thread)
-    ;; (message headers)
-    (or
-     (plist-get headers :Reply-To)
-     (plist-get headers :From))))
+  (defun +patch-notmuch/get-email-from-notmuch-search (&optional thread-id)
+    (let* ((thread-id (or thread-id (notmuch-search-find-thread-id)))
+           (thread (+patch-notmuch/get-thread thread-id))
+           (headers (plist-get thread :headers)))
+      (or
+       (plist-get headers :Reply-To)
+       (plist-get headers :From))))
 
-(setq +patch--always-tag-retroactively t)
 
-(defun +patch/add-notmuch-sender-to-group (group &optional thread-id tag-retroactively)
-  ;; TODO prompt whether to set tags for existing messages from sender
-  ;;      - could have a config value to determine this behavior
-  ;;      - could (maybe additionally) determine via prefix args and/or function args
-  (let* ((email (+patch/get-email-from-notmuch-search thread-id))
-         (name (notmuch-search-find-authors))  ;; used to set name of contact, if we have to make a new contact
-         (tag-retroactively (or tag-retroactively
-                                +patch--always-tag-retroactively
-                                (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
-         (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
-                            ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
-    (+patch/set-org-contact-email-group-by-email email group name)
-    (notmuch-search-tag tag-changes)
-    (when tag-retroactively
-      (notmuch-tag (format "from:%s" email) tag-changes))))
+  (defun +patch-notmuch/add-sender-to-group (group &optional thread-id tag-retroactively)
+    "Add sender of thread from THREAD-ID to GROUP. From now on, all emails from this
+sender will be tagged with GROUP.
 
-(defun +patch/add-notmuch-sender-to-feed-group (&optional thread-id tag-retroactively)
-  (interactive)
-  (+patch/add-notmuch-sender-to-group "feed" thread-id tag-retroactively))
+If TAG-RETROACTIVELY is specified, all emails from this sender will be tagged
+with GROUP.
 
-(defun +patch/add-notmuch-sender-to-paper-trail-group (&optional thread-id tag-retroactively)
-  (interactive)
-  (+patch/add-notmuch-sender-to-group "paper-trail" thread-id tag-retroactively))
+Group seting is done by setting the EMAIL-GROUP property of the sender's contact
+in org-contacts. If the contact does not exist, it will be created.
+Tagging of future messages is done by the HeyFilter afew filter."
+    (interactive (list (completing-read "Email group: " '("feed" "paper-trail" "imbox"))))
+    ;; TODO prompt whether to set tags for existing messages from sender
+    ;;      - could have a config value to determine this behavior
+    ;;      - could (maybe additionally) determine via prefix args and/or function args
+    (let* ((email (+patch-notmuch/get-email-from-notmuch-search thread-id))
+           (name (notmuch-search-find-authors))  ;; used to set name of contact, if we have to make a new contact
+           (tag-retroactively (or tag-retroactively
+                                  +patch-notmuch/tag-retroactively
+                                  (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
+           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread"))
+                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
+                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed"))
+                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox")))))
+      (+patch/set-email-group-for-email-sender name email group)
+      (notmuch-search-tag tag-changes)
+      (when tag-retroactively
+        (notmuch-tag (format "from:%s" email) tag-changes))))
 
-(defun +patch/add-notmuch-sender-to-imbox-group (&optional thread-id tag-retroactively)
-  (interactive)
-  (+patch/add-notmuch-sender-to-group "imbox" thread-id tag-retroactively))
+  (defun +patch-notmuch/move-thread-to-group (group &optional thread-id)
+    "Tag thread from THREAD-ID with GROUP"
+    (interactive (list (completing-read "Email group: " '("feed" "paper-trail" "imbox"))))
+    (let* ((email (+patch-notmuch/get-email-from-notmuch-search thread-id))
+           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread"))
+                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
+                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed"))
+                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox")))))
+      (notmuch-search-tag tag-changes))))
 
-(defun +patch/move-notmuch-thread-to-group (group &optional thread-id)
-  (let* ((email (+patch/get-email-from-notmuch-search thread-id))
-         (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox"))
-                            ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                            ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed")))))
-    (notmuch-search-tag tag-changes)))
+(after! notmuch
+  ;; for some reason, the python notmuch client that gmi uses can't find my XDG notmuch config without this
+  (setenv "NOTMUCH_CONFIG" (expand-file-name "~/.config/notmuch/default/config"))
 
-(defun +patch/move-notmuch-thread-to-feed-group (&optional thread-id)
-  (interactive)
-  (+patch/move-notmuch-thread-to-group "feed" thread-id))
+  (setq send-mail-function #'smtpmail-send-it
+        message-sendmail-f-is-evil t
+        message-send-mail-function #'message-send-mail-with-sendmail)
 
-(defun +patch/move-notmuch-thread-to-paper-trail-group (&optional thread-id)
-  (interactive)
-  (+patch/move-notmuch-thread-to-group "paper-trail" thread-id))
+  (defun +patch--get-my-email-address-in-message ()
+    (car (mail-header-parse-address (message-field-value "From"))))
 
-(defun +patch/move-notmuch-thread-to-imbox-group (&optional thread-id)
-  (interactive)
-  (+patch/move-notmuch-thread-to-group "imbox" thread-id))
+  (defun +patch--set-lieer-as-smtp-client ()
+    (setq sendmail-program (executable-find "gmi")
+          message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys-gmail")))
 
-;; TODO figure out why map! won't assign these properly
-(define-key notmuch-search-mode-map [remap ignore] nil)
- (define-key notmuch-search-mode-map "f" #'+patch/move-notmuch-thread-to-feed-group)
- (define-key notmuch-search-mode-map "p" #'+patch/move-notmuch-thread-to-paper-trail-group)
- (define-key notmuch-search-mode-map "i" #'+patch/move-notmuch-thread-to-imbox-group)
- (define-key notmuch-search-mode-map "F" #'+patch/add-notmuch-sender-to-feed-group)
- (define-key notmuch-search-mode-map "P" #'+patch/add-notmuch-sender-to-paper-trail-group)
- (define-key notmuch-search-mode-map "I" #'+patch/add-notmuch-sender-to-imbox-group)
-(map!
- :map notmuch-search-mode-map
- ;; "f" #'+patch/move-notmuch-thread-to-feed-group
- ;; "p" #'+patch/move-notmuch-thread-to-paper-trail-group
- ;; "i" #'+patch/move-notmuch-thread-to-imbox-group
- ;; "F" #'+patch/add-notmuch-sender-to-feed-group
- ;; "P" #'+patch/add-notmuch-sender-to-paper-trail-group
- ;; "I" #'+patch/add-notmuch-sender-to-imbox-group
+  (defun +patch--set-msmtp-as-smtp-client ()
+    (setq sendmail-program (executable-find "msmtp")
+          message-sendmail-extra-arguments '("--read-envelope-from")))
 
- [remap ignore] nil
- :n [remap ignore] nil
- [remap ignore] :n nil
- ;; [remap evil-find-char] #'+patch/move-notmuch-thread-to-feed-group
- ;; [remap evil-paste-after] #'+patch/move-notmuch-thread-to-paper-trail-group
- ;; [remap evil-insert] #'+patch/move-notmuch-thread-to-imbox-group
- ;; [remap evil-find-char-backwards] #'+patch/add-notmuch-sender-to-feed-group
- ;; [remap evil-paste-before] #'+patch/add-notmuch-sender-to-paper-trail-group
- ;; [remap evil-insert-line] #'+patch/add-notmuch-sender-to-imbox-group
+  ;; TODO find elegant way to use account-specific settings
+  (defun +patch--set-smtp-client ()
+    (let ((email-address (+patch--get-my-email-address-in-message)))
+      (cond ((string-match-p email-address "patrick@the-kelleys.com")
+             (+patch--set-lieer-as-smtp-client)
+             (setq org-msg-signature plain-org-msg-signature))
+            ((string-match-p email-address "pakelley@pm.me")
+             (+patch--set-msmtp-as-smtp-client)
+             (setq org-msg-signature plain-org-msg-signature))
+            ((string-match-p email-address "patrick@heartex.com")
+             (+patch--set-lieer-as-smtp-client)
+             (setq org-msg-signature heartex-org-msg-signature))
+            ((t) (message (format "Could not find smtp client for email address: %s" email-address))))))
 
- ;; "f" :n nil
- ;; "p" :n nil
- ;; "i" :n nil
- ;; "F" :n nil
- ;; "P" :n nil
- ;; "I" :n nil
- )
-
-;; for some reason, the python notmuch client that gmi uses can't find my XDG notmuch config without this
-(setenv "NOTMUCH_CONFIG" (expand-file-name "~/.config/notmuch/default/config"))
-
-(setq send-mail-function #'smtpmail-send-it
-      message-sendmail-f-is-evil t
-      message-send-mail-function #'message-send-mail-with-sendmail)
-
-(defun +patch--get-my-email-address-in-message ()
-  (car (mail-header-parse-address (message-field-value "From"))))
-
-(defun +patch--set-lieer-as-smtp-client ()
-  (setq sendmail-program (executable-find "gmi")
-        message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys-gmail")))
-
-(defun +patch--set-msmtp-as-smtp-client ()
-  (setq sendmail-program (executable-find "msmtp")
-        message-sendmail-extra-arguments '("--read-envelope-from")))
-
-;; TODO find elegant way to use account-specific settings
-(defun +patch--set-smtp-client ()
-  (let ((email-address (+patch--get-my-email-address-in-message)))
-    (cond ((string-match-p email-address "patrick@the-kelleys.com")
-           (+patch--set-lieer-as-smtp-client)
-           (setq org-msg-signature plain-org-msg-signature))
-          ((string-match-p email-address "pakelley@pm.me")
-           (+patch--set-msmtp-as-smtp-client)
-           (setq org-msg-signature plain-org-msg-signature))
-          ((string-match-p email-address "patrick@heartex.com")
-           (+patch--set-lieer-as-smtp-client)
-           (setq org-msg-signature heartex-org-msg-signature))
-          ((t) (message (format "Could not find smtp client for email address: %s" email-address))))))
-
-(add-hook 'notmuch-mua-send-hook #'+patch--set-smtp-client)
+  (add-hook 'notmuch-mua-send-hook #'+patch--set-smtp-client))
 
 (use-package! org-msg
   :after notmuch
