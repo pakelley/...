@@ -516,10 +516,12 @@ Because all of my TODO/NEXT tasks will have at least one thing logged (because I
 #+begin_src elisp :noweb no-export
 (use-package! doct
   :after (org org-capture)
-  :commands doct
+  :commands (doct +patch/doct-properties)
+  :defines +patch/doct-properties
   :custom
-  <<doct-properties-hook>>
   <<org-capture-templates>>
+  :config
+  <<doct-properties-hook>>
   )
 
 #+end_src

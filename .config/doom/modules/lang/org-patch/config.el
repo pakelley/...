@@ -282,20 +282,9 @@
 
 (use-package! doct
   :after (org org-capture)
-  :commands doct
+  :commands (doct +patch/doct-properties)
+  :defines +patch/doct-properties
   :custom
-  (defun +patch/doct-properties ()
-    "Add declaration's :properties to current entry."
-    (let ((properties (doct-get :properties)))
-      (dolist (keyword (seq-filter #'keywordp properties))
-        (org-set-property (substring (symbol-name keyword) 1)
-                          (replace-regexp-in-string "\n$" ""
-                                                    (org-capture-fill-template (plist-get properties keyword)))))))
-  ;; Usage:
-  ;; (doct '(("My capture template"
-  ;;          ...
-  ;;          :hook +patch/org-property-drawer
-  ;;          :properties (:anki_deck "${category}"))))
   ;; setq
   (org-capture-templates
    (append org-capture-templates
@@ -383,6 +372,19 @@
                        ("Article" :keys "a" :olp ("Projects" "articles"))
                        ("Album"   :keys "l" :olp ("Projects" "albums"))))
                      ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
+  :config
+  (defun +patch/doct-properties ()
+    "Add declaration's :properties to current entry."
+    (let ((properties (doct-get :properties)))
+      (dolist (keyword (seq-filter #'keywordp properties))
+        (org-set-property (substring (symbol-name keyword) 1)
+                          (replace-regexp-in-string "\n$" ""
+                                                    (org-capture-fill-template (plist-get properties keyword)))))))
+  ;; Usage:
+  ;; (doct '(("My capture template"
+  ;;          ...
+  ;;          :hook +patch/org-property-drawer
+  ;;          :properties (:anki_deck "${category}"))))
   )
 
 (after! emacs-everywhere
