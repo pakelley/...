@@ -812,3 +812,17 @@ Tagging of future messages is done by the HeyFilter afew filter."
                             (+patch-notmuch/remove-tag-filter "unread" notmuch-search-query-string)
                           (concat notmuch-search-query-string " and tag:unread"))))
       (notmuch-search query-string notmuch-search-oldest-first))))
+
+(after! notmuch
+  (setq notmuch-saved-searches '((:name "pm/imbox"            :query "tag:protonmail AND tag:imbox"       :key "u")
+                                 (:name "pm/feed"             :query "tag:protonmail AND tag:feed"        :key "i" :search-type 'tree)
+                                 (:name "pm/paper-trail"      :query "tag:protonmail AND tag:paper-trail" :key "o")
+                                 (:name "pm/screener"         :query "tag:protonmail AND tag:screener"    :key "p")
+                                 (:name "kelleys/imbox"       :query "tag:kelleys AND tag:imbox"          :key "h")
+                                 (:name "kelleys/feed"        :query "tag:kelleys AND tag:feed"           :key "j" :search-type 'tree)
+                                 (:name "kelleys/paper-trail" :query "tag:kelleys AND tag:paper-trail"    :key "k")
+                                 (:name "kelleys/screener"    :query "tag:kelleys AND tag:screener"       :key "l")
+                                 (:name "htx/imbox"           :query "tag:heartex AND tag:imbox"          :key "n")
+                                 (:name "htx/feed"            :query "tag:heartex AND tag:feed"           :key "m" :search-type 'tree)
+                                 (:name "htx/paper-trail"     :query "tag:heartex AND tag:paper-trail"    :key ",")
+                                 (:name "htx/screener"        :query "tag:heartex AND tag:screener"       :key "."))))
