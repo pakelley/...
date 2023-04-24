@@ -1,1 +1,32 @@
 [HeyFilter]
+
+[Filter.1]
+query = path:"/The Feed/"
+tags = +feed;-screener
+
+[Filter.2]
+query = path:"/Paper Trail/"
+tags = +paper-trail;-screener
+
+[Filter.3]
+query = path:"/Promo/"
+tags = +promo;-screener
+
+[Filter.4]
+query = tag:protonmail and path:"/inbox/"
+tags = +imbox;-screener
+
+[Filter.5]
+message = "mark noisy groups as read"
+query = tag:feed or tag:promo or tag:logging
+tags = -unread
+
+[MailMover]
+rename = True
+# folders = inbox "Folders/Paper Trail" "Folders/Promo" "Folders/Screener" "Folders/The Feed"
+folders = account.protonmail/Folders/Screener
+account.protonmail/inbox = 'tag:feed':"account.protonmail/Folders/The Feed" 'tag:paper-trail':"account.protonmail/Folders/Paper Trail" 'tag:promo':account.protonmail/Folders/Promo
+account.protonmail/Folders/The Feed = 'tag:imbox':account.protonmail/inbox 'tag:paper-trail':"account.protonmail/Folders/Paper Trail" 'tag:promo':account.protonmail/Folders/Promo
+account.protonmail/Folders/Paper Trail = 'tag:imbox':account.protonmail/inbox 'tag:feed':"account.protonmail/Folders/The Feed" 'tag:promo':account.protonmail/Folders/Promo
+account.protonmail/Folders/Promo = 'tag:imbox':account.protonmail/inbox 'tag:feed':"account.protonmail/Folders/The Feed" 'tag:paper-trail':"account.protonmail/Folders/Paper Trail"
+account.protonmail/Folders/Screener = 'tag:imbox':account.protonmail/inbox 'tag:feed':"account.protonmail/Folders/The Feed" 'tag:paper-trail':"account.protonmail/Folders/Paper Trail" 'tag:promo':account.protonmail/Folders/Promo
