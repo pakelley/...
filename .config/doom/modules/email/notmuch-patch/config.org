@@ -68,6 +68,7 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
   :after (org doct)
   :custom
   (org-contacts-files '("~/.local/share/notes/contacts.org"))
+  (notmuch-address-command 'as-is)
   (org-capture-templates
    (append org-capture-templates
            (doct `(("Contact"

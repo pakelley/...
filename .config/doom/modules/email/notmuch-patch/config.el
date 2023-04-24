@@ -3,6 +3,7 @@
   :after (org doct)
   :custom
   (org-contacts-files '("~/.local/share/notes/contacts.org"))
+  (notmuch-address-command 'as-is)
   (org-capture-templates
    (append org-capture-templates
            (doct `(("Contact"
