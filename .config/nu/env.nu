@@ -127,3 +127,6 @@ let-env PATH = ($env.PATH | append $"($env.GOPATH)/bin")
 
 # notmuch
 let-env NOTMUCH_CONFIG = ("~/.config/notmuch/default/config" | path expand)
+
+# scala
+let-env PATH = ($env.PATH | append ("~/Library/Application Support/Coursier/bin" | path expand))
