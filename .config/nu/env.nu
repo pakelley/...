@@ -124,3 +124,6 @@ gpgconf --launch gpg-agent
 # go
 let-env GOPATH = ("~/go" | path expand)
 let-env PATH = ($env.PATH | append $"($env.GOPATH)/bin")
+
+# notmuch
+let-env NOTMUCH_CONFIG = ("~/.config/notmuch/default/config" | path expand)

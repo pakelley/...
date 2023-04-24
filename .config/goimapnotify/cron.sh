@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
+# to debug: `cat /var/mail/pakelley`, `cat /tmp/gmailieer_patchwork_notmuch.log`
 set -e
 
-if [ -d "$HOME/.mail/account.kelleys-gmail" ]
+export NOTMUCH_CONFIG="$HOME/.config/notmuch/default/config"
+
+if [ -d "$HOME/.local/share/mail/account.kelleys-gmail" ]
 then
-    cd "$HOME/.mail/account.kelleys-gmail"
     date >> /tmp/gmailieer_patchwork_notmuch.log
-    gmi sync >> /tmp/gmailieer_patchwork_notmuch.log 2>&1
+    $HOME/.pyenv/shims/gmi sync -C "~/.local/share/mail/account.kelleys-gmail" >> /tmp/gmailieer_patchwork_notmuch.log 2>&1
 fi
 
-if [ -d "$HOME/.mail/account.heartex" ]
+if [ -d "$HOME/.local/share/mail/account.heartex" ]
 then
-    cd "$HOME/.mail/account.heartex"
     date >> /tmp/gmailieer_patchwork_notmuch.log
-    gmi sync >> /tmp/gmailieer_patchwork_notmuch.log 2>&1
+    $HOME/.pyenv/shims/gmi sync -C "~/.local/share/mail/account.heartex" >> /tmp/gmailieer_patchwork_notmuch.log 2>&1
 fi
 
-notmuch new
 # notmuch tag -new -- tag:new >> /tmp/gmailieer_patchwork_notmuch.log 2>&1
+/opt/homebrew/bin/notmuch new
