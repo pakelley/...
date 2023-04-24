@@ -8,6 +8,7 @@ from afew.FilterRegistry import register_filter
 from afew.utils import get_sender
 from afew.NotmuchSettings import get_notmuch_new_tags, get_notmuch_new_query
 
+import notmuch
 import orgparse
 import pandas
 
@@ -18,6 +19,8 @@ NAMED_EMAIL_REGEX = f"(?P<address>{EMAIL_REGEX})"
 
 
 # TODO make method that generates a sieve filter for this logic
+# TODO add `additional_groups` param
+# TODO consider enforcing groups being mutually exclusive in this filter
 @register_filter
 class HeyFilter(Filter):
     message = 'Tagging all mail with HEY categories'
@@ -45,7 +48,11 @@ class HeyFilter(Filter):
 
     # @staticmethod
     def get_address(self, message):
-        reply_to = (message.get_header("Reply-To") or message.get_header("From")).strip()
+        try:
+            reply_to = (message.get_header("Reply-To") or message.get_header("From")).strip()
+        # not sure why this happens, but just ignore it for now and move on
+        except notmuch.errors.NullPointerError:
+            return
         # reply_to = message.get_header("Reply-To").strip()
         # gotta be a better syntax, but haven't bothered with it yet
         match = re.match(f".*<{NAMED_EMAIL_REGEX}>.*", reply_to) or re.match(NAMED_EMAIL_REGEX, reply_to)
@@ -62,7 +69,6 @@ class HeyFilter(Filter):
         # sender = get_sender(message)
         sender = self.get_address(message)
         if sender:
-            print(f"Sender: {sender}")
             group = self.contact_group.get(sender, "screener")
             self.add_tags(message, group)
             self.remove_tags(message, *get_notmuch_new_tags())
