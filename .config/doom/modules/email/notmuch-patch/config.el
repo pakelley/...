@@ -796,3 +796,19 @@ Tagging of future messages is done by the HeyFilter afew filter."
      ((listp (car icalendar))
       (dolist (sub-element icalendar)
         (imip-write-element sub-element))))))
+
+(after! notmuch
+  (defun +patch-notmuch/remove-tag-filter (tag-name query-string)
+    (or
+     (string-replace (format " and tag:%s" tag-name) "" query-string)
+     (string-replace (format "tag:%s and " tag-name) "" query-string)
+     (string-replace (format "tag:%s" tag-name) "*" query-string)
+     query-string))
+
+
+  (defun +patch-notmuch/toggle-unread ()
+    (interactive)
+    (let ((query-string (if (string-match "tag:unread" notmuch-search-query-string)
+                            (+patch-notmuch/remove-tag-filter "unread" notmuch-search-query-string)
+                          (concat notmuch-search-query-string " and tag:unread"))))
+      (notmuch-search query-string notmuch-search-oldest-first))))
