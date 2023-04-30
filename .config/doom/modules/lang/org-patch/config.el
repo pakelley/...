@@ -92,23 +92,20 @@
              (rfloc (org-refile-get-location "Project to move this task into")))
         (org-refile nil nil rfloc)))
   
+  (setq +patch--widen-hooks '())
+  
   (defun +patch/widen ()
     (interactive)
     (widen)
-    (+patch/refine-project-mode -1))
+    (+patch/refine-project-mode -1)
+    (dolist (hook +patch--widen-hooks)
+      (save-excursion
+        (save-restriction
+          (funcall hook)))))
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
-               :desc "Capture"             "c" #'org-gtd-capture
-               :desc "Engage"              "e" #'org-gtd-engage
-               :desc "Process Inbox"       "p" #'org-gtd-process-inbox
-               :desc "Plan"                "P" (lambda () (interactive) (org-ql-view "Planning"))
-               :desc "Daily Agenda"        "d" (lambda () (interactive) (org-ql-view "Daily"))
-               :desc "Action List"         "a" #'org-ql-action-list
                :desc "Views"               "v" #'org-ql-view
-               :desc "Show all next"       "n" #'org-gtd-show-all-next
-               :desc "Show stuck projects" "s" #'org-gtd-show-stuck-projects
-               :desc "Capture"             "c" #'org-gtd-capture
-               :desc "Archive Done"        "A" #'org-gtd-archive-completed-items
+               :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
                 :desc "Convert to project" "c" #'+patch/convert-to-project
                 :desc "Create new project" "n" #'+patch/create-new-project)))
@@ -1427,6 +1424,209 @@
   (interactive)
   (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
   (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarters-tasks"))
+
+(use-package! transient
+  :config
+  (defclass transient-preset (transient-infix)
+    ((transient                            :initform t)
+     (format      :initarg :format         :initform " %k %d %v")
+     (arguments   :initarg :arguments))
+    "Class used for command-line arguments presets.")
+  
+  (cl-defmethod transient-init-value ((obj transient-preset))
+    "if default values match the arguments slot of transient_preset then set its init value to t"
+    (oset obj value
+          (seq-set-equal-p (oref obj arguments)
+                           (oref transient--prefix value))))
+  
+  (cl-defmethod transient-infix-read ((obj transient-preset))
+    "Toggle the preset on or off setting all the arguments to corresponding infixes."
+    (pp (transient-args transient-current-command))
+    (seq-set-equal-p (oref obj arguments)
+                     (transient-args transient-current-command)))
+  
+  (cl-defmethod transient-infix-set ((obj transient-preset) value)
+    "Toggle the preset on or off setting all the arguments to corresponding infixes."
+    (oset obj value value)
+    (unless value
+      (oset transient--prefix value (oref obj arguments))
+      (mapc #'transient-init-value transient--suffixes)))
+  
+  (cl-defmethod transient-format-value ((obj transient-preset))
+    (propertize
+     (concat "[" (mapconcat 'identity (oref obj arguments) " ") "]")
+     'face (if (oref obj value)
+               'transient-argument
+             'transient-inactive-argument)))
+  
+  (cl-defmethod transient-infix-value ((_ transient-preset))
+    "Return nil, which means \"no value\"."
+    nil)
+  
+  (after! org
+    (defun +patch-gtd/set-task-attrs (&optional todo tags opened-date scheduled-date rfloc goto-task)
+      "For any args provided, apply the value to the appropriate field of the task
+    at point.
+    
+    If GOTO-TASK is specified, narrow to the task after applying properties so the
+    user can make any appropriate edits."
+      (when todo (org-todo todo))
+      (when tags (org-set-tags tags))
+      (when opened-date (+patch/set-opened-date nil opened-date))
+      (when scheduled-date (org-schedule nil scheduled-date))
+      (when rfloc (org-refile nil nil rfloc))
+      (when goto-task
+        (push-mark (point))
+        (org-refile '(16) nil rfloc)
+        (org-tree-to-indirect-buffer)
+        (+patch/refine-project-mode t)
+        (push (lambda () (pop-global-mark) (pop +patch--widen-hooks)) +patch--widen-hooks)))
+    (defun +patch--get-tags ()
+      "Get tags from user using 'org-fast-tag-selection'. Mostly taken from the
+    implementation of 'org-set-tags-command'."
+      (let* ((all-tags (org-get-tags))
+             (local-table (or org-current-tag-alist (org-get-buffer-tags)))
+             (table (setq org-last-tags-completion-table
+                          (append
+                           ;; Put local tags in front.
+                           local-table
+                           (cl-set-difference
+                            (org--tag-add-to-alist
+                             (and org-complete-tags-always-offer-all-agenda-tags
+                                  (org-global-tags-completion-table
+                                   (org-agenda-files)))
+                             local-table)
+                            local-table))))
+             (current-tags
+              (cl-remove-if (lambda (tag) (get-text-property 0 'inherited tag))
+                            all-tags))
+             (inherited-tags
+              (cl-remove-if-not (lambda (tag) (get-text-property 0 'inherited tag))
+                                all-tags)))
+    
+        (org-fast-tag-selection
+         current-tags
+         inherited-tags
+         table
+         (and org-fast-tag-selection-include-todo org-todo-key-alist))))
+    
+    (transient-define-infix +patch-gtd/planning/tag-infix ()
+      :description "Tags"
+      :class 'transient-option
+      :always-read t
+      :shortarg "-q"
+      :argument "--tags="
+      :reader (lambda (prompt _default-location _history)
+                (+patch--get-tags)))
+    
+    (transient-define-infix +patch-gtd/planning/refile-infix ()
+      :description "Refile Location"
+      :class 'transient-option
+      :always-read t
+      :shortarg "-r"
+      :argument "--refile="
+      :reader (lambda (prompt _default-location _history)
+                (when (fboundp 'org-refile-get-location)
+                  (let* ((rfloc (org-refile-get-location "Where should the task be filed?"))
+                         (rfloc-text (car rfloc)))
+                    ;; NOTE: Store full rfloc as property of the text, so that
+                    ;;       transient can display and we can still retrieve the
+                    ;;       full object later.
+                    (propertize rfloc-text 'rfloc rfloc)))))
+    
+    (transient-define-infix +patch-gtd/planning/todo-infix ()
+      :description "Todo State"
+      :class 'transient-option
+      :always-read t
+      :shortarg "-t"
+      :argument "--todo="
+      :reader (lambda (prompt _default-location _history)
+                (when (fboundp 'org-fast-todo-selection)
+                  (org-fast-todo-selection))))
+    
+    (transient-define-infix +patch-gtd/planning/opened-date-infix ()
+      :description "Opened Date"
+      :class 'transient-option
+      :always-read t
+      :shortarg "-o"
+      :argument "--opened-date="
+      :reader 'transient-read-date)
+    
+    (transient-define-infix +patch-gtd/planning/scheduled-date-infix ()
+      :description "Scheduled Date"
+      :class 'transient-option
+      :always-read t
+      :shortarg "-s"
+      :argument "--scheduled-date="
+      :reader 'transient-read-date)
+    
+    ;; "presets" that set typical combinations of infix args
+    (transient-define-infix +patch-gtd/planning/someday-maybe-preset ()
+      :class transient-preset
+      :arguments '("--todo=READY"))
+    
+    (transient-define-infix +patch-gtd/planning/in-queue-preset ()
+      :class transient-preset
+      :arguments `("--todo=TODO" ,(format "--opened-date=%s" (org-read-date nil nil "today"))))
+    
+    (transient-define-infix +patch-gtd/planning/to-schedule-preset ()
+      :class transient-preset
+      :arguments `("--todo=NEXT"
+                   ,(format "--opened-date=%s"
+                            (ts-format "%Y-%m-%d" (ts-apply :hour 0 :minute 0 :second 0 (ts-now))))))
+    
+    (transient-define-suffix +patch-gtd/apply-task-attrs ()
+      "Set whichever attributes are necessary for the task being processed."
+      :transient nil
+      (interactive)
+      (let* ((urgency (transient-arg-value "--urgency=" (transient-args '+patch-gtd/process-inbox-item)))
+             (todo (transient-arg-value "--todo=" (transient-args '+patch-gtd/process-inbox-item)))
+             (rfloc (let ((rfloc-text (transient-arg-value "--refile=" (transient-args '+patch-gtd/process-inbox-item))))
+                      (if rfloc-text
+                          (get-text-property 0 'rfloc rfloc-text)
+                        nil)))
+             (tags (transient-arg-value "--tags=" (transient-args '+patch-gtd/process-inbox-item)))
+             (opened-date (transient-arg-value "--opened-date=" (transient-args '+patch-gtd/process-inbox-item)))
+             (scheduled-date (transient-arg-value "--scheduled-date=" (transient-args '+patch-gtd/process-inbox-item))))
+        (when (and (not scheduled-date) (equal urgency "to-schedule"))
+          (setq scheduled-date (org-read-date)))
+        (+patch-gtd/set-task-attrs todo tags opened-date scheduled-date rfloc)))
+    
+    (transient-define-suffix +patch-gtd/apply-task-attrs-and-goto-task ()
+      "Set whichever attributes are necessary for the task being processed, then
+    narrow to the task to make any appropriate edits."
+      :transient nil
+      (interactive)
+      (let* ((urgency (transient-arg-value "--urgency=" (transient-args '+patch-gtd/process-inbox-item)))
+             (todo (transient-arg-value "--todo=" (transient-args '+patch-gtd/process-inbox-item)))
+             (rfloc (let ((rfloc-text (transient-arg-value "--refile=" (transient-args '+patch-gtd/process-inbox-item))))
+                      (if rfloc-text
+                          (get-text-property 0 'rfloc rfloc-text)
+                        nil)))
+             (tags (transient-arg-value "--tags=" (transient-args '+patch-gtd/process-inbox-item)))
+             (opened-date (transient-arg-value "--opened-date=" (transient-args '+patch-gtd/process-inbox-item)))
+             (scheduled-date (transient-arg-value "--scheduled-date=" (transient-args '+patch-gtd/process-inbox-item))))
+        (+patch-gtd/set-task-attrs todo tags opened-date scheduled-date rfloc t)))
+    
+    
+    (transient-define-prefix +patch-gtd/process-inbox-item ()
+      "Process a task from the inbox, setting whichever task attributes are
+    necessary for the particular task."
+      :value '("--todo=READY")
+      ["Presets"
+       ("s" "Someday/Maybe" +patch-gtd/planning/someday-maybe-preset)
+       ("q" "In-Queue" +patch-gtd/planning/in-queue-preset)
+       ("t" "To-Schedule" +patch-gtd/planning/to-schedule-preset)]
+      ["Task Attributes"
+       (+patch-gtd/planning/opened-date-infix)
+       (+patch-gtd/planning/scheduled-date-infix)
+       (+patch-gtd/planning/refile-infix)
+       (+patch-gtd/planning/todo-infix)
+       (+patch-gtd/planning/tag-infix)
+       ]
+      ["Apply"
+       ("x" "apply and eXit" +patch-gtd/apply-task-attrs)
+       ("d" "apply and eDit" +patch-gtd/apply-task-attrs-and-goto-task)])))
 
 (setq bufler-groups (bufler-defgroups
     (group
