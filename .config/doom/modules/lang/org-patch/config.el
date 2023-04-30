@@ -281,9 +281,25 @@
   :after (org org-capture)
   :commands (doct +patch/doct-properties)
   :defines +patch/doct-properties
-  :custom
+  :config
+  (defun +patch/doct-properties ()
+    "Add declaration's :properties to current entry."
+    (let ((properties (doct-get :properties)))
+      (dolist (keyword (seq-filter #'keywordp properties))
+        (let* ((property (substring (symbol-name keyword) 1))
+               (raw-value (plist-get properties keyword))
+               (expanded-value (if (string-match-p ".*%(.*" raw-value)
+                          (org-capture-fill-template raw-value)
+                        raw-value))
+               (clean-value (replace-regexp-in-string "\n$" "" expanded-value)))
+          (org-set-property property clean-value)))))
+  ;; Usage:
+  ;; (doct '(("My capture template"
+  ;;          ...
+  ;;          :hook +patch/org-property-drawer
+  ;;          :properties (:anki_deck "${category}"))))
   ;; setq
-  (org-capture-templates
+  (setq org-capture-templates
    (append org-capture-templates
            (doct '(("Inbox"
                     :keys "i"

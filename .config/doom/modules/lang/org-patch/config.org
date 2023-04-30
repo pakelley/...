@@ -515,7 +515,8 @@ Because all of my TODO/NEXT tasks will have at least one thing logged (because I
   :after (org org-capture)
   :commands (doct +patch/doct-properties)
   :defines +patch/doct-properties
-  :custom
+  :config
+  <<doct-properties-hook>>
   <<org-capture-templates>>
   :config
   <<doct-properties-hook>>
@@ -529,9 +530,13 @@ Nice function for passing properties to `doct` modified from [[https://github.co
   "Add declaration's :properties to current entry."
   (let ((properties (doct-get :properties)))
     (dolist (keyword (seq-filter #'keywordp properties))
-      (org-set-property (substring (symbol-name keyword) 1)
-                        (replace-regexp-in-string "\n$" ""
-                                                  (org-capture-fill-template (plist-get properties keyword)))))))
+      (let* ((property (substring (symbol-name keyword) 1))
+             (raw-value (plist-get properties keyword))
+             (expanded-value (if (string-match-p ".*%(.*" raw-value)
+                        (org-capture-fill-template raw-value)
+                      raw-value))
+             (clean-value (replace-regexp-in-string "\n$" "" expanded-value)))
+        (org-set-property property clean-value)))))
 ;; Usage:
 ;; (doct '(("My capture template"
 ;;          ...
@@ -544,7 +549,7 @@ Appending to existing templates to keep project templates
 #+name: org-capture-templates
 #+begin_src elisp :tangle no
 ;; setq
-(org-capture-templates
+(setq org-capture-templates
  (append org-capture-templates
          (doct '(("Inbox"
                   :keys "i"
