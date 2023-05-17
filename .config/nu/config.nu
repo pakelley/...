@@ -32,3 +32,14 @@ def rename-tab [
 ] {
   zsh -c $"echo -ne \"\\x1b]0;($name)\\x1b\\\\\""
 }
+
+# listening command from this SE post https://stackoverflow.com/a/30029855/5054505
+def listening [
+  port?: string  # optional port to filter results by
+] {
+  if ($port == null) {
+     sudo lsof -iTCP -sTCP:LISTEN -n -P
+  } else {
+    sudo lsof -iTCP -sTCP:LISTEN -n -P | grep -i --color $port
+  }
+}
