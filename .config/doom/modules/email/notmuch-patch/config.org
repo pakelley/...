@@ -15,6 +15,9 @@ notmuch new # seems to be necessary for setting up the xapian db
 
 # setup gmail
 # for each gmail account
+# first time: create new oauth app by going to https://console.cloud.google.com/apis/credentials
+#   - create "Oauth client ID"
+#   - type: desktop app
 mkdir ~/.local/share/mail/account.<ACCOUNT_NAME>
 cd ~/.local/share/mail/account.<ACCOUNT_NAME>
 rm -f .gmailieer.json & rm -f .credentials.gmailieer.json rm -f .lock & rm -r ./*
