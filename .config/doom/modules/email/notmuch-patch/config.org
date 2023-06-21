@@ -115,12 +115,21 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
          (save-excursion
            ,@body))))
 
+  (defun +patch-notmuch/email-is-pattern (email)
+    (and (s-prefix? "/" email)
+         (s-suffix? "/" email)))
+
+  (defun +patch/strip-from-string (border-string full-string)
+    (string-remove-prefix border-string (string-remove-suffix border-string full-string)))
+
   (defun +patch/add-org-contact (name email &optional email-group note bday)
     (+patch--from-contact-file email
      (end-of-buffer)
      (org-insert-heading nil nil t)  ;; force a top-level heading
      (insert name)
      (org-entry-put (point) "EMAIL" email)
+     (when (+patch-notmuch/email-is-pattern email)
+         (org-entry-put (point) "EMAIL-PATTERN" (+patch/strip-from-string "/" email)))
      (org-entry-put (point) "EMAIL-GROUP" email-group)
      (org-entry-put (point) "NOTE" note)
      (org-entry-put (point) "BIRTHDAY" bday)))
@@ -200,8 +209,8 @@ is a possibly empty forest of replies."
            (thread (+patch-notmuch/get-thread thread-id))
            (headers (plist-get thread :headers)))
       (or
-       (plist-get headers :Reply-To)
-       (plist-get headers :From))))
+       (plist-get headers :From)
+       (plist-get headers :Reply-To))))
 
 
   (defun +patch-notmuch/add-sender-to-group (group &optional thread-id tag-retroactively)
@@ -215,11 +224,13 @@ Group seting is done by setting the EMAIL-GROUP property of the sender's contact
 in org-contacts. If the contact does not exist, it will be created.
 Tagging of future messages is done by the HeyFilter afew filter."
     (interactive (list (completing-read "Email group: " '("feed" "paper-trail" "imbox"))))
+
     ;; TODO prompt whether to set tags for existing messages from sender
     ;;      - could have a config value to determine this behavior
     ;;      - could (maybe additionally) determine via prefix args and/or function args
-    (let* ((email (+patch-notmuch/get-email-from-notmuch-search thread-id))
-           (name (notmuch-search-find-authors))  ;; used to set name of contact, if we have to make a new contact
+    (let* ((email-and-name (mail-header-parse-address (+patch-notmuch/get-email-from-notmuch-search thread-id)))
+           (email (completing-read "Email address to use (wrap in `/` for a pattern): " nil nil nil (car email-and-name)))
+           (name (completing-read "Name to use: " nil nil nil (or (cdr email-and-name) (notmuch-search-find-authors))))  ;; used to set name of contact, if we have to make a new contact
            (tag-retroactively (or tag-retroactively
                                   +patch-notmuch/tag-retroactively
                                   (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
