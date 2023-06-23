@@ -72,9 +72,31 @@
                                        (org-set-property "EMAIL-GROUP" email-group))
       (+patch/add-org-contact name email email-group))))
 
-;; this seems to have been removed from notmuch, but I'll keep a copy here
 (after! notmuch
+  (after! notmuch
+    (defun +patch-notmuch/remove-tag-filter (tag-name query-string)
+      (or
+       (string-replace (format " and tag:%s" tag-name) "" query-string)
+       (string-replace (format "tag:%s and " tag-name) "" query-string)
+       (string-replace (format "tag:%s" tag-name) "*" query-string)
+       query-string))
+  
+  
+    (defun +patch-notmuch/toggle-unread ()
+      (interactive)
+      (let ((query-string (if (string-match "tag:unread" notmuch-search-query-string)
+                              (+patch-notmuch/remove-tag-filter "unread" notmuch-search-query-string)
+                            (concat notmuch-search-query-string " and tag:unread"))))
+        (notmuch-search query-string notmuch-search-oldest-first))))
+  
+  (defun +patch-notmuch/unsubscribe ()
+    (interactive)
+    (notmuch-search-show-thread)
+    ;; go to bottom of email, in case the link isn't called "unsubscribe"
+    (evil-goto-line)
+    (consult-line "unsubscribe"))
 
+  ;; `map!` doesn't seem to work for this, but `general-define-key` does
   (general-define-key
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
@@ -86,6 +108,8 @@
    "P" (cmd! (+patch-notmuch/add-sender-to-group "paper-trail"))
    "t" #'+patch-notmuch/move-thread-to-group
    "T" #'+patch-notmuch/add-sender-to-group
+   "u" #'+patch-notmuch/unsubscribe
+   "U" #'+patch-notmuch/toggle-unread
    "-" nil)
   (general-define-key
    :keymaps 'notmuch-search-mode-map
@@ -107,6 +131,7 @@
             (const :tag "Prompt" prompt)))
   (setq +patch-notmuch/tag-retroactively 'always)
 
+  ;; this seems to have been removed from notmuch, but I'll keep a copy here
   (defun +patch-notmuch--query-get-threads (search-terms)
     "Return a list of threads of messages matching SEARCH-TERMS.
 

@@ -151,10 +151,12 @@ I use this header in my contacts file, so that it renders as a column view (see 
 #+end_src
 
 * HEY-like thread/sender grouping
-#+begin_src emacs-lisp :tangle yes
-;; this seems to have been removed from notmuch, but I'll keep a copy here
+#+begin_src emacs-lisp :noweb no-export
 (after! notmuch
+  <<toggle-unread>>
+  <<unsubscribe-macro>>
 
+  ;; `map!` doesn't seem to work for this, but `general-define-key` does
   (general-define-key
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
@@ -166,6 +168,8 @@ I use this header in my contacts file, so that it renders as a column view (see 
    "P" (cmd! (+patch-notmuch/add-sender-to-group "paper-trail"))
    "t" #'+patch-notmuch/move-thread-to-group
    "T" #'+patch-notmuch/add-sender-to-group
+   "u" #'+patch-notmuch/unsubscribe
+   "U" #'+patch-notmuch/toggle-unread
    "-" nil)
   (general-define-key
    :keymaps 'notmuch-search-mode-map
@@ -187,6 +191,7 @@ I use this header in my contacts file, so that it renders as a column view (see 
             (const :tag "Prompt" prompt)))
   (setq +patch-notmuch/tag-retroactively 'always)
 
+  ;; this seems to have been removed from notmuch, but I'll keep a copy here
   (defun +patch-notmuch--query-get-threads (search-terms)
     "Return a list of threads of messages matching SEARCH-TERMS.
 
@@ -915,7 +920,9 @@ library for responding to cal invites
 #+end_src
 * interaction with search view
 ** quick toggle for unread
-#+begin_src emacs-lisp
+Macro for toggling the visibility of read messages on/off.
+#+name: toggle-unread
+#+begin_src emacs-lisp tangle: no
 (after! notmuch
   (defun +patch-notmuch/remove-tag-filter (tag-name query-string)
     (or
@@ -933,7 +940,17 @@ library for responding to cal invites
       (notmuch-search query-string notmuch-search-oldest-first))))
 
 #+end_src
-
+** unsubscribe macro
+Quickly unsubscribe to mailing lists. This just crudely opens the message and searches for "unsubscribe". It goes to the bottom of the email too, so that if the link is labelled something other than "unsubscribe" I can still usually find it quickly after cancelling the search.
+#+name: unsubscribe-macro
+#+begin_src emacs-lisp :tangle no
+(defun +patch-notmuch/unsubscribe ()
+  (interactive)
+  (notmuch-search-show-thread)
+  ;; go to bottom of email, in case the link isn't called "unsubscribe"
+  (evil-goto-line)
+  (consult-line "unsubscribe"))
+#+end_src
 ** saved searches
 #+begin_src emacs-lisp :tangle yes
 (after! notmuch
