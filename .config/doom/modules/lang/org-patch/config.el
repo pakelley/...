@@ -104,7 +104,8 @@
           (funcall hook)))))
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
-               :desc "Views"               "v" #'org-ql-view
+               :desc "Archive"             "a" #'org-archive-to-archive-sibling
+               :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
                 :desc "Convert to project" "c" #'+patch/convert-to-project
@@ -827,31 +828,52 @@
            (if view
                (setf (cdr view) view-spec)
              (add-to-list 'org-ql-views `(,view-name . ,view-spec)))))
-       (setq
-        +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
-                                                (not (ancestors (todo "TODO" "NEXT"))))
-        +patch/is-planned `(and ,+patch/is-top-level-selected-task
-                                (not to-plan))
-        +patch/to-be-planned `(and ,+patch/is-top-level-selected-task
-                                   (to-plan)))
+       (defun +patch-gtd/set-or-refresh-yearly-views ()
+         (setq
+          +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
+                                                  (not (ancestors (todo "TODO" "NEXT"))))
+          +patch/is-planned `(and ,+patch/is-top-level-selected-task
+                                  (not (to-plan)))
+          +patch/to-be-planned `(and ,+patch/is-top-level-selected-task
+                                     (to-plan)))
        
-       (+patch/set-orgql-view
-        "This Year's Projects"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query ,+patch/to-be-planned
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:auto-outline-path t))
-          :title "This Year's Projects"))
+         (+patch/set-orgql-view
+          "This Year's Projects"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query ,+patch/to-be-planned
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-outline-path t))
+            :title "This Year's Projects"))
        
-       (+patch/set-orgql-view
-        "Yearly Planning"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query ,+patch/is-planned
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:auto-planning t))
-          :title "Yearly Planning"))
+         (+patch/set-orgql-view
+          "Yearly Planning"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query ,+patch/is-planned
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-planning t))
+            :title "Yearly Planning"))
+       
+         (+patch/set-orgql-view
+          "Actions In-Queue"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and (todo "TODO" "NEXT") (not (to-plan)) ,+patch/is-action)
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-outline-path t))
+            :title "Actions In-Queue"))
+       
+         (+patch/set-orgql-view
+          "Projects In-Queue"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and ,+patch/is-planned ,+patch/is-project)
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-outline-path t))
+            :title "Projects In-Queue")))
+       
+       (+patch-gtd/set-or-refresh-yearly-views)
        (defun +patch/start-of-this-quarter-ts (&optional as-of)
          (let* ((base-ts (or as-of (ts-now)))
                 (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
@@ -883,129 +905,144 @@
                 (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
            (ts-dec 'second 1 start-of-this-quarter)))
        
-       (setq
-        planned-for-this-quarter (let* ((end-of-quarter (+patch/end-of-this-quarter-ts)))
-                                   `(or (scheduled :to ,(ts-format end-of-quarter))
-                                        (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
-        scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                                     :to ,(ts-format (+patch/end-of-this-quarter-ts)))
-        opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                              :to ,(ts-format (+patch/end-of-this-quarter-ts))))
+       (defun +patch-gtd/set-or-refresh-quarterly-views ()
+         (setq
+          planned-for-this-quarter (let* ((end-of-quarter (+patch/end-of-this-quarter-ts)))
+                                     `(or (scheduled :to ,(ts-format end-of-quarter))
+                                          (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
+          scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                                       :to ,(ts-format (+patch/end-of-this-quarter-ts)))
+          opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
+                                :to ,(ts-format (+patch/end-of-this-quarter-ts))))
        
-       (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
-         (length
-          (org-ql-query
-            :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-            :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
+         (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
+           (length
+            (org-ql-query
+              :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+              :where `(closed :from ,(ts-format (+patch/start-of-last-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-last-quarter-ts as-of))))))
        
-       (defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
-         (length
-          (org-ql-query
-            :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-            :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
+         (defun +patch/num-tasks-planned-for-this-quarter (&optional as-of)
+           (length
+            (org-ql-query
+              :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+              :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
        
-       ;; (setq
+         (+patch/set-orgql-view
+          "This Quarter's Projects"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and
+                    (todo "TODO" "NEXT")
+                    ,+patch/is-action
+                    ,opened-this-quarter
+                    (not (scheduled)))
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-outline-path t))
+            :title "This Quarter's Projects"))
        
-       (+patch/set-orgql-view
-        "This Quarter's Projects"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query (and
-                  (todo "TODO" "NEXT")
-                  ,+patch/is-action
-                  ,scheduled-for-this-quarter
-                  (not (scheduled)))
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:auto-outline-path t))
-          :title "This Quarter's Projects"))
+         (+patch/set-orgql-view
+          "Quarterly Planning"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and
+                    (todo "TODO" "NEXT")
+                    ,+patch/is-action
+                    ,opened-this-quarter)
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-planning t))
+            :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter)))))
        
-       (+patch/set-orgql-view
-        "Quarterly Planning"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query (and
-                  (todo "TODO" "NEXT")
-                  ,+patch/is-action
-                  ,scheduled-for-this-quarter)
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:auto-planning t))
-          :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter))))
-       (setq
-        scheduled-for-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                       (dow (ts-day-of-week-num today))
-                                       (start-of-week (ts-dec 'day dow today))
-                                       (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
-                                       (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                                  `(scheduled
-                                    :from ,(ts-format start-of-week)
-                                    :to ,(ts-format end-of-week)))
-        scheduled-til-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                       (dow (ts-day-of-week-num today))
-                                       (start-of-week (ts-dec 'day dow today)))
-                                  `(scheduled
-                                    :to ,(ts-format start-of-week)))
-        scheduled-through-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                           (dow (ts-day-of-week-num today))
-                                           (start-of-week (ts-dec 'day dow today))
-                                           (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
-                                           (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                                      `(scheduled
-                                        :to ,(ts-format end-of-week)))
-        opened-through-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                        (dow (ts-day-of-week-num today))
-                                        (start-of-week (ts-dec 'day dow today))
-                                        (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
-                                        (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                                   `(opened
-                                     :to ,(ts-format end-of-week)))
-        due-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                             (dow (ts-day-of-week-num today))
-                             (start-of-week (ts-dec 'day dow today))
-                             (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
-                             (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                        `(deadline :from ,(ts-format start-of-week) :to ,(ts-format end-of-week)))
-        due-this-week-sa (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
-                                (dow (ts-day-of-week-num today))
-                                (start-of-week (ts-dec 'day dow today))
-                                (start-of-next-week (ts-inc 'day (- 7 dow) (ts-now)))
-                                (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                           `(before ,(prin1-to-string (ts-format "%Y-%m-%d" start-of-next-week)))))
+       (+patch-gtd/set-or-refresh-quarterly-views)
+       (defun +patch-gtd/set-or-refresh-weekly-views ()
+         (setq
+          scheduled-for-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                         (dow (ts-day-of-week-num today))
+                                         (start-of-week (ts-dec 'day dow today))
+                                         (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                                         (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                                    `(scheduled
+                                      :from ,(ts-format start-of-week)
+                                      :to ,(ts-format end-of-week)))
+          scheduled-around-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                            (dow (ts-day-of-week-num today))
+                                            (start-of-week (ts-dec 'day dow today))
+                                            (start-of-period (ts-dec 'day 3 start-of-week))
+                                            (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                                            (end-of-week (ts-dec 'second 1 start-of-next-week))
+                                            (end-of-period (ts-inc 'day 3 end-of-week)))
+                                       `(scheduled
+                                         :from ,(ts-format start-of-period)
+                                         :to ,(ts-format end-of-period)))
+          scheduled-til-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                         (dow (ts-day-of-week-num today))
+                                         (start-of-week (ts-dec 'day dow today)))
+                                    `(scheduled
+                                      :to ,(ts-format start-of-week)))
+          scheduled-through-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                             (dow (ts-day-of-week-num today))
+                                             (start-of-week (ts-dec 'day dow today))
+                                             (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                                             (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                                        `(scheduled
+                                          :to ,(ts-format end-of-week)))
+          opened-through-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                          (dow (ts-day-of-week-num today))
+                                          (start-of-week (ts-dec 'day dow today))
+                                          (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                                          (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                                     `(opened
+                                       :to ,(ts-format end-of-week)))
+          due-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                               (dow (ts-day-of-week-num today))
+                               (start-of-week (ts-dec 'day dow today))
+                               (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                               (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                          `(deadline :from ,(ts-format start-of-week) :to ,(ts-format end-of-week)))
+          due-this-week-sa (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                  (dow (ts-day-of-week-num today))
+                                  (start-of-week (ts-dec 'day dow today))
+                                  (start-of-next-week (ts-inc 'day (- 7 dow) (ts-now)))
+                                  (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                             `(before ,(prin1-to-string (ts-format "%Y-%m-%d" start-of-next-week)))))
        
-       (+patch/set-orgql-view
-        "This Week's Projects"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query (and
-                  (todo "TODO" "NEXT")
-                  ,+patch/is-action
-                  (not ,scheduled-for-this-week)
-                  (or
-                   ,opened-through-this-week
-                   ,due-this-week))
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:name "Upcoming Deadline"
-                          :and (:deadline ,due-this-week-sa
-                                :not (:todo ("DONE" "CNCL" "WAIT")))
-                          :face error
-                          :order 0)
-                         (:auto-outline-path t))
-          :title "This Week's Projects"))
+         (+patch/set-orgql-view
+          "This Week's Projects"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and
+                    (todo "TODO" "NEXT")
+                    ,+patch/is-action
+                    (not ,scheduled-around-this-week)
+                    (or
+                     ,opened-through-this-week
+                     ,due-this-week))
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:name "Upcoming Deadline"
+                            :and (:deadline ,due-this-week-sa
+                                  :not (:todo ("DONE" "CNCL" "WAIT")))
+                            :face error
+                            :order 0)
+                           (:auto-outline-path t))
+            :title "This Week's Projects"))
        
-       (+patch/set-orgql-view
-        "Weekly Planning"
-        `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-          :query (and
-                  (todo "TODO" "NEXT")
-                  ,+patch/is-action
-                  ,scheduled-for-this-week)
-          :sort (priority todo)
-          :narrow nil
-          :super-groups ((:name "Overdue"
-                          :and (:scheduled past
-                                :face error
-                                :not (:todo ("DONE" "CNCL" "WAIT"))))
-                         (:auto-planning t))
-          :title "Weekly Planning"))
+         (+patch/set-orgql-view
+          "Weekly Planning"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and
+                    (todo "TODO" "NEXT")
+                    ,+patch/is-action
+                    ,scheduled-around-this-week)
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:name "Overdue"
+                            :and (:scheduled past
+                                  :face error
+                                  :not (:todo ("DONE" "CNCL" "WAIT"))))
+                           (:auto-planning t))
+            :title "Weekly Planning")))
+       
+       (+patch-gtd/set-or-refresh-weekly-views)
+       (+patch/refresh-weekly-planning-view)
 
 
   (defun org-ql-action-list (action-list-name)
@@ -1240,12 +1277,18 @@
   :init
   (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
               (:prefix-map ("DEL" . "GTD")
-                           (:prefix ("V" . "Planning Views")
-                            :desc "Yearly Planning"     "y" (cmd! (burly-open-bookmark "Burly: Yearly Planning"))
-                            :desc "Quarterly Planning"  "q" (cmd! (burly-open-bookmark "Burly: Quarterly Planning"))
-                            :desc "Weekly Planning"     "w" (cmd! (burly-open-bookmark "Burly: Weekly Planning"))
-                            :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
-                            :desc "Daily Planning"      "d" #'+patch/gen-and-show-daily-agenda))
+                           (:prefix ("v" . "Planning Views")
+                            :desc "Yearly Planning"     "y" #'+patch-gtd/planning/yearly-planning-layout
+                            :desc "Quarterly Planning"  "q" #'+patch-gtd/planning/quarterly-planning-layout
+                            :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
+                            ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
+                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout)
+                           (:prefix ("p" . "Planning Actions")
+                                    :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
+                                    :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
+                                    :desc "Open this quarter"       "o" #'+patch-gtd/planning/agenda-open-this-quarter-move
+                                    :desc "Punt to another quarter" "u" #'+patch-gtd/planning/agenda-punt-move
+                                    ))
               "<backspace>" nil
               :m "<backspace>" nil
               "<delete>" nil
@@ -1254,84 +1297,43 @@
         (:leader
          (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark)))
   :config
-  (defun +patch/bookmark-org-ql-view (org-ql-view-name)
-      (bookmark-store
-       (format "Org QL View: %s" org-ql-view-name)
-       (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
-             '(handler . org-ql-view-bookmark-handler))
-       nil))
+  (defun +patch-gtd/planning/yearly-planning-layout ()
+    (interactive)
+    (+patch-gtd/set-or-refresh-yearly-views)
+    (+patch/open-window-layout '(delete-other-windows
+                               (lambda () (org-ql-view "Yearly Planning"))
+                               delete-other-windows
+                               split-window-horizontally
+                               (lambda () (enlarge-window (/ (frame-width) 10) t))
+                               (lambda () (org-ql-view "This Year's Projects"))
+                               (lambda () (evil-window-right 1)))))
   
-  (defun gen-burly-split-screen-from-orgql-views (view-name-left view-name-right)
-      (+patch/bookmark-org-ql-view view-name-left)
-      (+patch/bookmark-org-ql-view view-name-right)
-      (let* ((project-frame `(+patch/gen-burly-orgql-view-frame view-name-left 122 66))
-             (planning-frame `(leaf (last . t)
-                               (parameters
-                                (burly-url . ,(burly--bookmark-record-url (bookmark-get-bookmark (format "Org QL View: %s" view-name-right)))))
-                               ;; TODO would be nice to remove these props, since I don't understand what they do exactly (and would make this more similar to the previous frame's definition)
-                               (buffer (format "*Org QL View: %s*" view-name-right) (hscroll . 0) (fringes 8 8 nil nil) (scroll-bars nil 0 t nil 0 t nil) (vscroll . 0) (point . 1))))
-             (window `(nil hc (total-width . 253) (total-height . 66) ,project-frame ,planning-frame))
-             (window-filename (concat "?" (url-hexify-string (prin1-to-string window))))
-             (window-url (url-recreate-url (url-parse-make-urlobj "emacs+burly+windows" nil nil nil nil window-filename))))
-        `((url . ,window-url) (handler . burly-bookmark-handler))))
-  
-  (defun gen-burly-split-screen-from-orgql-views (view-name-left view-name-right)
-      (+patch/bookmark-org-ql-view view-name-left)
-      (+patch/bookmark-org-ql-view view-name-right)
-      (let* ((project-frame `(leaf (total-width . 126)
-                              (total-height . 66)
-                              (parameters
-                               (burly-url . ,(burly--bookmark-record-url (bookmark-get-bookmark (format "Org QL View: %s" view-name-left)))))
-                              (buffer (format "*Org QL View: %s*" view-name-left))))
-             (planning-frame `(leaf (last . t)
-                               (parameters
-                                (burly-url . ,(burly--bookmark-record-url (bookmark-get-bookmark (format "Org QL View: %s" view-name-right)))))
-                               ;; TODO would be nice to remove these props, since I don't understand what they do exactly (and would make this more similar to the previous frame's definition)
-                               (buffer (format "*Org QL View: %s*" view-name-right) (hscroll . 0) (fringes 8 8 nil nil) (scroll-bars nil 0 t nil 0 t nil) (vscroll . 0) (point . 1))))
-             (window `(nil hc (total-width . 253) (total-height . 66) ,project-frame ,planning-frame))
-             (window-filename (concat "?" (url-hexify-string (prin1-to-string window))))
-             (window-url (url-recreate-url (url-parse-make-urlobj "emacs+burly+windows" nil nil nil nil window-filename))))
-        `((url . ,window-url) (handler . burly-bookmark-handler))))
-  
-  (bookmark-store "Burly: Yearly Planning" (gen-burly-split-screen-from-orgql-views "This Year's Projects" "Yearly Planning") nil)
-  (bookmark-store "Burly: Quarterly Planning" (gen-burly-split-screen-from-orgql-views "This Quarter's Projects" "Quarterly Planning") nil)
-  (defun +patch/gen-burly-buffer-defaults (buffer-name)
-      `(buffer ,buffer-name (selected) (hscroll . 0) (fringes 8 8 nil nil) (margins nil) (scroll-bars nil 0 t nil 0 t nil) (vscroll . 0) (dedicated) (point . 1) (start . 1)))
-  
-    (defun +patch/gen-burly-orgql-view-frame (view-name width height &optional last-p)
-      `(leaf (when last-p (last . t)) (total-width . ,width) (total-height . ,height)
-        (parameters
-         (burly-url . ,(burly--bookmark-record-url (bookmark-get-bookmark (format "Org QL View: %s" view-name)))))
-        ,(+patch/gen-burly-buffer-defaults (format "*Org QL View: %s*" view-name))))
-  
-    ;; (let* ((view-name-left "This Week's Projects")
-  
-    (defun +patch/refresh-weekly-planning-view ()
-      "We have to refresh the bookmark whenever the burnup chart is re-generated."
-      (interactive)
-      (+patch/generate-quarters-burnup-plot)
-      (+patch/bookmark-org-ql-view "This Week's Projects")
-      (+patch/bookmark-org-ql-view "Weekly Planning")
-      (bookmark-store "Burly: Weekly Planning"
-                    (let* ((view-name-left "This Week's Projects")
-                           (view-name-top-right "Weekly Planning")
-                           (project-frame (+patch/gen-burly-orgql-view-frame view-name-left 131 66))
-                           (planning-frame (+patch/gen-burly-orgql-view-frame view-name-top-right 122 35 t))
-                           (burnup-frame `(leaf (last . t) (total-width . 122) (total-height . 31)
-                                           (parameters
-                                            (burly-url . ,(concat "emacs+burly+bookmark:" "//quarters-burnup.png?"
-                                                                  (concat "filename=" (url-hexify-string "\"~/.config/.../.config/doom/modules/lang/org-patch/quarters-burnup.png\"")))))
-                                           ,(+patch/gen-burly-buffer-defaults "quarters-burnup.png")))
-                           (window `(nil hc (total-width . 253) (total-height . 66) (combination-limit)
-                                     ,project-frame
-                                     (vc (last . t) (total-width . 122) (total-height . 66) (combination-limit)
-                                         ,planning-frame
-                                         ,burnup-frame)))
-                           (window-filename (concat "?" (url-hexify-string (prin1-to-string window))))
-                           (window-url (url-recreate-url (url-parse-make-urlobj "emacs+burly+windows" nil nil nil nil window-filename))))
-                      `((url . ,window-url) (handler . burly-bookmark-handler))) nil))
-  
-    (+patch/refresh-weekly-planning-view)
+  (defun +patch-gtd/planning/quarterly-planning-layout ()
+    (interactive)
+    (+patch-gtd/set-or-refresh-quarterly-views)
+    (+patch/open-window-layout '(delete-other-windows
+                               (lambda () (org-ql-view "Quarterly Planning"))
+                               delete-other-windows
+                               split-window-horizontally
+                               (lambda () (enlarge-window (/ (frame-width) 10) t))
+                               (lambda () (org-ql-view "This Quarter Projects"))
+                               (lambda () (evil-window-right 1)))))
+  (defun +patch-gtd/planning/weekly-planning-layout ()
+    (interactive)
+    (+patch-gtd/set-or-refresh-weekly-views)
+    (+patch/generate-quarters-burnup-plot)
+    (+patch/open-window-layout '(delete-other-windows
+                                 (lambda () (org-ql-view "Weekly Planning"))
+                                 delete-other-windows
+                                 split-window-horizontally
+                                 (lambda () (enlarge-window (/ (frame-width) 10) t))
+                                 (lambda () (org-ql-view "This Week's Projects"))
+                                 (lambda () (evil-window-right 1))
+                                 ;; other-window
+                                 split-window-vertically
+                                 (lambda () (evil-window-down 1))
+                                 "~/.config/.../.config/doom/modules/lang/org-patch/quarters-burnup.png"
+                                 (lambda () (evil-window-up 1)))))
   (defun +patch/is-substr (comparison-string query-string)
     (string-match-p (regexp-quote query-string) comparison-string))
   
@@ -1373,33 +1375,35 @@
           :desc "Toggle %easy filter"   "e"   #'+patch/toggle-easy-agenda-filter
           :desc "Filter by action list" "a"   #'org-agenda-filter
           :desc "Clear filters"         "DEL" #'org-agenda-filter-remove-all)))
-  (defun +patch/refresh-daily-agenda ()
-    (bookmark-store "Burly: Daily Planning"
-                    (let* ((window '(nil
-                                     leaf (total-width . 253)
-                                          (total-height . 66)
-                                          (parameters (burly-url . "emacs+burly+name://?*Org Agenda*"))
-                                          (buffer "*Org Agenda*"
-                                                  (selected . t)
-                                                  (hscroll . 0)
-                                                  (fringes 8 8 nil nil)
-                                                  (margins nil)
-                                                  (scroll-bars nil 0 t nil 0 t nil)
-                                                  (vscroll . 0)
-                                                  (dedicated)
-                                                  (point . 1649)
-                                                  (start . 1))))
-                           (window-filename (concat "?" (url-hexify-string (prin1-to-string window))))
-                           (window-url (url-recreate-url (url-parse-make-urlobj "emacs+burly+windows" nil nil nil nil window-filename))))
-                      `((url . ,window-url) (handler . burly-bookmark-handler))) nil))
-  
-  (defun +patch/gen-and-show-daily-agenda ()
-    "Burly can't load the agenda if it's not already open, so we have to do it ourselves (then refresh the bookmark)."
+  (defun +patch-gtd/planning/daily-planning-layout ()
     (interactive)
-    (org-agenda nil ",")
-    (+patch/refresh-daily-agenda)
-    (burly-open-bookmark "Burly: Daily Planning"))
+    (+patch/open-window-layout '(delete-other-windows
+                               (lambda () (org-agenda nil ","))
+                               delete-other-windows)))
   )
+
+(defun +patch/bookmark-org-ql-view (org-ql-view-name)
+    (bookmark-store
+     (format "Org QL View: %s" org-ql-view-name)
+     (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
+           '(handler . org-ql-view-bookmark-handler))
+     nil))
+
+;; heavily inspired by the yequake code for setting up buffers
+(defun +patch/open-window-layout (buffer-refs-or-fns)
+  "Show buffers or run functions in order defined in BUFFER-REFS-OR-FNS."
+  (cl-flet ((open-buffer-or-call-fn (it) (cl-typecase it
+                        (string (or (get-buffer it)
+                                    (find-buffer-visiting it)
+                                    (find-file-noselect it)))
+                        (function (funcall it)))))
+    (let ((split-width-threshold 0)
+          (split-height-threshold 0))
+      ;; Switch to first buffer, pop to the rest.
+      (switch-to-buffer (open-buffer-or-call-fn (car buffer-refs-or-fns)))
+      (dolist (buffer-ref-or-fn (cdr buffer-refs-or-fns))
+        (when-let* ((ret (open-buffer-or-call-fn buffer-ref-or-fn)))
+          (display-buffer-same-window ret nil))))))
 
 (after! ts
   (after! org-ql
