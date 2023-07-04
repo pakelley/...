@@ -1282,13 +1282,14 @@
                             :desc "Quarterly Planning"  "q" #'+patch-gtd/planning/quarterly-planning-layout
                             :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
                             ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
-                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout)
+                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout
+                            :desc "Inbox"               "i" #'+patch-gtd/planning/inbox-layout)
                            (:prefix ("p" . "Planning Actions")
-                                    :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
-                                    :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
-                                    :desc "Open this quarter"       "o" #'+patch-gtd/planning/agenda-open-this-quarter-move
-                                    :desc "Punt to another quarter" "u" #'+patch-gtd/planning/agenda-punt-move
-                                    ))
+                            :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
+                            :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
+                            :desc "Open this quarter"       "o" #'+patch-gtd/planning/agenda-open-this-quarter-move
+                            :desc "Punt to another quarter" "u" #'+patch-gtd/planning/agenda-punt-move
+                            ))
               "<backspace>" nil
               :m "<backspace>" nil
               "<delete>" nil
@@ -1318,6 +1319,46 @@
                                (lambda () (enlarge-window (/ (frame-width) 10) t))
                                (lambda () (org-ql-view "This Quarter Projects"))
                                (lambda () (evil-window-right 1)))))
+  (defun +patch-gtd/planning/move-to-planning-queue ()
+    (interactive)
+    (+patch-gtd/planning/agenda-mark-task-for-planning)
+    (org-ql-view-refresh))
+  
+  (defun +patch-gtd/planning/move-ready ()
+    (interactive)
+    (+patch-gtd/planning/incubate)
+    (org-ql-view-refresh))
+  
+  (defun +patch-gtd/planning/open-this-quarter (&optional pom)
+    (interactive)
+    (org-entry-delete (or pom (point)) "TO-PLAN")
+    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
+  
+  (defun +patch-gtd/planning/agenda-open-this-quarter ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry
+     (+patch-gtd/planning/open-this-quarter)))
+  
+  (defun +patch-gtd/planning/agenda-open-this-quarter-move ()
+    (interactive)
+    (+patch-gtd/planning/agenda-open-this-quarter)
+    (org-ql-view-refresh))
+  
+  (defun +patch-gtd/planning/punt (&optional pom)
+    (interactive)
+    (org-entry-delete (or pom (point)) "TO-PLAN")
+    ;; (+patch/try (org-entry-delete (or pom (point)) "TO-PLAN"))
+    (+patch/set-opened-date (or pom (point))))
+  
+  (defun +patch-gtd/planning/agenda-punt ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry
+     (+patch-gtd/planning/punt)))
+  
+  (defun +patch-gtd/planning/agenda-punt-move ()
+    (interactive)
+    (+patch-gtd/planning/agenda-punt)
+    (org-ql-view-refresh))
   (defun +patch-gtd/planning/weekly-planning-layout ()
     (interactive)
     (+patch-gtd/set-or-refresh-weekly-views)
@@ -1380,6 +1421,11 @@
     (+patch/open-window-layout '(delete-other-windows
                                (lambda () (org-agenda nil ","))
                                delete-other-windows)))
+  (defun +patch-gtd/planning/inbox-layout ()
+    (interactive)
+    (+patch/open-window-layout '(delete-other-windows
+                                 "~/.local/share/notes/gtd/inbox.org"
+                                 delete-other-windows)))
   )
 
 (defun +patch/bookmark-org-ql-view (org-ql-view-name)

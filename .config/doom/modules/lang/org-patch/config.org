@@ -1351,13 +1351,14 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
                             :desc "Quarterly Planning"  "q" #'+patch-gtd/planning/quarterly-planning-layout
                             :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
                             ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
-                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout)
+                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout
+                            :desc "Inbox"               "i" #'+patch-gtd/planning/inbox-layout)
                            (:prefix ("p" . "Planning Actions")
-                                    :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
-                                    :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
-                                    :desc "Open this quarter"       "o" #'+patch-gtd/planning/agenda-open-this-quarter-move
-                                    :desc "Punt to another quarter" "u" #'+patch-gtd/planning/agenda-punt-move
-                                    ))
+                            :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
+                            :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
+                            :desc "Open this quarter"       "o" #'+patch-gtd/planning/agenda-open-this-quarter-move
+                            :desc "Punt to another quarter" "u" #'+patch-gtd/planning/agenda-punt-move
+                            ))
               "<backspace>" nil
               :m "<backspace>" nil
               "<delete>" nil
@@ -1368,9 +1369,15 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
   :config
   <<yearly-planning-view>>
   <<quarterly-planning-view>>
+  <<quarterly-planning-utils>>
   <<weekly-planning-view>>
   <<daily-planning-cmds>>
   <<daily-planning-view>>
+  (defun +patch-gtd/planning/inbox-layout ()
+    (interactive)
+    (+patch/open-window-layout '(delete-other-windows
+                                 "~/.local/share/notes/gtd/inbox.org"
+                                 delete-other-windows)))
   )
 #+end_src
 *** layout-building functions
@@ -1621,7 +1628,8 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
                              (lambda () (evil-window-right 1)))))
 #+end_src
 
-Some helpful utilities for my monthly review
+Some helpful utilities for my quarterly review
+#+name: quarterly-planning-utils
 #+begin_src emacs-lisp :tangle no
 (defun +patch-gtd/planning/move-to-planning-queue ()
   (interactive)
@@ -2088,7 +2096,7 @@ I'm using a [[https://github.com/magit/transient][transient]] to define my inter
 #+begin_src emacs-lisp :tangle packages.el
 (package! bufler)
 #+end_src
-#+begin_src emacs-lisp :tangle yes :noweb no-export
+#+begin_src emacs-lisp :noweb no-export
 (use-package! transient
   :config
   <<transient-preset>>
