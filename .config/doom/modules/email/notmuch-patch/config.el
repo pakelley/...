@@ -211,7 +211,7 @@ Tagging of future messages is done by the HeyFilter afew filter."
 
   (defun +patch--set-lieer-as-smtp-client ()
     (setq sendmail-program (executable-find "gmi")
-          message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys-gmail")))
+          message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys")))
 
   (defun +patch--set-msmtp-as-smtp-client ()
     (setq sendmail-program (executable-find "msmtp")

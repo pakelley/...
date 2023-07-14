@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.user.goimapnotify-kelleys</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>SCRIPT_PATH_PLACEHOLDER</string>
+      <string>--mailbox=kelleys</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true />
+    <key>KeepAlive</key>
+    <true />
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.user.goimapnotify.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/com.user.goimapnotify.out</string>
+  </dict>
+</plist>

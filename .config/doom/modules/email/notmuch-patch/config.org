@@ -14,6 +14,7 @@ notmuch setup # might not be necessary
 notmuch new # seems to be necessary for setting up the xapian db
 
 # setup gmail
+# TODO once this is really stable, add all of this to the gmail install script
 # for each gmail account
 # first time: create new oauth app by going to https://console.cloud.google.com/apis/credentials
 #   - create "Oauth client ID"
@@ -22,10 +23,11 @@ mkdir ~/.local/share/mail/account.<ACCOUNT_NAME>
 cd ~/.local/share/mail/account.<ACCOUNT_NAME>
 rm -f .gmailieer.json & rm -f .credentials.gmailieer.json rm -f .lock & rm -r ./*
 gmi init your.email@gmail.com
+# NOTE had to disable google advanced security to allow gmi's oauth
 gmi pull
-# set up sync via cron (for now, until I get goimapnotify working)
-crontab -e
-# */5 * * * *  $HOME/.config/goimapnotify/cron.sh
+~/.config/goimapnotify/install-mailbox-daemon.sh --mailbox=<ACCOUNT_NAME> --provider=gmail
+# if you run into issues, uninstall with the uninstall script (which also clears the logs; convenient for debugging)
+~/.config/goimapnotify/uninstall-mailbox-daemon.sh --mailbox=<ACCOUNT_NAME>
 
 # set up gpg
 ln -s ~/.local/share/private/gpg/gpg.conf ~/.gnupg/gpg.conf
@@ -43,6 +45,7 @@ gpg --card-status
 # should have sec# for master key, and ssb> for others
 
 # set up protonmail
+# TODO once this is really stable, add all of this to the protonmail install script
 # TODO maybe just use authinfo for this
 # add local protonmail bridge password to keepassxc
 (echo (keepassxc-cli show --show-protected ~/.local/share/private/Passwords.kdbx protonmail-bridge
@@ -57,7 +60,9 @@ sudo emacs -nw /etc/ssl/certs/mbsync.crt
 # test sync
 mbsync --all --config ~/.config/mbsync/mbsyncrc
 # start daemon
-goimapnotify -conf ~/.config/goimapnotify/protonmail/mbsync-notify.conf
+~/.config/goimapnotify/install-mailbox-daemon.sh --mailbox=protonmail --provider=protonmail
+# if you run into issues, uninstall with the uninstall script (which also clears the logs; convenient for debugging)
+~/.config/goimapnotify/uninstall-mailbox-daemon.sh --mailbox=protonmail
 #+end_src
 * contacts
 Manage contacts with org mode, so they're easy to interact with from emacs (especially notmuch).
@@ -278,7 +283,7 @@ Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tric
 
   (defun +patch--set-lieer-as-smtp-client ()
     (setq sendmail-program (executable-find "gmi")
-          message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys-gmail")))
+          message-sendmail-extra-arguments '("send" "--quiet" "--read-recipients" "--path" "~/.local/share/mail/account.kelleys")))
 
   (defun +patch--set-msmtp-as-smtp-client ()
     (setq sendmail-program (executable-find "msmtp")

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.user.goimapnotify-protonmail</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>SCRIPT_PATH_PLACEHOLDER</string>
+      <string>--mailbox=protonmail</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true />
+    <key>KeepAlive</key>
+    <true />
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.user.goimapnotify.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/com.user.goimapnotify.out</string>
+    <!-- set an interval to re-run at, to support "snooze"ing when I don't have my yubikey handy -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+  </dict>
+</plist>
