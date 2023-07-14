@@ -95,6 +95,11 @@
     ;; go to bottom of email, in case the link isn't called "unsubscribe"
     (evil-goto-line)
     (consult-line "unsubscribe"))
+  (defun +patch-notmuch/filter-to-sender-at-point ()
+    (interactive)
+    (let* ((email-and-name-at-point (mail-header-parse-address (+patch-notmuch/get-email-from-notmuch-search)))
+           (email-at-point (completing-read "Email address to use (wrap in `/` for a pattern): " nil nil nil (car email-and-name-at-point))))
+      (notmuch-search (format "from:%s AND NOT tag:trash AND NOT tag:deleted" email-at-point))))
 
   ;; `map!` doesn't seem to work for this, but `general-define-key` does
   (general-define-key
@@ -106,10 +111,12 @@
    "I" (cmd! (+patch-notmuch/add-sender-to-group "imbox"))
    "p" (cmd! (+patch-notmuch/move-thread-to-group "paper-trail"))
    "P" (cmd! (+patch-notmuch/add-sender-to-group "paper-trail"))
+   "r" #'notmuch-search-refresh-view
    "t" #'+patch-notmuch/move-thread-to-group
    "T" #'+patch-notmuch/add-sender-to-group
    "u" #'+patch-notmuch/unsubscribe
    "U" #'+patch-notmuch/toggle-unread
+   "n" #'+patch-notmuch/filter-to-sender-at-point
    "-" nil)
   (general-define-key
    :keymaps 'notmuch-search-mode-map
@@ -849,6 +856,12 @@ Tagging of future messages is done by the HeyFilter afew filter."
                             (+patch-notmuch/remove-tag-filter "unread" notmuch-search-query-string)
                           (concat notmuch-search-query-string " and tag:unread"))))
       (notmuch-search query-string notmuch-search-oldest-first))))
+
+(defun +patch-notmuch/filter-to-sender-at-point ()
+  (interactive)
+  (let* ((email-and-name-at-point (mail-header-parse-address (+patch-notmuch/get-email-from-notmuch-search)))
+         (email-at-point (completing-read "Email address to use (wrap in `/` for a pattern): " nil nil nil (car email-and-name-at-point))))
+    (notmuch-search (format "from:%s AND NOT tag:trash AND NOT tag:deleted" email-at-point))))
 
 (after! notmuch
   (setq notmuch-saved-searches '((:name "pm/imbox"            :query "tag:protonmail AND tag:imbox AND NOT tag:trash"       :key "u")

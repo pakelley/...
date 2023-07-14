@@ -160,6 +160,7 @@ I use this header in my contacts file, so that it renders as a column view (see 
 (after! notmuch
   <<toggle-unread>>
   <<unsubscribe-macro>>
+  <<filter-to-sender-at-point>>
 
   ;; `map!` doesn't seem to work for this, but `general-define-key` does
   (general-define-key
@@ -175,6 +176,7 @@ I use this header in my contacts file, so that it renders as a column view (see 
    "T" #'+patch-notmuch/add-sender-to-group
    "u" #'+patch-notmuch/unsubscribe
    "U" #'+patch-notmuch/toggle-unread
+   "n" #'+patch-notmuch/filter-to-sender-at-point
    "-" nil)
   (general-define-key
    :keymaps 'notmuch-search-mode-map
@@ -955,6 +957,15 @@ Quickly unsubscribe to mailing lists. This just crudely opens the message and se
   ;; go to bottom of email, in case the link isn't called "unsubscribe"
   (evil-goto-line)
   (consult-line "unsubscribe"))
+#+end_src
+** filter to sender at point
+#+name: filter-to-sender-at-point
+#+begin_src emacs-lisp
+(defun +patch-notmuch/filter-to-sender-at-point ()
+  (interactive)
+  (let* ((email-and-name-at-point (mail-header-parse-address (+patch-notmuch/get-email-from-notmuch-search)))
+         (email-at-point (completing-read "Email address to use (wrap in `/` for a pattern): " nil nil nil (car email-and-name-at-point))))
+    (notmuch-search (format "from:%s AND NOT tag:trash AND NOT tag:deleted" email-at-point))))
 #+end_src
 ** saved searches
 #+begin_src emacs-lisp :tangle yes
