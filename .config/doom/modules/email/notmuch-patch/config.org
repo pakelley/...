@@ -172,6 +172,7 @@ I use this header in my contacts file, so that it renders as a column view (see 
    "I" (cmd! (+patch-notmuch/add-sender-to-group "imbox"))
    "p" (cmd! (+patch-notmuch/move-thread-to-group "paper-trail"))
    "P" (cmd! (+patch-notmuch/add-sender-to-group "paper-trail"))
+   "r" #'notmuch-search-refresh-view
    "t" #'+patch-notmuch/move-thread-to-group
    "T" #'+patch-notmuch/add-sender-to-group
    "u" #'+patch-notmuch/unsubscribe
