@@ -1814,13 +1814,23 @@ def is_this_quarter(col):
                & (col.dt.quarter == today.quarter)))
 
 today = pd.Timestamp.today()
-df = pd.DataFrame(burnup_data, columns=["headline", "todo_state", "is_done", "closed", "scheduled", "opened"])
-df["scheduled"] = pd.to_datetime(df["scheduled"].map(lambda val: val or ""))
-df["closed"] = pd.to_datetime(df["closed"].map(lambda val: val or ""))
-df["opened"] = pd.to_datetime(df["opened"].map(lambda val: val or ""))
-# df = df[(is_this_quarter(df.scheduled))
-#         & (is_this_quarter(df.opened))
-#         & (is_this_quarter(df.closed))]
+tasks = pd.DataFrame(burnup_data, columns=["headline", "todo_state", "is_done", "closed", "scheduled", "opened"])
+tasks["scheduled"] = pd.to_datetime(tasks["scheduled"].map(lambda val: val or ""))
+tasks["closed"] = pd.to_datetime(tasks["closed"].map(lambda val: val or ""))
+tasks["opened"] = pd.to_datetime(tasks["opened"].map(lambda val: val or ""))
+
+# if a task was quickly completed (without ever scheduling), count the
+# "scheduled" time as the "completed" time.
+def earliest_time(times):
+    t1, t2 = times
+    if pd.isna(t1):
+        return t2
+    if pd.isna(t2):
+        return t1
+    return min(t1, t2)
+
+tasks["scheduled"] = tasks[["scheduled", "closed"]].apply(earliest_time, axis=1)
+
 
 def is_starting_date(col):
     starting_date = today - pd.tseries.offsets.QuarterBegin(startingMonth=1)
@@ -1831,9 +1841,9 @@ this_quarter_index = pd.date_range(start=today - pd.tseries.offsets.QuarterBegin
                                    end=today + pd.tseries.offsets.QuarterEnd(),
                                    freq="D", normalize=True)
 burnup_counts = pd.DataFrame({
-    "opened": df.groupby("opened").count()["headline"],
-    "scheduled": df.groupby("scheduled").count()["headline"],
-    "closed": df.groupby("closed").count()["headline"],
+    "opened": tasks.groupby("opened").count()["headline"],
+    "scheduled": tasks.groupby("scheduled").count()["headline"],
+    "closed": tasks.groupby("closed").count()["headline"],
 }, index=this_quarter_index).asfreq("D").fillna(0.0).cumsum()
 # burnup_counts["ideal"] = np.linspace(0, len(df), num=len(burnup_counts))
 # TODO I can go back to using 'len(df)' once I'm using my opened conventions better
@@ -1848,7 +1858,7 @@ ax = burnup_counts.plot(title="This Quarter's Burnup",
                         x_compat=True)
 ax.set_xticklabels(xtick_labels)
 def get_ts(dt):
-    return pd.Timestamp( pd.Timestamp.date(dt) )
+    return pd.Timestamp(pd.Timestamp.date(dt) )
 today_ts = get_ts(today)
 y_offset = 5
 today_x_text_coord = get_ts(today-pd.Timedelta(10, unit='D'))
