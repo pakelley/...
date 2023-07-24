@@ -1031,7 +1031,7 @@
             :query (and
                     (todo "TODO" "NEXT")
                     ,+patch/is-action
-                    ,scheduled-around-this-week)
+                    (or (scheduled :to today) ,scheduled-around-this-week))
             :sort (priority todo)
             :narrow nil
             :super-groups ((:name "Overdue"
