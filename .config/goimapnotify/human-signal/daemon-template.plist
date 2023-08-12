@@ -4,19 +4,19 @@
 <plist version="1.0">
   <dict>
     <key>Label</key>
-    <string>com.user.goimapnotify-heartex</string>
+    <string>com.user.goimapnotify-human-signal</string>
     <key>ProgramArguments</key>
     <array>
       <string>SCRIPT_PATH_PLACEHOLDER</string>
-      <string>--mailbox=heartex</string>
+      <string>--mailbox=human-signal</string>
     </array>
     <key>RunAtLoad</key>
     <true />
     <key>KeepAlive</key>
     <true />
     <key>StandardErrorPath</key>
-    <string>/tmp/com.user.goimapnotify.err</string>
+    <string>/tmp/com.user.goimapnotify-human-signal.err</string>
     <key>StandardOutPath</key>
-    <string>/tmp/com.user.goimapnotify.out</string>
+    <string>/tmp/com.user.goimapnotify-human-signal.out</string>
   </dict>
 </plist>

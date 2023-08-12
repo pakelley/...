@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 /opt/homebrew/bin/notmuch tag +protonmail -- is:new path:account.protonmail/**
 /opt/homebrew/bin/notmuch tag +kelleys -- is:new path:account.kelleys/**
-/opt/homebrew/bin/notmuch tag +heartex -- is:new path:account.heartex/**
+/opt/homebrew/bin/notmuch tag +human-signal -- is:new path:account.human-signal/**
 $HOME/.pyenv/shims/afew --tag --new
 $HOME/.pyenv/shims/afew --move-mails
