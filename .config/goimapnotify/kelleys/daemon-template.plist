@@ -15,8 +15,8 @@
     <key>KeepAlive</key>
     <true />
     <key>StandardErrorPath</key>
-    <string>/tmp/com.user.goimapnotify.err</string>
+    <string>/tmp/com.user.goimapnotify-kelleys.err</string>
     <key>StandardOutPath</key>
-    <string>/tmp/com.user.goimapnotify.out</string>
+    <string>/tmp/com.user.goimapnotify-kelleys.out</string>
   </dict>
 </plist>

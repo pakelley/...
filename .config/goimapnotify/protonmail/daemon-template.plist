@@ -15,9 +15,9 @@
     <key>KeepAlive</key>
     <true />
     <key>StandardErrorPath</key>
-    <string>/tmp/com.user.goimapnotify.err</string>
+    <string>/tmp/com.user.goimapnotify-protonmail.err</string>
     <key>StandardOutPath</key>
-    <string>/tmp/com.user.goimapnotify.out</string>
+    <string>/tmp/com.user.goimapnotify-protonmail.out</string>
     <!-- set an interval to re-run at, to support "snooze"ing when I don't have my yubikey handy -->
     <key>StartInterval</key>
     <integer>3600</integer>

@@ -29,7 +29,9 @@ PLIST_PATH="$HOME/Library/LaunchAgents/com.user.goimapnotify-$mailbox_name.plist
 launchctl unload "$PLIST_PATH"
 rm "$PLIST_PATH"
 
-sudo rm /tmp/com.user.goimapnotify.out
-touch /tmp/com.user.goimapnotify.out
-sudo rm /tmp/com.user.goimapnotify.err
-touch /tmp/com.user.goimapnotify.err
+sudo rm "/tmp/com.user.goimapnotify-$mailbox_name.bak.out"
+mv "/tmp/com.user.goimapnotify-$mailbox_name.out" "/tmp/com.user.goimapnotify-$mailbox_name.bak.out"
+touch "/tmp/com.user.goimapnotify-$mailbox_name.out"
+sudo rm "/tmp/com.user.goimapnotify-$mailbox_name.bak.err"
+mv "/tmp/com.user.goimapnotify-$mailbox_name.err" "/tmp/com.user.goimapnotify-$mailbox_name.bak.err"
+touch "/tmp/com.user.goimapnotify-$mailbox_name.err"
