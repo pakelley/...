@@ -29,8 +29,8 @@ packages), find the path to the packages."
 
 (defun +patch/eglot-pyright-venv-workspace-config (server)
   "For the current PDM project, dynamically generate a python lsp config."
-  `((:pyright .
-     (:venvPath ,(projectile-project-root)
+  `((:python .
+     (:venvPath "."
       :venv ".venv"
       :pythonPath  "./.venv/bin/python"))))
 
