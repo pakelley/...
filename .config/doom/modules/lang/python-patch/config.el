@@ -7,10 +7,13 @@
   )
 
 (use-package! numpydoc
+  :after python
   :custom
   (numpydoc-insertion-style 'yas)
   :config
-  (map! :localleader ("d" #'numpydoc-generate)))
+  (map! :localleader
+        :map python-mode-map
+        ("d" #'numpydoc-generate)))
 
 (defun +patch/get-pdm-venv-packages-path ()
   "For the current PDM project (using venv, rather than pep-582, to install

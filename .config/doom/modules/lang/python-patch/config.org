@@ -34,10 +34,13 @@ which would tell `conda.el` to use that environment. Notably, you can use the na
 * numpydoc
 #+begin_src emacs-lisp :tangle yes
 (use-package! numpydoc
+  :after python
   :custom
   (numpydoc-insertion-style 'yas)
   :config
-  (map! :localleader ("d" #'numpydoc-generate)))
+  (map! :localleader
+        :map python-mode-map
+        ("d" #'numpydoc-generate)))
 #+end_src
 * lsp
 #+begin_src emacs-lisp
