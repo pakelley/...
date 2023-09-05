@@ -77,3 +77,21 @@ packages), find the path to the packages."
 (remove-hook! 'python-mode-local-vars-hook #'+python-init-anaconda-mode-maybe-h)
 
 #+end_src
+* lint
+** black
+use [[https://github.com/psf/black][black]] for auto-formatting.
+#+begin_src emacs-lisp :tangle packages.el
+(package! blacken)
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! blacken)
+#+end_src
+** isort
+use [[https://github.com/PyCQA/isort][isort]] to sort imports.
+** isort before black, so black takes precedence
+#+begin_src emacs-lisp :tangle yes
+(defun +patch-python/lint ()
+  (py-isort-before-save)
+  (blacken-buffer))
+(add-hook 'before-save-hook #'+patch-python/lint)
+#+end_src

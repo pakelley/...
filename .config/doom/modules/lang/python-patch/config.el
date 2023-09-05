@@ -46,3 +46,10 @@ packages), find the path to the packages."
 
 ;; while we're at it, remove doom's hook to stop hearing errors about it
 (remove-hook! 'python-mode-local-vars-hook #'+python-init-anaconda-mode-maybe-h)
+
+(use-package! blacken)
+
+(defun +patch-python/lint ()
+  (py-isort-before-save)
+  (blacken-buffer))
+(add-hook 'before-save-hook #'+patch-python/lint)

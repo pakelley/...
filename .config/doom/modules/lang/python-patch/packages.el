@@ -1,1 +1,3 @@
 (package! numpydoc)
+
+(package! blacken)
