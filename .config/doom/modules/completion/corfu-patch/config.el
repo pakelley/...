@@ -1,93 +1,147 @@
-;;; completion/config.el -*- lexical-binding: t; -*-
-;; Corfu completion module
-;; stolen from gagbo until it's added to doom
+;;; completion/corfu-patch/config.el -*- lexical-binding: t; -*-
 
-
-;; Reset lsp-completion provider
-(add-hook 'doom-init-modules-hook
-          (lambda ()
-            (after! lsp-mode
-              (setq lsp-completion-provider :none))))
-
-;; Pad before lsp modeline error info
-(add-hook 'lsp-mode-hook
-          (lambda ()
-            (setf (caadr
-                   (assq 'global-mode-string mode-line-misc-info))
-                  " ")))
-
-;; Set orderless filtering for LSP-mode completions
-(add-hook 'lsp-completion-mode-hook
-          (lambda ()
-            (setf (alist-get 'lsp-capf completion-category-defaults) '((styles . (orderless))))))
-
-;; Set bindings
-(map! :i "C-@" #'completion-at-point
-      :i "C-SPC" #'completion-at-point
-      (:prefix "C-x"
-       :i "C-k" #'cape-dict
-       :i "C-f" #'cape-file
-       :i "s" #'cape-ispell
-       :i "C-n" #'cape-keyword
-       :i "C-s" #'dabbrev-completion))
-
-;; Fallback cleanly to consult in TUI
-(setq-default completion-in-region-function #'consult-completion-in-region)
-
-(use-package corfu
-  :custom
-  (corfu-separator ?\s)          ;; Orderless field separator
-  (corfu-preview-current nil)    ;; Disable current candidate preview
-  (corfu-auto nil)
-  (corfu-on-exact-match nil)
-  (corfu-quit-no-match 'separator)
-  (corfu-preselect-first nil)
-  :hook
-  (doom-first-buffer . global-corfu-mode)
-  :bind (:map corfu-map
-         ("SPC" . corfu-insert-separator)
-         ("TAB" . corfu-next)
-         ([tab] . corfu-next)
-         ("S-TAB" . corfu-previous)
-         ([backtab] . corfu-previous)))
-
-(use-package corfu-doc
-  :hook
-  (corfu-mode . corfu-doc-mode)
-  :bind (:map corfu-map
-         ("M-n" . corfu-doc-scroll-down)
-         ("M-p" . corfu-doc-scroll-up)
-         ("M-d" . corfu-doc-toggle)))
-
-(use-package orderless
-  :when (modulep! +orderless)
+;;
+;;; Packages
+(use-package! corfu
+  :hook (doom-first-buffer . global-corfu-mode)
   :init
-  (setq completion-styles '(orderless)
-        completion-category-defaults nil
-        completion-category-overrides '((file (styles . (partial-completion))))))
-
-(use-package kind-icon
-  :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+  ;; Auto-completion settings, must be set before calling `global-corfu-mode'.
+  ;; Due to lazy-loading, setting them in config.el works too.
+  (setq corfu-auto t
+        corfu-auto-delay 0.1
+        corfu-auto-prefix 2
+        corfu-excluded-modes '(erc-mode
+                               circe-mode
+                               help-mode
+                               gud-mode
+                               vterm-mode))
   :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+  (add-to-list 'completion-styles 'partial-completion t)
+  (add-to-list 'completion-styles 'initials t)
+  (setq corfu-cycle t
+        corfu-separator (when (modulep! +orderless) ?\s)
+        corfu-preselect t
+        corfu-count 16
+        corfu-max-width 120
+        corfu-preview-current 'insert
+        corfu-on-exact-match nil
+        corfu-quit-at-boundary (if (modulep! +orderless) 'separator t)
+        corfu-quit-no-match (if (modulep! +orderless) 'separator t)
+        ;; In the case of +tng, TAB should be smart regarding completion;
+        ;; However, it should otherwise behave like normal, whatever normal was.
+        tab-always-indent (if (modulep! +tng) 'complete tab-always-indent))
+  (when (modulep! +orderless)
+    (cond ((modulep! :tools lsp +eglot) (add-to-list 'completion-category-overrides '(eglot (styles orderless))))
+          ((modulep! :tools lsp) (add-hook 'lsp-completion-mode-hook
+                                           (defun doom--use-orderless-lsp-capf ()
+                                             (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+                                                   '(orderless)))))))
+  (map! (:unless (modulep! +tng)
+          "C-SPC" #'completion-at-point)
+        (:map 'corfu-map
+              (:when (modulep! +orderless)
+                "C-SPC" #'corfu-insert-separator)
+              (:when (modulep! +tng)
+                [tab] #'corfu-next
+                [backtab] #'corfu-previous
+                "TAB" #'corfu-next
+                "S-TAB" #'corfu-previous)))
 
-(use-package cape
-  :defer t
+  (when (modulep! :editor evil)
+    (evil-collection-define-key 'insert 'corfu-map
+      (kbd "RET") #'corfu-insert
+      [return] #'corfu-insert))
+
+  (after! vertico
+    ;; Taken from corfu's README.
+    ;; TODO: extend this to other completion front-ends.
+    (defun corfu-move-to-minibuffer ()
+      (interactive)
+      (let ((completion-extra-properties corfu--extra)
+            (completion-cycle-threshold completion-cycling))
+        (apply #'consult-completion-in-region completion-in-region--data)))
+    (map! :map 'corfu-map "s-<down>" #'corfu-move-to-minibuffer
+          (:when (modulep! :editor evil) "s-j" #'corfu-move-to-minibuffer))))
+
+(use-package! cape
+  :after corfu
+  :config
+  (add-hook 'prog-mode-hook
+            (lambda () (add-to-list 'completion-at-point-functions #'cape-file)))
+  (add-hook! (markdown-mode org-mode)
+    (lambda () (add-to-list 'completion-at-point-functions #'cape-elisp-block))))
+
+(use-package! yasnippet-capf
+  :after corfu
+  :config
+  (add-hook 'yas-minor-mode-hook
+            (lambda () (add-to-list 'completion-at-point-functions #'yasnippet-capf))))
+
+(use-package! svg-lib
+  :after kind-icon)
+(use-package! kind-icon
+  :commands (kind-icon-margin-formatter
+             kind-icon-reset-cache
+             kind-icon-formatted)
   :init
-  (add-to-list 'completion-at-point-functions #'cape-file-capf)
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev-capf)
-  (add-to-list 'completion-at-point-functions #'cape-keyword-capf))
+  (add-hook 'corfu-margin-formatters #'kind-icon-margin-formatter)
+  :config
+  (defface corfu-kind-icon '((t :inherit corfu-default))
+    "Face for the icons in the corfu popup.
+For changing color, you should probably use `kind-icon-mapping', which see. The
+purpose here is overriding size and helping with scaling issues."
+    :group 'corfu)
+  (setq kind-icon-default-face 'corfu-kind-icon
+        kind-icon-blend-background t
+        kind-icon-blend-frac 0.2)
+  (let ((def-style (svg-lib-style-compute-default 'corfu-kind-icon))
+        res)
+    (cl-loop for (key value) on def-style by 'cddr
+             do (unless (member key '(:foreground
+                                      :background
+                                      :font-size
+                                      :font-width
+                                      :font-weight
+                                      :font-family
+                                      :width))
+                  (setq res (plist-put res key value))))
+    (setq kind-icon-default-style (plist-put res :stroke 0.25)))
+  (defadvice! doom--kind-icon-remove-padding (orig kind)
+    "Rescale icon images to 1, and set surrounding spaces to width 0.
+This fixes the cropping due to scaling issues."
+    :around #'kind-icon-formatted
+    (let* ((text (funcall orig kind))
+           (image (get-text-property 1 'display text)))
+      (when (eq (car-safe image) 'image)
+        (setf (image-property image :scale) 1)
+        (put-text-property 0 1 'display '(space :width (0)) text)
+        (put-text-property 2 3 'display '(space :width (0)) text))
+      text)))
 
-(setq completion-cycle-threshold 1)
+(use-package! corfu-terminal
+  :when (not (display-graphic-p))
+  :hook (corfu-mode . corfu-terminal-mode))
 
-;; Enable indentation+completion using the TAB key.
-;; Completion is often bound to M-TAB.
-(setq tab-always-indent 'complete)
-
-;; Dirty hack to get c completion running
-;; Discussion in https://github.com/minad/corfu/issues/34
-(when (equal tab-always-indent 'complete)
-  (map! :map c-mode-base-map
-        :i [remap c-indent-line-or-region] #'completion-at-point))
+;;
+;;; Extensions
+(use-package! corfu-history
+  :after savehist
+  :hook (corfu-mode . corfu-history-mode)
+  :config
+  (add-to-list 'savehist-additional-variables 'corfu-history))
+(use-package! corfu-popupinfo
+  :hook (corfu-mode . corfu-popupinfo-mode)
+  :config
+  (setq corfu-popupinfo-delay '(0.5 . 1.0))
+  (map! (:map 'corfu-map
+              "C-<up>" #'corfu-popupinfo-scroll-down
+              "C-<down>" #'corfu-popupinfo-scroll-up
+              "C-S-p" #'corfu-popupinfo-scroll-down
+              "C-S-n" #'corfu-popupinfo-scroll-up
+              "C-h" #'corfu-popupinfo-toggle)
+        (:map 'corfu-popupinfo-map
+         :when (modulep! :editor evil)
+         ;; Reversed because popupinfo assumes opposite of what feels intuitive
+         ;; with evil.
+         "C-S-k" #'corfu-popupinfo-scroll-down
+         "C-S-j" #'corfu-popupinfo-scroll-up)))
