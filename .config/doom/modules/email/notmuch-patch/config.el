@@ -117,12 +117,19 @@
    "u" #'+patch-notmuch/unsubscribe
    "U" #'+patch-notmuch/toggle-unread
    "n" #'+patch-notmuch/filter-to-sender-at-point
-   "-" nil)
+   "-" nil
+   "]" nil)
   (general-define-key
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
    :prefix "-"
    "t" #'notmuch-search-filter-by-tag)
+  (general-define-key
+   :keymaps 'notmuch-search-mode-map
+   :states '(normal)
+   :prefix ","
+   "t" '((cmd! (org-capture nil "et")) :which-key "todo")
+   "w" '((cmd! (org-capture nil "ew")) :which-key "wait"))
 
   (defgroup patch-notmuch nil
     "My personal notmuch config group"

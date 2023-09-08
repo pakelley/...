@@ -309,10 +309,22 @@
                     :kill-buffer t)
                    ("Email"
                     :keys "e"
-                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                     :olp ("Email")
-                    :template ("* TODO Reply: %a")
-                    :kill-buffer t)
+                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                    ;; :hook +patch/doct-properties
+                    ;; ;; NOTE: Timestamp needs to be inactive (using the third arg
+                    ;; ;;       of org-insert-time-stamp) to avoid the OPENED date
+                    ;; ;;       appearing in the agenda.
+                    ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
+                    :kill-buffer t
+                    :children
+                    (("Todo"
+                      :keys "t"
+                      :template ("* TODO Reply: %a"
+                                 "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))"))
+                     ("Wait"
+                      :keys "w"
+                      :template ("* WAIT %a"))))
                    ("Today"
                     :keys "2"
                     :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
