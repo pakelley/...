@@ -247,10 +247,10 @@ Tagging of future messages is done by the HeyFilter afew filter."
            (tag-retroactively (or tag-retroactively
                                   +patch-notmuch/tag-retroactively
                                   (yes-or-no-p (format "Retroactively update tags for messages from %s?" email))))
-           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread"))
-                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed"))
-                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox")))))
+           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread" "-inbox"))
+                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox" "-unread" "-inbox"))
+                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed" "-inbox"))
+                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox" "-inbox")))))
       (+patch/set-email-group-for-email-sender name email group)
       (notmuch-search-tag tag-changes)
       (when tag-retroactively
@@ -260,10 +260,10 @@ Tagging of future messages is done by the HeyFilter afew filter."
     "Tag thread from THREAD-ID with GROUP"
     (interactive (list (completing-read "Email group: " '("feed" "paper-trail" "imbox"))))
     (let* ((email (+patch-notmuch/get-email-from-notmuch-search thread-id))
-           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread"))
-                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox"))
-                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed"))
-                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox")))))
+           (tag-changes (cond ((equal group "feed") '("+feed" "-screener" "-paper-trail" "-imbox" "-unread" "-inbox"))
+                              ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox" "-unread" "-inbox"))
+                              ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed" "-inbox"))
+                              (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox" "-inbox")))))
       (notmuch-search-tag tag-changes))))
 #+end_src
 
