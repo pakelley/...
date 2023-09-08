@@ -301,9 +301,9 @@ Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tric
             ((string-match-p email-address "pakelley@pm.me")
              (+patch--set-msmtp-as-smtp-client)
              (setq org-msg-signature plain-org-msg-signature))
-            ((string-match-p email-address "patrick@heartex.com")
+            ((string-match-p email-address "patrick@humansignal.com")
              (+patch--set-lieer-as-smtp-client)
-             (setq org-msg-signature heartex-org-msg-signature))
+             (setq org-msg-signature human-signal-org-msg-signature))
             ((t) (message (format "Could not find smtp client for email address: %s" email-address))))))
 
   (add-hook 'notmuch-mua-send-hook #'+patch--set-smtp-client))
@@ -329,12 +329,13 @@ Ideally I'd just use msmtp for everything, but oauth support in msmtp seems tric
    "see[ \t\n]\\(?:the[ \t\n]\\)?\\(?:\\w+[ \t\n]\\)\\{0,3\\}\\(?:attached\\|enclosed\\)\\|\
 (\\(?:attached\\|enclosed\\))\\|\
 \\(?:attached\\|enclosed\\)[ \t\n]\\(?:for\\|is\\)[ \t\n]")
-  (heartex-org-msg-signature (let* ((fname "~/.config/doom/modules/email/notmuch-patch/signature.html")
+  (human-signal-org-msg-signature (let* ((fname "~/.config/doom/modules/email/notmuch-patch/signature.html")
                             (fpath (expand-file-name fname))
                             (signature-html (with-current-buffer (find-file-noselect fpath t)
                                               (buffer-string))))
                        (format "\n\n#+BEGIN_EXPORT html\n%s\n#+END_EXPORT" signature-html)))
   (plain-org-msg-signature "Best,\nPatrick")
+  ;; (org-msg-signature (format "export_begin html\n%s\nend_export" (with-current-buffer (find-file-noselect (expand-file-name "~/.config/doom/modules/email/notmuch-patch/signature.html") t) (buffer-string)))))
   :config
   (org-msg-mode)
   (org-msg-mode-notmuch)
