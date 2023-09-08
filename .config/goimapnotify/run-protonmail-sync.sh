@@ -27,6 +27,11 @@ export PATH="$PATH:$BREW_BIN_PATH:~/go/bin:~/.pyenv/shims"
 # get auth
 # first off, if we "snooze"-ed the last attempt to get auth, and we're still in the "snooze" period, exit
 SNOOZE_FILE="$HOME/.local/share/goimapnotify/.snooze"
+if [ ! -f $SNOOZE_FILE ]; then
+  mkdir -p `dirname $SNOOZE_FILE`
+  touch $SNOOZE_FILE
+fi
+echo "Snooze file located at $SNOOZE_FILE"
 if [ -f "$SNOOZE_FILE" ]; then
   SNOOZE_END=$(cat "$SNOOZE_FILE")
   CURRENT_TIME=$(date +%s)
@@ -44,10 +49,14 @@ if gpg --card-status > /dev/null 2>&1; then
 else
   USER_CHOICE=$(osascript -e 'display dialog "Decrypting secret for '$mailbox_name'. Please insert your YubiKey, and be ready to enter pin and/or touch." buttons {"OK", "Snooze for 1 Hour", "Snooze for 24 Hours"} default button 1 with title "My Mailbox Auth"')
   if [[ $USER_CHOICE == *"Snooze for 1 Hour"* ]]; then
-    echo $(date -v+1H +%s) > "$HOME/.myscript_snooze"
+    # echo $(date -v+1H +%s) > "$HOME/.myscript_snooze"
+    echo "Placing timestamp $(date -v+24H +%s) at $SNOOZE_FILE"
+    echo $(date -v+1H +%s) > "$SNOOZE_FILE"
     exit 0
   elif [[ $USER_CHOICE == *"Snooze for 24 Hours"* ]]; then
-    echo $(date -v+24H +%s) > "$HOME/.myscript_snooze"
+    # echo $(date -v+24H +%s) > "$HOME/.myscript_snooze"
+    echo "Placing timestamp $(date -v+24H +%s) at $SNOOZE_FILE"
+    echo $(date -v+24H +%s) > "$SNOOZE_FILE"
     exit 0
   fi
 fi
