@@ -44,4 +44,13 @@ packages), find the path to the packages."
 (defun +patch-python/lint ()
   (py-isort-before-save)
   (blacken-buffer))
-(add-hook 'before-save-hook #'+patch-python/lint)
+
+;;;###autoload
+(define-minor-mode +patch-python/lint-mode
+  "Automatically lint before saving."
+  :lighter " PP/lint"
+  (if +patch-python/lint-mode
+      (add-hook 'before-save-hook '+patch-python/lint nil t)
+    (remove-hook 'before-save-hook '+patch-python/lint t)))
+;; (add-hook 'before-save-hook #'+patch-python/lint)
+(add-hook 'python-mode-hook #'+patch-python/lint-mode)
