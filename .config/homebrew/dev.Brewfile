@@ -1,4 +1,6 @@
 # tap "spotify/public"
+brew "azure-cli"
+brew "awscli"
 brew "cmake"
 # brew "docker", link: false
 brew "docuum", restart_service: true
@@ -11,7 +13,7 @@ brew "pre-commit"
 # brew "terraform"
 # brew "spotify/public/gcs-parquet-cli"
 cask "docker"
-# cask "google-cloud-sdk"
+cask "google-cloud-sdk"
 # cask "lens"
 # cask "ngrok"
 # cask "nteract"

@@ -1,4 +1,5 @@
 brew gerbv
+cask "discord"
 cask "gimp"
 cask "gnucash"
 cask "hammerspoon"
