@@ -2,9 +2,10 @@
 import logging
 import pathlib
 import re
-from shutil import which
 import subprocess
 import sys
+from shutil import which
+
 from simple_term_menu import TerminalMenu
 
 DOTFILE_PATH = pathlib.Path(__file__).parent.parent
@@ -20,7 +21,9 @@ LOG.setLevel(logging.DEBUG)
 _HANDLER = logging.StreamHandler()
 _HANDLER.setLevel(logging.DEBUG)
 # TODO base color on logging level
-_FORMATTER = logging.Formatter(f"%(asctime)s - {BLUE}%(levelname)s{RESET_SEQ} - %(message)s")
+_FORMATTER = logging.Formatter(
+    f"%(asctime)s - {BLUE}%(levelname)s{RESET_SEQ} - %(message)s"
+)
 _HANDLER.setFormatter(_FORMATTER)
 LOG.addHandler(_HANDLER)
 
@@ -56,11 +59,14 @@ else:
 
 # Install programs with brew
 brewpath = pathlib.Path.home() / ".config" / "homebrew"
-brew_specs = sorted([
-    (brew_group.group("module"), path.name)
-    for path in brewpath.iterdir()
-    if (brew_group := re.match(r"(?P<module>[a-zA-Z]+)\.Brewfile$", path.name))
-], key=lambda item: item[0])
+brew_specs = sorted(
+    [
+        (brew_group.group("module"), path.name)
+        for path in brewpath.iterdir()
+        if (brew_group := re.match(r"(?P<module>[a-zA-Z]+)\.Brewfile$", path.name))
+    ],
+    key=lambda item: item[0],
+)
 brew_groups, brewfiles = zip(*brew_specs)
 
 terminal_menu = TerminalMenu(
@@ -68,7 +74,7 @@ terminal_menu = TerminalMenu(
     title="Which collections should brew install?",
     multi_select=True,
     show_multi_select_hint=True,
-    preselected_entries=["cli", "common", "emacs", "nushell"]
+    preselected_entries=["cli", "common", "emacs", "nushell"],
 )
 selected_indices = terminal_menu.show()
 
@@ -83,29 +89,40 @@ for groupname, brewfile in selected_brewfiles.items():
 
 LOG.info("Linking emacs")
 # TODO this part might not be necessary, need to test
-subprocess.run(
-    ["brew", "link", "emacs-mac"]
-)
+subprocess.run(["brew", "link", "emacs-mac"])
 # see `brew info emacs-mac`
 subprocess.run(
-    ["osascript", "-e",
-     """'tell application "Finder" to make alias file to POSIX file "/opt/homebrew/opt/emacs-mac/Emacs.app" at POSIX file "/Applications"'"""]
+    [
+        "osascript",
+        "-e",
+        """'tell application "Finder" to make alias file to POSIX file "/opt/homebrew/opt/emacs-mac/Emacs.app" at POSIX file "/Applications"'""",
+    ]
 )
 
 LOG.info("Installing chemacs")
 subprocess.run(
-    ["git", "clone", "https://github.com/plexus/chemacs2.git", str(pathlib.Path.home() / ".emacs.d")]
+    [
+        "git",
+        "clone",
+        "https://github.com/plexus/chemacs2.git",
+        str(pathlib.Path.home() / ".emacs.d"),
+    ]
 )
 
 LOG.info("Installing doom")
 subprocess.run(
-    ["git", "clone", "https://github.com/hlissner/doom-emacs", str(pathlib.Path.home() / ".config/doom-emacs")]
+    [
+        "git",
+        "clone",
+        "https://github.com/hlissner/doom-emacs",
+        str(pathlib.Path.home() / ".config/doom-emacs"),
+    ]
 )
-subprocess.run(
-    ["doom", "install", "-!"]
-)
+subprocess.run(["doom", "install", "-!"])
 
-LOG.info("Adding `dots` alias for `...` dir so nushell can find it (without 'smart'ly resolving the ...)")
+LOG.info(
+    "Adding `dots` alias for `...` dir so nushell can find it (without 'smart'ly resolving the ...)"
+)
 subprocess.run(
     [
         "ln",
@@ -119,26 +136,24 @@ subprocess.run(
 # TODO maybe move these eventually
 # anki-connect (so emacs can talk to anki)
 LOG.info("Setting up anki connect.")
-subprocess.run(
-    ["sh", str(pathlib.Path(__file__).parent / "anki-connect-mac-setup.sh")]
-)
+subprocess.run(["sh", str(pathlib.Path(__file__).parent / "anki-connect-mac-setup.sh")])
 # osx settings
 LOG.info("Setting MacOS settings.")
-subprocess.run(
-    ["sh", str(pathlib.Path(__file__).parent / "osxdefaults.sh")]
-)
+subprocess.run(["sh", str(pathlib.Path(__file__).parent / "osxdefaults.sh")])
 
 # link nushell, since it doesn't support XDG-based config for some reason
 # also set up zoxide
 LOG.info("Linking nushell (for MacOS)")
 subprocess.run(
-    ["ln", "-svf", str(pathlib.Path.home() / ".config/nu"), str(pathlib.Path.home() / "Library/Application Support/nushell")]
+    [
+        "ln",
+        "-svf",
+        str(pathlib.Path.home() / ".config/nu"),
+        str(pathlib.Path.home() / "Library/Application Support/nushell"),
+    ]
 )
 with open(str(pathlib.Path.home() / ".local/share/.zoxide.nu"), "w") as f:
-    subprocess.call(
-        ["zoxide", "init", "nushell"],
-        stdout=f
-    )
+    subprocess.call(["zoxide", "init", "nushell"], stdout=f)
 
 LOG.info("Starting brew services")
 BREW_SERVICES = [
@@ -146,6 +161,4 @@ BREW_SERVICES = [
     "skhd",
 ]
 for service in BREW_SERVICES:
-    subprocess.run(
-        ["brew", "services", "start", service]
-    )
+    subprocess.run(["brew", "services", "start", service])
