@@ -16,7 +16,7 @@ defaults write com.apple.dock tilesize -int 36
 # hide dock
 defaults write com.apple.dock autohide -bool true
 # Only show open apps
-defaults write com.apple.dock static-only -bool TRUE
+defaults write com.apple.dock static-only -bool true
 # Align left
 defaults write com.apple.dock pinning -string start
 
@@ -50,7 +50,7 @@ fi
 defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
 
 # get rid of Now Playing icon in menu bar
-defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying" 0
+defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying" -bool false
 
 # analog clock
 defaults write com.apple.menuextra.clock IsAnalog -bool true
@@ -64,5 +64,7 @@ defaults write org.herf.Flux locationType L
 defaults write org.herf.Flux wakeTime 420
 
 # bluetooth and sound in menu bar
-defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth" 1
-defaults write com.apple.controlcenter "NSStatusItem Visible Sound" 1
+# defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth" -bool false
+defaults write com.apple.controlcenter "NSStatusItem Visible Sound" -bool true
+defaults write com.apple.controlcenter "NSStatusItem Visible WiFi" -bool false
+defaults write com.apple.menuextra.clock.plist "DateFormat" "EEE MMM d  h:mm:ss"
