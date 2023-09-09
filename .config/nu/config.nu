@@ -1,21 +1,31 @@
 source ~/.config/dots/.config/nu/starship/init.nu
 
-let-env config = {
-  menus: [
-      {
-        name: history_menu
-        only_buffer_difference: true # Search is done on the text written after activating the menu
-        marker: "? "                 # Indicator that appears with the menu is active
-        type: {
-            layout: list             # Type of menu
-            page_size: 10            # Number of entries that will presented when activating the menu
+$env.config = {
+  keybindings: [
+    {
+      name: fuzzy_history
+      modifier: control
+      keycode: char_r
+      mode: [emacs, vi_normal, vi_insert]
+      event: [
+        {
+          send: ExecuteHostCommand
+          cmd: "commandline (
+            history
+              | each { |it| $it.command }
+              | uniq
+              | reverse
+              | str join (char -i 0)
+              | fzf --read0 --layout=reverse --height=40% --tiebreak=index -q (commandline)
+              | decode utf-8
+              | str trim
+          )"
         }
-        style: {
-            selected_text: {fg: "#B4D7AC" bg: "#232323" attr: b}
-        }
-      }
-    ]
+      ]
+    }
+  ]
 }
+
 
 # pyenv
 # Typically handled py `pyenv init`, but nu isn't supported so we have to do this manually
