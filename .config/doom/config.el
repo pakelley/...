@@ -30,3 +30,11 @@
          :desc "Add buffer to a workspace" "a" #'persp-add-buffer)))
 
 (map! "s-\\" #'+workspace/switch-to)
+
+(map!
+ (:map evil-eval-map "C-k" nil)
+ (:map evil-insert-state-map "C-k" nil)
+ (:map evil-replace-state-map "C-k" nil)
+ (:map read-expression-map "C-k" nil)
+ (:map vertico-map "C-k" nil)
+ (:map vertico-map :i "C-k" nil))

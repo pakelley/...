@@ -61,3 +61,13 @@ Makes working in a monorepo less terrible
 #+begin_src emacs-lisp :tangle yes
 (map! "s-\\" #'+workspace/switch-to)
 #+end_src
+* Revert to preferred emacs kbds
+#+begin_src emacs-lisp :tangle yes
+(map!
+ (:map evil-eval-map "C-k" nil)
+ (:map evil-insert-state-map "C-k" nil)
+ (:map evil-replace-state-map "C-k" nil)
+ (:map read-expression-map "C-k" nil)
+ (:map vertico-map "C-k" nil)
+ (:map vertico-map :i "C-k" nil))
+#+end_src
