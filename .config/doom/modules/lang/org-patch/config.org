@@ -259,6 +259,12 @@ Notably, the backtick is crucial for setting the hook in my anki template
          (("Default"
            :keys "d"
            :template "%?")
+          ("Literature Note"
+             :key "n"
+             :template "%?"
+             :file
+             :file "%(expand-file-name (or citar-org-roam-subdir \"\") org-roam-directory)/${citar-citekey}.org"
+             :head "#+title: ${citar-citekey} (${citar-date}). ${note-title}.\n#+created: %U\n#+last_modified: %U\n\n")
           ("Anki Card"
            :keys "a"
            :hook ,(defun set-anki-deck-from-tags ()

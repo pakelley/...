@@ -212,16 +212,22 @@
            (("Default"
              :keys "d"
              :template "%?")
-            ("Anki Card"
-             :keys "a"
-             :hook ,(defun set-anki-deck-from-tags ()
-                      (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
-                        (org-roam-tag-add tags)
-                                          ; NOTE this only sets the first tag as ANKI_DECK
-                        (org-set-property "ANKI_DECK" (car tags))))
-             :template ("* ${title}"
-                        "%?"))))))
-  
+            ("Literature Note"
+             :key "n"
+             :template "%?"
+             :file
+             :target "%(expand-file-name (or citar-org-roam-subdir \"\") org-roam-directory)/${citar-citekey}.org"
+             :head "#+title: ${citar-citekey} (${citar-date}). ${note-title}.\n#+created: %U\n#+last_modified: %U\n\n")
+           ("Anki Card"
+            :keys "a"
+            :hook ,(defun set-anki-deck-from-tags ()
+                     (let ((tags (completing-read-multiple "Tag: " (org-roam-tag-completions))))
+                       (org-roam-tag-add tags)
+                                        ; NOTE this only sets the first tag as ANKI_DECK
+                       (org-set-property "ANKI_DECK" (car tags))))
+            :template ("* ${title}"
+                       "%?"))))))
+
   (setq org-roam-dailies-directory "journals/"
         org-roam-dailies-capture-templates
         '(("d" "default" entry

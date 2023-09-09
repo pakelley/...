@@ -1,0 +1,9 @@
+#+TITLE: Config
+#+property: header-args:emacs-lisp :tangle yes
+#+property: header-args:elisp :tangle yes
+
+* eglot digestif server
+#+begin_src elisp
+(after! eglot
+  (setq lsp-tex-server 'digestif))
+#+end_src

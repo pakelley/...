@@ -1,0 +1,22 @@
+#+TITLE: Config
+#+property: header-args:emacs-lisp :tangle yes
+#+property: header-args:elisp :tangle yes
+
+* bibliography location
+Set bibliography files to the location I export to from Zotero
+#+begin_src emacs-lisp :tangle yes
+(after! (oc citar)
+  (setq
+   org-cite-global-bibliography '("~/.local/share/bib/babel.bib" "~/.local/share/bib/human-signal.bib"))
+  (setq citar-bibliography org-cite-global-bibliography))
+#+end_src
+* citation styles
+As suggested in [[https://blog.tecosaur.com/tmio/2021-07-31-citations.html#working-with-zotero][tecosaur's post on citations]], use Zotero's styles
+#+begin_src emacs-lisp :tangle yes
+(after! oc (setq org-cite-csl-styles-dir "~/Zotero/styles"))
+#+end_src
+* literature notes
+Use citar-org-roam to take literature notes on papers as I read them.
+#+begin_src emacs-lisp :tangle yes
+(setq citar-org-roam-subdir "literature-notes")
+#+end_src

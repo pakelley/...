@@ -154,3 +154,6 @@ $env.NOTMUCH_CONFIG = ("~/.config/notmuch/default/config" | path expand)
 
 # scala
 $env.PATH = ($env.PATH | append ("~/Library/Application Support/Coursier/bin" | path expand))
+
+# lua, for digestif (LaTeX LSP server)
+$env.PATH = ($env.PATH | append ("~/.luarocks/bin" | path expand))
