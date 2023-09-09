@@ -57,3 +57,7 @@ Makes working in a monorepo less terrible
         (:prefix ("TAB" . "workspace")
          :desc "Add buffer to a workspace" "a" #'persp-add-buffer)))
 #+end_src
+* Quick binding to change workspaces
+#+begin_src emacs-lisp :tangle yes
+(map! "s-\\" #'+workspace/switch-to)
+#+end_src

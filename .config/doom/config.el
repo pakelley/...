@@ -28,3 +28,5 @@
   (map! :leader
         (:prefix ("TAB" . "workspace")
          :desc "Add buffer to a workspace" "a" #'persp-add-buffer)))
+
+(map! "s-\\" #'+workspace/switch-to)
