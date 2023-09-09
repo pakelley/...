@@ -286,6 +286,19 @@ Tagging of future messages is done by the HeyFilter afew filter."
   ;;     res))
   ;; (advice-add 'org-msg-composition-parameters
   ;;         :around #'my-org-msg-composition-parameters)
+
+  ;; https://github.com/jeremy-compostella/org-msg/issues/160#issuecomment-1410234914
+  ;; (defun gjm/org-msg-signature-switch (orig-fun &rest args)
+  ;;   "No signature for replies. Text signature for new plain text emails."
+  ;;   (let ((res (apply orig-fun args))
+  ;;          (is-reply (not (equal (car args) 'new)))
+  ;;          (is-text (equal (last (cadr args)) '(text)))
+  ;;          (text-sig "\n\n--\nGav Massingham\nTechnology Development Officer\nCarers' Resource"))
+  ;;     (if is-reply (setf (alist-get 'signature res) "")
+  ;;       (if is-text (setf (alist-get 'signature res) text-sig)))
+  ;;     res))
+  ;; (advice-add 'org-msg-composition-parameters
+  ;;             :around #'gjm/org-msg-signature-switch)
   )
 
 (after! notmuch
