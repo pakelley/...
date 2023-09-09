@@ -13,7 +13,6 @@
 ;;
 ;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
 ;;      directory (for easy access to its source code).
-
 (doom! :input
        ;;chinese
        ;;japanese
@@ -21,14 +20,13 @@
 
        :completion
        (corfu-patch +orderless)
-       ;; company             ; the ultimate code completion backend
+       ;; company          ; the ultimate code completion backend
        ;;helm              ; the *other* search engine for love and life
        ;;ido               ; the other *other* search engine...
        ;;ivy               ; a search engine for love and life
        (vertico            ; the search engine of the future
         +orderless
         +icons)
-
        :ui
        deft                ; notational velocity for Emacs
        doom                ; what makes DOOM look the way it does
@@ -69,11 +67,11 @@
        ;;word-wrap         ; soft wrapping with language-aware indent
 
        :emacs
-       dired             ; making dired pretty [functional]
-       electric          ; smarter, keyword-based electric-indent
-       ;;ibuffer         ; interactive buffer management
-       undo              ; persistent, smarter undo for your inevitable mistakes
-       vc                ; version-control and Emacs, sitting in a tree
+       dired               ; making dired pretty [functional]
+       electric            ; smarter, keyword-based electric-indent
+       ;;ibuffer           ; interactive buffer management
+       undo                ; persistent, smarter undo for your inevitable mistakes
+       vc                  ; version-control and Emacs, sitting in a tree
 
        :term
        ;;eshell            ; the elisp shell that works everywhere
@@ -141,14 +139,16 @@
        ;;fsharp            ; ML stands for Microsoft's Language
        ;;fstar             ; (dependent) types and (monadic) effects and Z3
        ;;gdscript          ; the language you waited for
-       (go +lsp +tree-sitter) ; the hipster dialect
+       (go +lsp +tree-sitter)
+                           ; the hipster dialect
        ;;(haskell +lsp)    ; a language that's lazier than I am
        ;;hy                ; readability of scheme w/ speed of python
        ;;idris             ; a language you can depend on
        ;;json              ; At least it ain't XML
        ;;(java +meghanada) ; the poster child for carpal tunnel syndrome
        ;;javascript        ; all(hope(abandon(ye(who(enter(here))))))
-       (julia +lsp +tree-sitter) ; a better, faster MATLAB
+       (julia +lsp +tree-sitter)
+                           ; a better, faster MATLAB
        ;;kotlin            ; a better, slicker Java(Script)
        ;;latex             ; writing papers in Emacs has never been so fun
        ;;lean              ; for folks with too much to prove
@@ -158,12 +158,14 @@
        ;;nim               ; python + lisp at the speed of c
        ;;nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
-       (org +roam2 +jupyter +pomodoro +pretty)               ; organize your plain life in plain text
+       (org +roam2 +jupyter +pomodoro +pretty)
+                           ; organize your plain life in plain text
        org-patch
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional
-       (python +lsp +pyright); beautiful is better than ugly
+       (python +lsp +pyright)
+                           ; beautiful is better than ugly
        python-patch
        ;;qt                ; the 'cutest' gui framework ever
        ;;racket            ; a DSL for DSLs
@@ -180,7 +182,7 @@
        ;;swift             ; who asked for emoji variables?
        ;;terra             ; Earth and Moon in alignment for performance.
        ;;web               ; the tubes
-       yaml              ; JSON, but readable
+       yaml                ; JSON, but readable
        ;;zig               ; C, but simpler
 
        :email
