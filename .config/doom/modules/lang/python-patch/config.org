@@ -54,13 +54,15 @@ packages), find the path to the packages."
 
 #+end_src
 * lint
-** black
-use [[https://github.com/psf/black][black]] for auto-formatting.
+** blue
+use [[https://github.com/grantjenks/blue][blue]] for auto-formatting.
 #+begin_src emacs-lisp :tangle packages.el
 (package! blacken)
 #+end_src
 #+begin_src emacs-lisp :tangle yes
-(use-package! blacken)
+(use-package! blacken
+  :config
+  (setq blacken-executable "blue"))
 #+end_src
 ** isort
 use [[https://github.com/PyCQA/isort][isort]] to sort imports.
