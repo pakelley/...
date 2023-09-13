@@ -82,3 +82,13 @@ use [[https://github.com/PyCQA/isort][isort]] to sort imports.
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
 #+end_src
+** ruff
+use [[https://github.com/astral-sh/ruff][ruff]] for linting
+#+begin_src emacs-lisp :tangle packages.el
+(package! flymake-ruff
+  :recipe (:type git :host github :repo "erickgnavar/flymake-ruff"))
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! flymake-ruff
+  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
+#+end_src

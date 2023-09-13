@@ -56,3 +56,6 @@ packages), find the path to the packages."
     (remove-hook 'before-save-hook '+patch-python/lint t)))
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
+
+(use-package! flymake-ruff
+  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
