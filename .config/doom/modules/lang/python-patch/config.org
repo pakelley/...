@@ -64,12 +64,41 @@ use [[https://github.com/grantjenks/blue][blue]] for auto-formatting.
   :config
   (setq blacken-executable "blue"))
 #+end_src
+** ruff
+use [[https://github.com/astral-sh/ruff][ruff]] for linting
+#+begin_src emacs-lisp :tangle packages.el
+(package! flymake-ruff
+  :recipe (:type git :host github :repo "erickgnavar/flymake-ruff"))
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! flymake-ruff
+  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
+(use-package! flymake
+  :hook (python-mode . flymake-mode))
+#+end_src
+))
+#+end_src
+... and for formatting
+#+begin_src emacs-lisp :tangle yes
+(package! reformatter)
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! reformatter
+  :config
+  (reformatter-define ruff-format
+                      :program "ruff"
+                      :args '("--fix" "-")
+                      :group 'python))
+#+end_src
 ** isort
 use [[https://github.com/PyCQA/isort][isort]] to sort imports.
-** isort before black, so black takes precedence
+may be able to get rid of this in favor of ruff.
+** one func for all python formatting
+isort before blue, so blue takes precedence
 #+begin_src emacs-lisp :tangle yes
 (defun +patch-python/lint ()
   (py-isort-before-save)
+  (ruff-format-buffer)
   (blacken-buffer))
 
 ;;;###autoload
@@ -81,14 +110,4 @@ use [[https://github.com/PyCQA/isort][isort]] to sort imports.
     (remove-hook 'before-save-hook '+patch-python/lint t)))
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
-#+end_src
-** ruff
-use [[https://github.com/astral-sh/ruff][ruff]] for linting
-#+begin_src emacs-lisp :tangle packages.el
-(package! flymake-ruff
-  :recipe (:type git :host github :repo "erickgnavar/flymake-ruff"))
-#+end_src
-#+begin_src emacs-lisp :tangle yes
-(use-package! flymake-ruff
-  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
 #+end_src

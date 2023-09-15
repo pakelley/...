@@ -43,8 +43,25 @@ packages), find the path to the packages."
   :config
   (setq blacken-executable "blue"))
 
+(use-package! flymake-ruff
+  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
+(after! (flymake python-mode)
+  (add-hook 'python-mode-hook (cmd! (flymake-mode t))))
+(use-package! flymake
+  :hook (python-mode . flymake-mode))
+
+(package! reformatter)
+
+(use-package! reformatter
+  :config
+  (reformatter-define ruff-format
+                      :program "ruff"
+                      :args '("--fix" "-")
+                      :group 'python))
+
 (defun +patch-python/lint ()
   (py-isort-before-save)
+  (ruff-format-buffer)
   (blacken-buffer))
 
 ;;;###autoload
@@ -57,5 +74,3 @@ packages), find the path to the packages."
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
 
-(use-package! flymake-ruff
-  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
