@@ -79,7 +79,7 @@ use [[https://github.com/astral-sh/ruff][ruff]] for linting
 ))
 #+end_src
 ... and for formatting
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :tangle packages.el
 (package! reformatter)
 #+end_src
 #+begin_src emacs-lisp :tangle yes

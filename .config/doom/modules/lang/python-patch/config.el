@@ -45,12 +45,8 @@ packages), find the path to the packages."
 
 (use-package! flymake-ruff
   :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
-(after! (flymake python-mode)
-  (add-hook 'python-mode-hook (cmd! (flymake-mode t))))
 (use-package! flymake
   :hook (python-mode . flymake-mode))
-
-(package! reformatter)
 
 (use-package! reformatter
   :config
