@@ -23,3 +23,5 @@
 (package! bufler)
 
 (package! bufler)
+
+(package! org-jira)

@@ -540,6 +540,18 @@
                      ((org-ql-block-header "\n Overdue")))
        (org-ql-block '(and (todo "WAIT"))
                      ((org-ql-block-header "\n Waiting")))
+       (org-ql-block
+        '(or
+          ;; my work
+          (and (property "assignee" "Patrick Kelley")
+               (or
+                (property "status" "Ready For Dev")
+                (property "status" "In Progress")))
+          ;; needs review
+          (property "status" "In Review")
+          ;; needs to be deployed
+          (property "status" "Confirmed"))
+        ((org-ql-block-header "\n Jira")))
        (org-ql-block '(closed :on today)
                      ((org-ql-block-header "\n Completed today")))))
      ("." "What's happening"
@@ -1067,7 +1079,6 @@
             :title "Weekly Planning")))
        
        (+patch-gtd/set-or-refresh-weekly-views)
-       (+patch/refresh-weekly-planning-view)
 
 
   (defun org-ql-action-list (action-list-name)
@@ -1088,7 +1099,7 @@
   :hook ((org-agenda-mode . origami-mode)
          (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
   :config
-  (setq +patch/agenda-auto-hide-groups '("Waiting" "Completed Today" "Could Pull In"))
+  (setq +patch/agenda-auto-hide-groups '("Waiting" "Completed Today" "Could Pull In" "Jira"))
   (defun +patch/org-super-agenda-origami-fold-default ()
     "Fold certain groups by default in Org Super Agenda buffer."
     (evil-goto-first-line)
@@ -1811,3 +1822,25 @@
     ;; Group remaining buffers by directory, then major mode.
     (auto-directory)
     (auto-mode)))
+
+(use-package! org-jira
+  :custom
+  (org-jira-working-dir "~/.local/share/notes/gtd/jira")
+  (jiralib-url "https://humansignal.atlassian.net")
+  (jiralib-user "patrick@humansignal.com")
+  (org-jira-default-jql "project = \"DIA\" AND Sprint in openSprints() AND (assignee = currentUser() OR status IN (\"In Review\", Confirmed)) ORDER BY  priority DESC, created ASC")
+  (org-jira-jira-status-to-org-keyword-alist
+      '(("Ready For Dev" . "READY")
+        ("In Progress" . "TODO")
+        ("In Review" . "REVIEW")
+        ("Confirmed" . "CONFIRMED")))
+  :config
+  (add-to-list 'org-agenda-files org-jira-working-dir)
+  (defconst org-jira-progress-issue-flow
+  '(("To Refine" . "To Groom")
+    ("To Groom" . "Ready For Dev")
+    ("Ready For Dev" . "In Progress")
+    ("In Progress" . "In Review")
+    ("In Review" . "QA")
+    ("QA" . "Confirmed")
+    ("Confirmed" . "Delivered"))))
