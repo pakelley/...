@@ -47,7 +47,7 @@
   (setq org-agenda-bulk-custom-functions
         (append org-agenda-bulk-custom-functions '((?i org-agenda-incubate)
                                                    (?h org-agenda-hatch)
-                                                   (?] org-planning-hatch))))
+                                                   (?\] org-planning-hatch))))
   (map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
         (:map org-agenda-mode-map "h" #'org-agenda-hatch)
         (:map org-agenda-keymap "h" #'org-agenda-hatch)
@@ -422,10 +422,12 @@
 (after! emacs-everywhere
   (defun get-app-name ()
     "Get the name of the current app (useful for returning to that app later). Currently uses osascript, so only useful on macos."
-    (let ((default-directory emacs-everywhere--dir))
-      (with-temp-buffer
-        (call-process "osascript" nil t nil "app-name")
-        (string-trim (buffer-string)))))
+    (let ((app-name (emacs-everywhere-app-id (emacs-everywhere-app-info))))
+      ;; For some reason, wezterm returns "wezterm-gui" for its app name, but
+      ;; osascript can only find "wezterm".
+      (if (equal app-name "wezterm-gui")
+          "wezterm"
+        app-name)))
 
   (defun capture-everywhere ()
     "Create a new frame and run `org-capture'."
@@ -583,10 +585,15 @@
                      ((org-ql-block-header "\n Could pull in"))))))))
 
 (after! evil-org-agenda
-  (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map)))
+  (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map))
+  (map!
+   (:map org-agenda-keymap "j" #'evil-next-line)
+   (:map org-agenda-mode-map "j" #'evil-next-line)
+   (:map org-agenda-keymap "k" #'evil-previous-line)
+   (:map org-agenda-mode-map "k" #'evil-previous-line)))
 
 (use-package! org-ql
-  :after org-agenda
+  :after (org-agenda ts)
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
   :defines (+patch/set-orgql-view +patch/is-action)
@@ -1288,10 +1295,19 @@
           ("CNCL" . (:foreground "#d26478" :weight bold))))
   (setq org-log-into-drawer t))
 
-(use-package burly
-  :after org-ql
-  :commands (burly-open-bookmark +patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
-  :defines (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+(use-package! org-ql
+  :commands (+patch/toggle-quick-agenda-filter
+             +patch/toggle-easy-agenda-filter
+             +patch-gtd/planning/daily-planning-layout
+             +patch-gtd/planning/weekly-planning-layout
+             +patch-gtd/planning/quarterly-planning-layout
+             +patch-gtd/planning/yearly-planning-layout)
+  :defines (+patch/toggle-quick-agenda-filter
+            +patch/toggle-easy-agenda-filter
+            +patch-gtd/planning/daily-planning-layout
+            +patch-gtd/planning/weekly-planning-layout
+            +patch-gtd/planning/quarterly-planning-layout
+            +patch-gtd/planning/yearly-planning-layout)
   :init
   (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
               (:prefix-map ("DEL" . "GTD")
@@ -1311,11 +1327,30 @@
               "<backspace>" nil
               :m "<backspace>" nil
               "<delete>" nil
-              :m "<delete>" nil)
-
-        (:leader
-         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark)))
+              :m "<delete>" nil))
   :config
+  (defun +patch/bookmark-org-ql-view (org-ql-view-name)
+      (bookmark-store
+       (format "Org QL View: %s" org-ql-view-name)
+       (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
+             '(handler . org-ql-view-bookmark-handler))
+       nil))
+  
+  ;; heavily inspired by the yequake code for setting up buffers
+  (defun +patch/open-window-layout (buffer-refs-or-fns)
+    "Show buffers or run functions in order defined in BUFFER-REFS-OR-FNS."
+    (cl-flet ((open-buffer-or-call-fn (it) (cl-typecase it
+                          (string (or (get-buffer it)
+                                      (find-buffer-visiting it)
+                                      (find-file-noselect it)))
+                          (function (funcall it)))))
+      (let ((split-width-threshold 0)
+            (split-height-threshold 0))
+        ;; Switch to first buffer, pop to the rest.
+        (switch-to-buffer (open-buffer-or-call-fn (car buffer-refs-or-fns)))
+        (dolist (buffer-ref-or-fn (cdr buffer-refs-or-fns))
+          (when-let* ((ret (open-buffer-or-call-fn buffer-ref-or-fn)))
+            (display-buffer-same-window ret nil))))))
   (defun +patch-gtd/planning/yearly-planning-layout ()
     (interactive)
     (+patch-gtd/set-or-refresh-yearly-views)
@@ -1377,8 +1412,13 @@
     (interactive)
     (+patch-gtd/planning/agenda-punt)
     (org-ql-view-refresh))
+  (defun +patch/generate-quarters-burnup-plot ()
+    (interactive)
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarters-tasks"))
   (defun +patch-gtd/planning/weekly-planning-layout ()
     (interactive)
+    (org-babel-jupyter-aliases-from-kernelspecs)
     (+patch-gtd/set-or-refresh-weekly-views)
     (+patch/generate-quarters-burnup-plot)
     (+patch/open-window-layout '(delete-other-windows
@@ -1446,29 +1486,6 @@
                                  delete-other-windows)))
   )
 
-(defun +patch/bookmark-org-ql-view (org-ql-view-name)
-    (bookmark-store
-     (format "Org QL View: %s" org-ql-view-name)
-     (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
-           '(handler . org-ql-view-bookmark-handler))
-     nil))
-
-;; heavily inspired by the yequake code for setting up buffers
-(defun +patch/open-window-layout (buffer-refs-or-fns)
-  "Show buffers or run functions in order defined in BUFFER-REFS-OR-FNS."
-  (cl-flet ((open-buffer-or-call-fn (it) (cl-typecase it
-                        (string (or (get-buffer it)
-                                    (find-buffer-visiting it)
-                                    (find-file-noselect it)))
-                        (function (funcall it)))))
-    (let ((split-width-threshold 0)
-          (split-height-threshold 0))
-      ;; Switch to first buffer, pop to the rest.
-      (switch-to-buffer (open-buffer-or-call-fn (car buffer-refs-or-fns)))
-      (dolist (buffer-ref-or-fn (cdr buffer-refs-or-fns))
-        (when-let* ((ret (open-buffer-or-call-fn buffer-ref-or-fn)))
-          (display-buffer-same-window ret nil))))))
-
 (after! ts
   (after! org-ql
 
@@ -1504,12 +1521,8 @@
                     ;; keeping scheduled so this quarter is still accurate, but this should be removed afterward
                     ,scheduled-for-this-quarter)))))
 
-(defun +patch/generate-quarters-burnup-plot ()
-  (interactive)
-  (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
-  (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarters-tasks"))
-
 (use-package! transient
+  :after ts
   :config
   (defclass transient-preset (transient-infix)
     ((transient                            :initform t)

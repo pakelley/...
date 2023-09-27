@@ -16,7 +16,9 @@
 (package! ox-pandoc)
 ;; (package! poly-org)
 
-(package! burly)
+(package! org :pin "ca873f7")
+
+(package! ts)
 
 (package! bufler)
 

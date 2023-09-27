@@ -24,6 +24,12 @@
 (package! poly-org)
 #+end_src
 
+* Pin org to 9.6.7
+See [[https://github.com/org-roam/org-roam/issues/2361][this org-roam issue]], and [[https://github.com/alphapapa/org-ql/issues/364][this org-ql issue]], and [[https://github.com/radian-software/straight.el/issues/1107][this straight.el issue]].
+#+begin_src emacs-lisp :tangle packages.el
+(package! org :pin "ca873f7")
+#+end_src
+
 * GTD
 ** Keybindings
 Global keybindings:
@@ -659,10 +665,12 @@ Similar to my setup for emacs-everywhere, I have an algfred workflow that uses a
 (after! emacs-everywhere
   (defun get-app-name ()
     "Get the name of the current app (useful for returning to that app later). Currently uses osascript, so only useful on macos."
-    (let ((default-directory emacs-everywhere--dir))
-      (with-temp-buffer
-        (call-process "osascript" nil t nil "app-name")
-        (string-trim (buffer-string)))))
+    (let ((app-name (emacs-everywhere-app-id (emacs-everywhere-app-info))))
+      ;; For some reason, wezterm returns "wezterm-gui" for its app name, but
+      ;; osascript can only find "wezterm".
+      (if (equal app-name "wezterm-gui")
+          "wezterm"
+        app-name)))
 
   (defun capture-everywhere ()
     "Create a new frame and run `org-capture'."
@@ -831,7 +839,7 @@ Simplify the agenda prefix to only include what I need to see
 (setq org-agenda-bulk-custom-functions
       (append org-agenda-bulk-custom-functions '((?i org-agenda-incubate)
                                                  (?h org-agenda-hatch)
-                                                 (?] org-planning-hatch))))
+                                                 (?\] org-planning-hatch))))
 (map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
       (:map org-agenda-mode-map "h" #'org-agenda-hatch)
       (:map org-agenda-keymap "h" #'org-agenda-hatch)
@@ -910,15 +918,23 @@ Use evil bindings on agenda headers created by super agenda (using best-looking 
 - [ ] should do a proper evil-ification of this eventually
 #+begin_src elisp
 (after! evil-org-agenda
-  (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map)))
+  (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map))
+  (map!
+   (:map org-agenda-keymap "j" #'evil-next-line)
+   (:map org-agenda-mode-map "j" #'evil-next-line)
+   (:map org-agenda-keymap "k" #'evil-previous-line)
+   (:map org-agenda-mode-map "k" #'evil-previous-line)))
 #+end_src
 ** Planning Agenda
 Notably, this is where I'm defining what a task vs project are:
 - a task is any task without children
 - a project is a task under the "Projects" header that has children
+#+begin_src emacs-lisp :tangle packages.el
+(package! ts)
+#+end_src
 #+begin_src emacs-lisp :noweb no-export
 (use-package! org-ql
-  :after org-agenda
+  :after (org-agenda ts)
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
   :defines (+patch/set-orgql-view +patch/is-action)
@@ -1353,14 +1369,20 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
 | DEL v w    | Open weekly planning view    |
 | DEL v d    | Open daily planning view     |
 
-#+begin_src emacs-lisp :tangle packages.el
-(package! burly)
-#+end_src
 #+begin_src emacs-lisp :noweb no-export
-(use-package burly
-  :after org-ql
-  :commands (burly-open-bookmark +patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
-  :defines (+patch/toggle-quick-agenda-filter +patch/refresh-weekly-planning-view +patch/gen-and-show-daily-agenda)
+(use-package! org-ql
+  :commands (+patch/toggle-quick-agenda-filter
+             +patch/toggle-easy-agenda-filter
+             +patch-gtd/planning/daily-planning-layout
+             +patch-gtd/planning/weekly-planning-layout
+             +patch-gtd/planning/quarterly-planning-layout
+             +patch-gtd/planning/yearly-planning-layout)
+  :defines (+patch/toggle-quick-agenda-filter
+            +patch/toggle-easy-agenda-filter
+            +patch-gtd/planning/daily-planning-layout
+            +patch-gtd/planning/weekly-planning-layout
+            +patch-gtd/planning/quarterly-planning-layout
+            +patch-gtd/planning/yearly-planning-layout)
   :init
   (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
               (:prefix-map ("DEL" . "GTD")
@@ -1380,14 +1402,13 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
               "<backspace>" nil
               :m "<backspace>" nil
               "<delete>" nil
-              :m "<delete>" nil)
-
-        (:leader
-         (:prefix "b" :desc "Open Burly Bookmark" "o" #'burly-open-bookmark)))
+              :m "<delete>" nil))
   :config
+  <<layout-fns>>
   <<yearly-planning-view>>
   <<quarterly-planning-view>>
   <<quarterly-planning-utils>>
+  <<generate-burnup-plot>>
   <<weekly-planning-view>>
   <<daily-planning-cmds>>
   <<daily-planning-view>>
@@ -1399,7 +1420,8 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
   )
 #+end_src
 *** layout-building functions
-#+begin_src emacs-lisp
+#+name: layout-fns
+#+begin_src emacs-lisp :tangle no
 (defun +patch/bookmark-org-ql-view (org-ql-view-name)
     (bookmark-store
      (format "Org QL View: %s" org-ql-view-name)
@@ -1808,7 +1830,8 @@ This let's me execute babel blocks from anywhere using elisp (modified from [[ht
 
 ***** generate plot
 These are the babel blocks that need to be run to re-generate the burnup chart for this quarter (executed using the function below).
-#+begin_src emacs-lisp
+#+name: generate-burnup-plot
+#+begin_src emacs-lisp :tangle no
 (defun +patch/generate-quarters-burnup-plot ()
   (interactive)
   (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
@@ -2001,6 +2024,7 @@ The view for my weekly planning has all actions currently scheduled (up until th
 #+begin_src emacs-lisp :tangle no
 (defun +patch-gtd/planning/weekly-planning-layout ()
   (interactive)
+  (org-babel-jupyter-aliases-from-kernelspecs)
   (+patch-gtd/set-or-refresh-weekly-views)
   (+patch/generate-quarters-burnup-plot)
   (+patch/open-window-layout '(delete-other-windows
@@ -2126,6 +2150,7 @@ I'm using a [[https://github.com/magit/transient][transient]] to define my inter
 #+end_src
 #+begin_src emacs-lisp :noweb no-export
 (use-package! transient
+  :after ts
   :config
   <<transient-preset>>
   (after! org
