@@ -25,3 +25,6 @@
 (package! bufler)
 
 (package! org-jira)
+
+(package! org-caldav)
+(package! oauth2)
