@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.user.org-dropbox-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>BREW_PREFIX/bin/unison</string> <!-- Update this path if necessary -->
+        <string>-repeat</string>
+        <string>watch</string>
+        <string>HOME/.local/share/notes</string>
+        <string>HOME/Dropbox/notes</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true />
+    <key>KeepAlive</key>
+    <true />
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.user.org-dropbox-sync.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/com.user.org-dropbox-sync.out</string>
+  </dict>
+</plist>
