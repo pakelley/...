@@ -4,7 +4,7 @@
 
 * setup
 need to find a good way to automate this, but for now:
-#+begin_src sh
+#+begin_src sh :tangle no
 # install deps, general notmuch config
 go install gitlab.com/shackra/goimapnotify@latest
 pip install orgparse afew oauth2token lieer
