@@ -1,3 +1,8 @@
+(use-package! code-review
+  :after forge
+  :config
+  (define-key magit-mode-map "R" #'code-review-forge-pr-at-point))
+
 (use-package! magit
   :defer t
   :commands magit-status

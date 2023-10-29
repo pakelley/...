@@ -5,6 +5,17 @@
   :recipe (:host github :repo "sideshowcoder/magit-arcanist"))
 (package! git-link)
 #+end_src
+* code-review
+browse/review prs from emacs
+#+begin_src emacs-lisp :tangle packages.el
+(package! code-review)
+#+end_src
+#+begin_src emacs-lisp
+(use-package! code-review
+  :after forge
+  :config
+  (define-key magit-mode-map "R" #'code-review-forge-pr-at-point))
+#+end_src
 * speed up magit for monorepo [0/1]
 Various things that speed magit up when working with a monorepo.
 #+begin_src elisp
