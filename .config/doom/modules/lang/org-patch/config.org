@@ -452,6 +452,28 @@ org agenda."
 the 'TO-PLAN' property)."
   (org-entry-put (or pom (point)) "TO-PLAN" ""))
 
+(defmacro +patch--from-source-of-agenda-entry (&rest body)
+  "Goes to org file entry that corresponds to the entry at point in an agenda
+view, and runs BODY. Implementation largely taken from the
+'org-agenda-set-property' implementation."
+  `(let* ((hdmarker (or (org-get-at-bol 'org-hd-marker)
+                        (org-agenda-error)))
+          (buffer (marker-buffer hdmarker))
+          (pos (marker-position hdmarker))
+          (inhibit-read-only t)
+          ) ;; newhead
+     ;; need to get any return inside `org-with-remote-undo`, bc it won't pass it along
+     (let ((result))
+       (org-with-remote-undo buffer
+         (setq result
+               (with-current-buffer buffer
+                 (org-mode)
+                 (widen)
+                 (goto-char pos)
+                 (org-fold-show-context 'agenda)
+                 ,@body)))
+       result)))
+
 (defun +patch/mark-task-as-planned (&optional pom)
   "Mark a task (at 'pom' or 'point') as planned in yearly planning (i.e. unset
 the 'TO-PLAN' property)."
@@ -2129,20 +2151,22 @@ Agenda keybindings for filtering:
   (org-ql-block '(and (todo "WAIT"))
                 ((org-ql-block-header "\n Waiting")))
   (org-ql-block
-   '(or
-     ;; my work
-     (and (property "assignee" "Patrick Kelley")
-          (or
-           (property "status" "Ready For Dev")
-           (property "status" "In Progress")))
-     ;; needs review
-     (property "status" "In Review")
-     ;; needs to be deployed
-     (property "status" "Confirmed"))
+   '(and
+     (not (regexp ,org-ql-regexp-scheduled-with-time))
+     (or
+      ;; my work
+      (and (property "assignee" "Patrick Kelley")
+           (todo "READY" "TODO"))
+      ;; needs review
+      (property "status" "In Review")
+      ;; (todo "REVIEW")
+      ;; needs to be deployed
+      (property "status" "Confirmed")))
+   ;; (todo "CONFIRMED"))
    ((org-ql-block-header "\n Jira")))
   (org-ql-block '(closed :on today)
                 ((org-ql-block-header "\n Completed today")))))
-#+end_src
+  #+end_src
 * Inbox Processing
 When processing my inbox, the biggest degree of freedom is typically "when do I need to get this done?".
 - if it's something I just want to get around to one day, just file it into my gtd file and come back to it in the regular planning cycle
@@ -2484,7 +2508,7 @@ Include JIRA tasks in my org workflow so I can plan/prioritize all in one place
   (jiralib-user "patrick@humansignal.com")
   (org-jira-default-jql "project = \"DIA\" AND Sprint in openSprints() AND (assignee = currentUser() OR status IN (\"In Review\", Confirmed)) ORDER BY  priority DESC, created ASC")
   (org-jira-jira-status-to-org-keyword-alist
-      '(("Ready For Dev" . "READY")
+      '(("Ready for Dev" . "READY")
         ("In Progress" . "TODO")
         ("In Review" . "REVIEW")
         ("Confirmed" . "CONFIRMED")))
@@ -2493,9 +2517,65 @@ Include JIRA tasks in my org workflow so I can plan/prioritize all in one place
   (defconst org-jira-progress-issue-flow
   '(("To Refine" . "To Groom")
     ("To Groom" . "Ready For Dev")
-    ("Ready For Dev" . "In Progress")
+    ("Ready for Dev" . "In Progress")
     ("In Progress" . "In Review")
     ("In Review" . "QA")
     ("QA" . "Confirmed")
-    ("Confirmed" . "Delivered"))))
+    ("Confirmed" . "Delivered")))
+  <<review-pr-from-agenda>>)
+#+end_src
+
+For tickets that need review, it's nice to quickly open them in [[https://github.com/wandersoncferreira/code-review][code-review]]. Takes a bit of wrestling with the jira api, but it works pretty well.
+#+name: review-pr-from-agenda
+#+begin_src emacs-lisp :tangle no
+(after! code-review
+  (defun +patch/get-pr-url-for-ticket (jira-key)
+    "Find ticket identified by JIRA-KEY, and return an associated PR url.
+
+If the ticket has no PRs associated, return nil.
+If the ticket has exactly one PR associated, return the associated url.
+If the ticket has many PRs, ask the user which one to return the URL for."
+    (let* ((issue-id (alist-get 'id (jiralib-get-issue jira-key)))
+           (dev-info (jiralib--rest-call-it (format "/rest/dev-status/latest/issue/summary?issueId=%s" issue-id)))
+           (pr-info (alist-get 'pullrequest (alist-get 'summary dev-info)))
+           (pr-count (alist-get 'count (alist-get 'overall section-info))))
+      (if (> pr-count 0)
+          (let* ((application-type (alist-get 'name (cdar (alist-get 'byInstanceType pr-info))))
+                 (detail-info (jiralib--rest-call-it (format "/rest/dev-status/latest/issue/detail?issueId=%s&applicationType=%s&dataType=%s" issue-id application-type 'pullrequest)))
+                 (pr-detail-info (alist-get 'pullRequests
+                                            (elt (alist-get 'detail detail-info) 0))))
+            (if (> (length pr-detail-info) 1)
+                ;; if there are multiple prs, let the user choose
+                (let* ((choices (seq-map (lambda (elem) `(,(format "%s/%s" (alist-get 'repositoryName elem) (alist-get 'branch (alist-get 'source elem)))
+                                                          . ,(alist-get 'url elem)))
+                                         pr-detail-info))
+                       (choice-name (completing-read "Choose a PR to review: " choices))
+                       (chosen-obj (assoc choice-name choices))
+                       (chosen-url (cdr chosen-obj)))
+                  chosen-url)
+              ;; if there's only 1 pr, just return that one
+              (alist-get 'url (elt pr-detail-info 0))))
+        ;; if there are no prs, return nil
+        nil)))
+
+  (defun +patch/start-review-for-ticket (jira-key)
+    "Open a PR associated with ticket JIRA-KEY in `code-review`, if one exists."
+    (let ((pr-url (+patch/get-pr-url-for-ticket jira-key 'pullrequest)))
+      (if pr-url
+          (code-review-start pr-url)
+        (message (format "No PR found for ticket %s" jira-key)))))
+
+  (defun +patch/agenda/get-jira-key ()
+    "Find the jira key for the entry at point in the agenda."
+    (+patch--from-source-of-agenda-entry
+     (org-entry-get (point) "ID")))
+
+  (defun +patch/agenda/start-review-for-ticket-at-point ()
+    "Open the PR for the ticket for the entry at point, if one exists."
+    (interactive)
+    (+patch/start-review-for-ticket (+patch/agenda/get-jira-key)))
+
+  (map! (:map (org-agenda-keymap org-agenda-mode-map)
+              "R" #'+patch/agenda/start-review-for-ticket-at-point)))
+#+end_src
 #+end_src
