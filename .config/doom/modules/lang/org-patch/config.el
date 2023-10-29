@@ -1511,9 +1511,13 @@
           :desc "Clear filters"         "DEL" #'org-agenda-filter-remove-all)))
   (defun +patch-gtd/planning/daily-planning-layout ()
     (interactive)
-    (+patch/open-window-layout '(delete-other-windows
-                               (lambda () (org-agenda nil ","))
-                               delete-other-windows)))
+    ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
+    (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
+                                 (lambda () (org-agenda nil ","))
+                                 delete-other-windows))
+      (save-excursion
+        (org-jira-get-issues (org-jira-get-issue-list)))
+    )
   (defun +patch-gtd/planning/inbox-layout ()
     (interactive)
     (+patch/open-window-layout '(delete-other-windows

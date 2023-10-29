@@ -2116,9 +2116,13 @@ Agenda keybindings for filtering:
 #+begin_src emacs-lisp :tangle no
 (defun +patch-gtd/planning/daily-planning-layout ()
   (interactive)
-  (+patch/open-window-layout '(delete-other-windows
-                             (lambda () (org-agenda nil ","))
-                             delete-other-windows)))
+  ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
+  (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
+                               (lambda () (org-agenda nil ","))
+                               delete-other-windows))
+    (save-excursion
+      (org-jira-get-issues (org-jira-get-issue-list)))
+  )
 #+end_src
 #+name: daily-planning-agenda-view
 #+begin_src emacs-lisp :tangle no
@@ -2500,7 +2504,7 @@ Include JIRA tasks in my org workflow so I can plan/prioritize all in one place
 #+begin_src emacs-lisp :tangle packages.el
 (package! org-jira)
 #+end_src
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :noweb no-export
 (use-package! org-jira
   :custom
   (org-jira-working-dir "~/.local/share/notes/gtd/jira")
