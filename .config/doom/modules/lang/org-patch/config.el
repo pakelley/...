@@ -286,7 +286,7 @@
 
 (use-package! doct
   :after (org org-capture)
-  :commands (doct +patch/doct-properties)
+  :commands (doct +patch/doct-properties org-capture)
   :defines +patch/doct-properties
   :config
   (defun +patch/doct-properties ()
@@ -493,6 +493,7 @@
                                            (?> org-agenda-reschedule-to-tomorrow)))
   (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
         (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)
+        (:map org-super-agenda-header-map "." #'org-agenda-reschedule-to-today)
         (:map org-agenda-mode-map ">" #'org-agenda-reschedule-to-tomorrow)
         (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow)))
 
@@ -633,6 +634,7 @@
                        (marker-buffer marker)
                      (find-file-noselect (+patch--get-path task)))))
        (with-current-buffer buffer
+         (org-mode)
          ,@body)))
   
   (defun +patch--get-contents (task)
@@ -686,6 +688,7 @@
   (defun +patch/mark-task-for-planning (&optional pom)
     "Mark a task (at 'pom' or 'point') to be planned in yearly planning (i.e. set
   the 'TO-PLAN' property)."
+    (interactive)
     (org-entry-put (or pom (point)) "TO-PLAN" ""))
   
   (defmacro +patch--from-source-of-agenda-entry (&rest body)
@@ -1092,7 +1095,7 @@
             :query (and
                     (todo "TODO" "NEXT")
                     ,+patch/is-action
-                    (or (scheduled :to today) ,scheduled-around-this-week))
+                    ,scheduled-around-this-week)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:name "Overdue"
@@ -1119,7 +1122,7 @@
       (org-ql-view-refresh))))
 
 (use-package! origami
-  :after (org-agenda)
+  :after (org-agenda evil-org-agenda org-super-agenda)
   :hook ((org-agenda-mode . origami-mode)
          (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
   :config
@@ -1266,7 +1269,7 @@
   (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")
         org-superstar-prettify-item-bullets t))
 
-(after! org-fancy-priorities
+(after! (org-fancy-priorities all-the-icons)
   (setq org-ellipsis " ▾ "
         org-hide-leading-stars t
         org-priority-highest ?A
@@ -1453,7 +1456,8 @@
     (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarters-tasks"))
   (defun +patch-gtd/planning/weekly-planning-layout ()
     (interactive)
-    (org-babel-jupyter-aliases-from-kernelspecs)
+    (after! ob-jupyter
+      (org-babel-jupyter-aliases-from-kernelspecs))
     (+patch-gtd/set-or-refresh-weekly-views)
     (+patch/generate-quarters-burnup-plot)
     (+patch/open-window-layout '(delete-other-windows
