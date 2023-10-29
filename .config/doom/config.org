@@ -71,3 +71,21 @@ Makes working in a monorepo less terrible
  (:map vertico-map "C-k" nil)
  (:map vertico-map :i "C-k" nil))
 #+end_src
+* gpg setup
+a few things to make gpg run smoother
+** make epg work with emacs 29.1
+This seems to be the generally accepted way to get epg to play nicely with emacs 29.1,
+e.g. from [[https://stackoverflow.com/a/76389612][this SE post]] and [[https://www.masteringemacs.org/article/keeping-secrets-in-emacs-gnupg-auth-sources][this mastering emacs post]].
+#+begin_src emacs-lisp :tangle yes
+(fset 'epg-wait-for-status 'ignore)
+#+end_src
+** set default recipient, to avoid symmetric encryption
+If there's no default recipient for gpg, emacs will default to using symmetric encryption (and prompt for a password, then... seems to just brick the file) when saving '.gpg' files, rather than using my gpg keys. Set the default recipient to avoid this.
+#+begin_src emacs-lisp :tangle yes
+(setq epa-file-encrypt-to '("pakelley@hey.com"))
+#+end_src
+** make sure 'authinfo.gpg' is at the front of auth-sources
+to avoid defaulting to the keyring, and sometimes breaking things bc of unsupported capabilities
+#+begin_src emacs-lisp :tangle yes
+(setq auth-sources (push "~/.authinfo.gpg" auth-sources))
+#+end_src

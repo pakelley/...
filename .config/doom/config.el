@@ -38,3 +38,9 @@
  (:map read-expression-map "C-k" nil)
  (:map vertico-map "C-k" nil)
  (:map vertico-map :i "C-k" nil))
+
+(fset 'epg-wait-for-status 'ignore)
+
+(setq epa-file-encrypt-to '("pakelley@hey.com"))
+
+(setq auth-sources (push "~/.authinfo.gpg" auth-sources))
