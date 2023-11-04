@@ -42,7 +42,32 @@
     "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
     (interactive "P")
     (org-agenda-schedule arg)
-    (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar"))
+    ;; (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar")
+    ;; TODO save excursion, and refresh both org ql buffers
+    (org-ql-view-refresh)
+    )
+  
+  (defun org-planning-hatch (&optional arg)
+    "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
+    (interactive "P")
+  
+    ;; (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar")
+    ;; TODO save excursion, and refresh both org ql buffers
+    (org-agenda-schedule arg)
+    (org-ql-view-refresh)
+    (other-window 1)
+    (org-ql-view-refresh)
+    (other-window 1)
+    )
+  
+  (defun +patch-gtd/planning/incubate ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry
+     (ignore-errors (org-priority 'remove))
+     (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
+     (ignore-errors (org-entry-delete (point) "TO-PLAN"))
+     (ignore-errors (org-entry-delete (point) "OPENED"))
+     (org-todo "READY")))
   
   (setq org-agenda-bulk-custom-functions
         (append org-agenda-bulk-custom-functions '((?i org-agenda-incubate)
@@ -706,12 +731,26 @@
          (org-with-remote-undo buffer
            (setq result
                  (with-current-buffer buffer
-                   (org-mode)
-                   (widen)
                    (goto-char pos)
+                   (ignore-errors (org-mode))
+                   (widen)
                    (org-fold-show-context 'agenda)
                    ,@body)))
          result)))
+  
+  (defun +patch-gtd/planning/agenda-mark-task-for-planning ()
+    "Mark current task in agenda to be planned in yearly planning (i.e. set
+  the 'TO-PLAN' property)."
+    (interactive)
+    (+patch--from-source-of-agenda-entry
+     ;; (org-priority ?\ )
+     (ignore-errors (org-priority 'remove ))
+     (ignore-errors (org-schedule '(4))) ;; prefix arg to unschedule
+     (org-entry-put (point) "OPENED" (ts-format "%Y-%m-%d" (ts-apply :hour 0 :minute 0 :second 0 (ts-now))))
+     ;; (org-entry-delete (point) "OPENED")
+     ;; (org-todo "READY")
+     (org-set-property "TO-PLAN" "")
+     ))
   
   (defun +patch/mark-task-as-planned (&optional pom)
     "Mark a task (at 'pom' or 'point') as planned in yearly planning (i.e. unset
@@ -1438,7 +1477,7 @@
   (defun +patch-gtd/planning/punt (&optional pom)
     (interactive)
     (org-entry-delete (or pom (point)) "TO-PLAN")
-    ;; (+patch/try (org-entry-delete (or pom (point)) "TO-PLAN"))
+    ;; (ignore-errors (org-entry-delete (or pom (point)) "TO-PLAN"))
     (+patch/set-opened-date (or pom (point))))
   
   (defun +patch-gtd/planning/agenda-punt ()
