@@ -44,9 +44,15 @@ packages), find the path to the packages."
   (setq blacken-executable "blue"))
 
 (use-package! flymake-ruff
-  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load))
-(use-package! flymake
-  :hook (python-mode . flymake-mode))
+  :hook ((python-mode eglot-managed-mode) . flymake-ruff-load)
+  :config
+  (map! :map python-mode-map
+        (:localleader
+         (:prefix ("l" . "lint")
+          :desc "flymake list" "l" #'consult-flymake)))
+  ;; use the `ruff` installed for the current project
+  (advice-add 'flymake-ruff--check-buffer :before (lambda () (setq flymake-ruff-program (format "%s.venv/bin/ruff" (project-root (project-current))))))
+  (advice-add 'flymake-ruff--check-buffer :after (lambda () (setq flymake-ruff-program "ruff"))))
 
 (use-package! reformatter
   :config
