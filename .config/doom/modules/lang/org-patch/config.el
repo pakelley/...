@@ -1397,6 +1397,7 @@
                             :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
                             ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
                             :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout
+                            :desc "GTD File"            "g" #'+patch-gtd/planning/gtd-file-layout
                             :desc "Inbox"               "i" #'+patch-gtd/planning/inbox-layout)
                            (:prefix ("p" . "Planning Actions")
                             :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
@@ -1564,12 +1565,18 @@
     (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
                                  (lambda () (org-agenda nil ","))
                                  delete-other-windows))
-      (save-excursion
-        (org-jira-get-issues (org-jira-get-issue-list)))
+    (save-excursion
+      (org-jira-get-issues (org-jira-get-issue-list)))
     )
+  (defun +patch-gtd/planning/gtd-file-layout ()
+    (interactive)
+    ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
+    (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
+                                 "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                                 delete-other-windows)))
   (defun +patch-gtd/planning/inbox-layout ()
     (interactive)
-    (+patch/open-window-layout '(delete-other-windows
+    (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
                                  "~/.local/share/notes/gtd/inbox.org"
                                  delete-other-windows)))
   )
