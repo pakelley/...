@@ -309,9 +309,12 @@
         org-ref-pdf-directory "/Users/pakelley/.local/share/bibtex/pdfs/"
         org-ref-bibliography-notes "/Users/pakelley/.local/share/bibtex/notes.org"))
 
+(use-package! org-capture
+  :after org
+  :commands org-capture
+  :defer-incrementally doct)
 (use-package! doct
-  :after (org org-capture)
-  :commands (doct +patch/doct-properties org-capture)
+  :commands doct
   :defines +patch/doct-properties
   :config
   (defun +patch/doct-properties ()
@@ -1405,6 +1408,9 @@
               :m "<backspace>" nil
               "<delete>" nil
               :m "<delete>" nil))
+  ;; all-the-icons is necessary for some reason, just load it incrementally at startup
+  ;; need to force ob-jupyter to load so we can start a jupyter kernel for generating the plots for the weekly view
+  :defer-incrementally (all-the-icons ob-jupyter org-caldav org-jira)
   :config
   (defun +patch/bookmark-org-ql-view (org-ql-view-name)
       (bookmark-store

@@ -558,18 +558,19 @@ Because all of my TODO/NEXT tasks will have at least one thing logged (because I
 ** Capture Templates [0/1]
 `doct` makes writing capture templates much simpler and more readable
 #+begin_src elisp :noweb no-export
+(use-package! org-capture
+  :after org
+  :commands org-capture
+  :defer-incrementally doct)
 (use-package! doct
-  :after (org org-capture)
-  :commands (doct +patch/doct-properties org-capture)
+  :commands doct
   :defines +patch/doct-properties
   :config
-  <<doct-properties-hook>>
   <<org-capture-templates>>
-  :config
   <<doct-properties-hook>>
   )
-
 #+end_src
+
 Nice function for passing properties to `doct` modified from [[https://github.com/progfolio/doct/issues/13][this GH issue]].
 #+name: doct-properties-hook
 #+begin_src elisp :tangle no
@@ -1454,6 +1455,9 @@ I had to wrestle it a bit to get a somewhat declarative syntax for this though, 
               :m "<backspace>" nil
               "<delete>" nil
               :m "<delete>" nil))
+  ;; all-the-icons is necessary for some reason, just load it incrementally at startup
+  ;; need to force ob-jupyter to load so we can start a jupyter kernel for generating the plots for the weekly view
+  :defer-incrementally (all-the-icons ob-jupyter org-caldav org-jira)
   :config
   <<layout-fns>>
   <<yearly-planning-view>>
