@@ -2650,3 +2650,40 @@ If the ticket has many PRs, ask the user which one to return the URL for."
   ;; sync every 1 hour
   (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync))
 #+end_src
+* TODO routine tasks
+I use [[https://orgmode.org/manual/Tracking-your-habits.html][habit-style tasks]] for my routine tasks. This lets me repeat tasks, but also gives me a running tally of how often I complete these on time (which is useful to identify tasks that I need to rething how to be consistent about).
+I want the repeated tasks to be set to the "TODO" state
+#+begin_src emacs-lisp :tangle yes
+(after! org
+  (setq org-todo-repeat-to-state "TODO"))
+#+end_src
+And I want checklists for these tasks to mark the task as complete (this is the main place I use checklists). The solution from the org docs [[https://orgmode.org/manual/Breaking-Down-Tasks.html][here]] only works for subtasks, so I'm using the solution from [[https://emacs.stackexchange.com/a/22147/15634][this SE post]] to work with checkboxes.
+#+begin_src emacs-lisp :tangle yes
+(after! org
+  (defun +patch/org-checkbox-todo ()
+    "Switch header TODO state to DONE when all checkboxes are ticked, to TODO otherwise"
+    (let ((todo-state (org-get-todo-state)) beg end)
+      (unless (not todo-state)
+        (save-excursion
+          (org-back-to-heading t)
+          (setq beg (point))
+          (end-of-line)
+          (setq end (point))
+          (goto-char beg)
+          (if (re-search-forward "\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]"
+                                 end t)
+              (if (match-end 1)
+                  (if (equal (match-string 1) "100%")
+                      (unless (string-equal todo-state "DONE")
+                        (org-todo 'done))
+                    (unless (string-equal todo-state "TODO")
+                      (org-todo 'todo)))
+                (if (and (> (match-end 2) (match-beginning 2))
+                         (equal (match-string 2) (match-string 3)))
+                    (unless (string-equal todo-state "DONE")
+                      (org-todo 'done))
+                  (unless (string-equal todo-state "TODO")
+                    (org-todo 'todo)))))))))
+
+  (add-hook 'org-checkbox-statistics-hook '+patch/org-checkbox-todo))
+#+end_src
