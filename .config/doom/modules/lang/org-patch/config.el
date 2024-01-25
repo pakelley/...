@@ -523,7 +523,19 @@
         (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)
         (:map org-super-agenda-header-map "." #'org-agenda-reschedule-to-today)
         (:map org-agenda-mode-map ">" #'org-agenda-reschedule-to-tomorrow)
-        (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow)))
+        (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow))
+  (map! (:map org-agenda-mode-map
+              "C-RET" (cmd! (org-capture nil "2"))
+              "C-<return>" (cmd! (org-capture nil "2")))
+        (:map global-map
+              ("C-RET" nil)
+              ("C-<return>" nil))
+        (:map evil-insert-state-map
+              ("C-RET" nil)
+              ("C-<return>" nil))
+        (:map evil-normal-state-map
+              ("C-RET" nil)
+              ("C-<return>" nil))))
 
 (use-package! org-refile
   :after org-agenda

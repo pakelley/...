@@ -818,6 +818,23 @@ Simplify the agenda prefix to only include what I need to see
       (:map org-agenda-mode-map ">" #'org-agenda-reschedule-to-tomorrow)
       (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow))
 #+end_src
+** Quick action to create a new task for today
+Also, the global map binding here seems to have started taking precedence, so lets just get rid of that.
+#+name: quick-today-task
+#+begin_src emacs-lisp :tangle yes
+(map! (:map org-agenda-mode-map
+            "C-RET" (cmd! (org-capture nil "2"))
+            "C-<return>" (cmd! (org-capture nil "2")))
+      (:map global-map
+            ("C-RET" nil)
+            ("C-<return>" nil))
+      (:map evil-insert-state-map
+            ("C-RET" nil)
+            ("C-<return>" nil))
+      (:map evil-normal-state-map
+            ("C-RET" nil)
+            ("C-<return>" nil)))
+#+end_src
 ** Quick actions for sending back to "incubate"
 #+name: agenda-incubate-and-hatch
 #+begin_src emacs-lisp :tangle no
