@@ -209,7 +209,8 @@ Tagging of future messages is done by the HeyFilter afew filter."
       (+patch/set-email-group-for-email-sender name email group)
       (notmuch-search-tag tag-changes)
       (when tag-retroactively
-        (notmuch-tag (format "from:%s" email) tag-changes))))
+        (notmuch-tag (format "from:%s" email) tag-changes)))
+    (notmuch-tree-next-message))
 
   (defun +patch-notmuch/move-thread-to-group (group &optional thread-id)
     "Tag thread from THREAD-ID with GROUP"
@@ -219,7 +220,8 @@ Tagging of future messages is done by the HeyFilter afew filter."
                               ((equal group "paper-trail") '("+paper-trail" "-screener" "-feed" "-imbox" "-unread" "-inbox"))
                               ((equal group "imbox") '("+imbox" "-screener" "-paper-trail" "-feed" "-inbox"))
                               (t `(,(format "+%s" group) "-screener" "-paper-trail" "-feed" "-imbox" "-inbox")))))
-      (notmuch-search-tag tag-changes))))
+      (notmuch-search-tag tag-changes)
+      (notmuch-tree-next-message))))
 
 (after! notmuch
   ;; for some reason, the python notmuch client that gmi uses can't find my XDG notmuch config without this
