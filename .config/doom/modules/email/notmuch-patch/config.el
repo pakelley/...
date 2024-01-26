@@ -117,6 +117,7 @@
    "u" #'+patch-notmuch/unsubscribe
    "U" #'+patch-notmuch/toggle-unread
    "n" #'+patch-notmuch/filter-to-sender-at-point
+   "d" #'+notmuch/search-delete
    "-" nil
    "]" nil)
   (general-define-key
