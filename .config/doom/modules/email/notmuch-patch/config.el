@@ -128,8 +128,16 @@
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
    :prefix ","
-   "t" '((cmd! (org-capture nil "et")) :which-key "todo")
-   "w" '((cmd! (org-capture nil "ew")) :which-key "wait"))
+   "t" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
+                       (notmuch-search-show-thread)
+                       (org-capture nil "et")
+                       (ignore-errors (org-capture-finalize))
+                       (notmuch-bury-or-kill-this-buffer))) :which-key "todo")
+   "w" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
+                       (notmuch-search-show-thread)
+                       (org-capture nil "ew")
+                       (ignore-errors (org-capture-finalize))
+                       (notmuch-bury-or-kill-this-buffer))) :which-key "wait"))
 
   (defgroup patch-notmuch nil
     "My personal notmuch config group"
