@@ -556,7 +556,7 @@ Because all of my TODO/NEXT tasks will have at least one thing logged (because I
 
 Ensure closed timestamp is logged, so I can track it in my burnup chart
 #+name: log-closed-timestamp
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :tangle no
 (setq org-log-done 'time)
 #+end_src
 
@@ -756,7 +756,8 @@ Similar to my setup for emacs-everywhere, I have an algfred workflow that uses a
   <<agenda-prefix>>
   <<sync-buffer-to-file>>
   <<sync-file-to-agenda>>
-  <<agenda-reschedule>>)
+  <<agenda-reschedule>>
+  <<quick-today-task>>)
 #+end_src
 ** Agenda Files
 Only track my task-related files in the agenda
@@ -828,7 +829,7 @@ Simplify the agenda prefix to only include what I need to see
 ** Quick action to create a new task for today
 Also, the global map binding here seems to have started taking precedence, so lets just get rid of that.
 #+name: quick-today-task
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp :tangle no
 (map! (:map org-agenda-mode-map
             "C-RET" (cmd! (org-capture nil "2"))
             "C-<return>" (cmd! (org-capture nil "2")))
@@ -1435,7 +1436,8 @@ Not starting automatically, as I'm still running into a few issues so far.
   <<latex-on-startup>>
   <<notes-directory>>
   <<todo-keywords>>
-  <<state-changes-in-logbook>>)
+  <<state-changes-in-logbook>>
+  <<log-closed-timestamp>>)
 #+end_src
 * Planning Views
 These are the views I use to plan my tasks. I review my tasks periodically, with varying levels of depth:

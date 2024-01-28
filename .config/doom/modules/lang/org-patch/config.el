@@ -1403,7 +1403,8 @@
           ("NEXT" . (:foreground "#f0dfaf" :weight bold))
           ("WAIT" . (:foreground "#dc8cc3" :weight bold))
           ("CNCL" . (:foreground "#d26478" :weight bold))))
-  (setq org-log-into-drawer t))
+  (setq org-log-into-drawer t)
+  (setq org-log-done 'time))
 
 (use-package! org-ql
   :commands (+patch/toggle-quick-agenda-filter
