@@ -41,7 +41,15 @@ packages), find the path to the packages."
 
 (use-package! blacken
   :config
-  (setq blacken-executable "blue"))
+  (setq blacken-executable "blue")
+  (defun +patch/set-apheleia-black-executable (exec-path)
+    (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path))
+
+  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  )
 
 (use-package! flymake-ruff
   :hook ((python-mode eglot-managed-mode) . flymake-ruff-load)
@@ -76,3 +84,8 @@ packages), find the path to the packages."
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
 
+(use-package! python-pytest
+  :config
+  (advice-add 'python-pytest--run :before (lambda (&rest args) (setq python-pytest-executable (format "%s.venv/bin/pytest" (project-root (project-current))))))
+  (advice-add 'python-pytest--run :after (lambda (&rest args) (setq python-pytest-executable "pytest")))
+  )

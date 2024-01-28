@@ -62,7 +62,15 @@ use [[https://github.com/grantjenks/blue][blue]] for auto-formatting.
 #+begin_src emacs-lisp :tangle yes
 (use-package! blacken
   :config
-  (setq blacken-executable "blue"))
+  (setq blacken-executable "blue")
+  (defun +patch/set-apheleia-black-executable (exec-path)
+    (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path))
+
+  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  )
 #+end_src
 ** ruff
 use [[https://github.com/astral-sh/ruff][ruff]] for linting
@@ -114,4 +122,12 @@ isort before blue, so blue takes precedence
     (remove-hook 'before-save-hook '+patch-python/lint t)))
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
+#+end_src
+* pytest
+#+begin_src emacs-lisp :tangle yes
+(use-package! python-pytest
+  :config
+  (advice-add 'python-pytest--run :before (lambda (&rest args) (setq python-pytest-executable (format "%s.venv/bin/pytest" (project-root (project-current))))))
+  (advice-add 'python-pytest--run :after (lambda (&rest args) (setq python-pytest-executable "pytest")))
+  )
 #+end_src
