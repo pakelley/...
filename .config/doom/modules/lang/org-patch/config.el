@@ -569,8 +569,15 @@
        (org-ql-block '(and (scheduled :on +0)
                            (not (children)) ; only look at actions, not projects
                            (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
+                           (tags "routine")
                            (regexp ,org-ql-regexp-scheduled-without-time))
-                     ((org-ql-block-header "\n Today")))
+                     ((org-ql-block-header "\n Routine")))
+       (org-ql-block '(and (scheduled :on +0)
+                           (not (children)) ; only look at actions, not projects
+                           (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
+                           (not (tags "routine"))
+                           (regexp ,org-ql-regexp-scheduled-without-time))
+                     ((org-ql-block-header "\n Todo")))
        (org-ql-block '(and (scheduled
                             ;; :from ,(->> (ts-now)
                             ;;             (ts-adjust 'day (- (ts-dow (ts-now))))
@@ -821,10 +828,18 @@
     :body (property "TO-PLAN"))
   (setq
    +patch/daily-agenda-super-groups
-   `((:name "Today"
+   `((:name "Routine"
+      :time-grid t
+      :and (:scheduled today
+            :tag "routine"
+            :not (:tag ("%quick" "%easy"))
+            :not (:todo ("DONE" "CNCL" "WAIT")))
+      :order 0)
+     (:name "Todo"
       :time-grid t
       :and (:scheduled today
             :not (:tag ("%quick" "%easy"))
+            :not (:tag "routine")
             :not (:todo ("DONE" "CNCL" "WAIT")))
       :order 0)
      (:name "Quick"
@@ -1129,6 +1144,7 @@
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
             :query (and
                     (todo "TODO" "NEXT")
+                    (not (tags "routine"))
                     ,+patch/is-action
                     (not ,scheduled-around-this-week)
                     (or
@@ -1149,6 +1165,7 @@
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
             :query (and
                     (todo "TODO" "NEXT")
+                    (not (tags "routine"))
                     ,+patch/is-action
                     ,scheduled-around-this-week)
             :sort (priority todo)
@@ -1625,9 +1642,11 @@
       (org-ql-query
         :select #'+patch/find-and-parse-task
         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-        :where `(or ,opened-this-quarter
-                    ;; keeping scheduled so this quarter is still accurate, but this should be removed afterward
-                    ,scheduled-for-this-quarter)))))
+        :where `(and
+                 (or ,opened-this-quarter
+                     ;; keeping scheduled so this quarter is still accurate, but this should be removed afterward
+                     ,scheduled-for-this-quarter)
+                 (not (tags "routine")))))))
 
 (use-package! transient
   :after ts
