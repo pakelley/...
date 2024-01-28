@@ -471,19 +471,20 @@
     (select-frame-by-name "capture")
     (delete-other-windows)
     (noflet ((switch-to-buffer-other-window (buf) (switch-to-buffer buf)))
-            (org-capture)))
+      (org-capture)))
 
 
   (defadvice org-capture-finalize
       (after delete-capture-frame activate)
     "Advise capture-finalize to close the frame and return to the app we came from"
-    (when emacs-everywhere-window-focus-command
+    (when (and emacs-everywhere-window-focus-command (frame-parameter nil 'emacs-everywhere-prior-app))
       (apply #'call-process (car emacs-everywhere-window-focus-command)
              nil nil nil
              (mapcar (lambda (arg)
-                       (replace-regexp-in-string "%w" (frame-parameter nil 'emacs-everywhere-prior-app) arg))
+                       (when-let ((prior-app (frame-parameter nil 'emacs-everywhere-prior-app))) (replace-regexp-in-string "%w" prior-app arg)))
                      (cdr emacs-everywhere-window-focus-command))))
-    (delete-frame)))
+    (when (frame-parameter nil 'emacs-everywhere-prior-app)
+      (delete-frame))))
 
 (use-package! org-agenda
   :commands org-agenda
