@@ -21,7 +21,7 @@
 (package! org-ql)
 (package! origami)
 (package! ox-pandoc)
-(package! poly-org)
+;;(package! poly-org)
 #+end_src
 
 * Pin org to 9.6.7
@@ -760,14 +760,14 @@ Simplify the agenda prefix to only include what I need to see
 - [ ] need to also sync file to buffer
 #+name: sync-file-to-agenda
 #+begin_src elisp :tangle no
-(run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil ","))))
+;; (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil ","))))
 #+end_src
 ** Change refile targets so I can refile to wherever I want from the agenda (e.g. my reference org files, and the inbox if I just want to reprocess a task completely)
 #+begin_src emacs-lisp
 (use-package! org-refile
   :after org-agenda
   :config
-  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  ;; (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 #+end_src
 ** Quick actions for rescheduling to today/tomorrow (used pretty commonly when things roll over)

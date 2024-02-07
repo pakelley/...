@@ -457,7 +457,7 @@
   (advice-add 'org-store-log-note :after (η #'org-save-all-org-buffers))
   (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
   (advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
-  (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil ","))))
+  ;; (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil ","))))
   (defun +patch-dayone/agenda/reschedule-to-today (&optional arg)
     "Reschedule selected task(s) for today."
     (interactive "P")
@@ -505,7 +505,7 @@
 (use-package! org-refile
   :after org-agenda
   :config
-  (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
+  ;; (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/reference" t ".*\\.org$") :maxlevel . 3))
   (add-to-list 'org-refile-targets `(,(directory-files "~/.local/share/notes/gtd" t ".*\\.org$") :maxlevel . 3)))
 
 (use-package! org-super-agenda
@@ -1133,13 +1133,13 @@
          :desc "switch task" "w" #'+org/switch-task
          :desc "pomodoro" "p" #'org-pomodoro)))
 
-(use-package! parinfer-rust-mode
-  :after parinfer
-  :custom
-  (parinfer-rust-check-before-enable nil))
+;;(use-package! parinfer-rust-mode
+;;  :after parinfer
+;;  :custom
+;;  (parinfer-rust-check-before-enable nil))
 
-(use-package! poly-org
-  :after org)
+;;(use-package! poly-org
+;;  :after org)
 
 (after! org-superstar
   (setq org-superstar-headline-bullets-list '("◉" "○" "✸" "✿" "✤" "✜" "◆" "▶")

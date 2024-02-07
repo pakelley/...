@@ -15,7 +15,7 @@
 (package! org-ql)
 (package! origami)
 (package! ox-pandoc)
-;; (package! poly-org)
+;;(package! poly-org)
 
 (package! org :pin "ca873f7")
 
