@@ -2053,3 +2053,5 @@
                     (org-todo 'todo)))))))))
 
   (add-hook 'org-checkbox-statistics-hook '+patch/org-checkbox-todo))
+
+(use-package! org-noter)
