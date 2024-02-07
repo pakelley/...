@@ -19,6 +19,9 @@
                  (org-find-exact-headline-in-buffer headline))))
       (list headline file nil pos)))
   
+  (defun +patch/refile-to-node (arg file headline)
+    (org-agenda-refile arg (+patch/gen-org-refile-rfloc file headline)))
+  
   (defun +patch/org-agenda-refile (file headline)
     "Refile item at point to a particular place via org-agenda-refile, but
    with a simpler interface.
@@ -31,57 +34,6 @@
   
   ;; FIXME setting here instead of in :custom becuase it's not working in :custom (see note above)
   (setq +patch/org-gtd-tasks-file (concat (file-name-as-directory org-gtd-directory) "org-gtd-tasks.org"))
-  
-  (defun org-agenda-incubate (&optional arg)
-    "Incubate a specified task (includes refiling to incubate section, and specifiying a date to review the task)"
-    (interactive "P")
-    (org-agenda-schedule arg)
-    (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Incubate"))
-  
-  (defun org-agenda-hatch (&optional arg)
-    "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
-    (interactive "P")
-    (org-agenda-schedule arg)
-    ;; (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar")
-    ;; TODO save excursion, and refresh both org ql buffers
-    (org-ql-view-refresh)
-    )
-  
-  (defun org-planning-hatch (&optional arg)
-    "Un-incubate (or 'hatch') a specified task (includes refiling to calendar section, and specifiying the date to complete the task)"
-    (interactive "P")
-  
-    ;; (+patch/org-agenda-refile +patch/org-gtd-tasks-file "Calendar")
-    ;; TODO save excursion, and refresh both org ql buffers
-    (org-agenda-schedule arg)
-    (org-ql-view-refresh)
-    (other-window 1)
-    (org-ql-view-refresh)
-    (other-window 1)
-    )
-  
-  (defun +patch-gtd/planning/incubate ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry
-     (ignore-errors (org-priority 'remove))
-     (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
-     (ignore-errors (org-entry-delete (point) "TO-PLAN"))
-     (ignore-errors (org-entry-delete (point) "OPENED"))
-     (org-todo "READY")))
-  
-  (setq org-agenda-bulk-custom-functions
-        (append org-agenda-bulk-custom-functions '((?i org-agenda-incubate)
-                                                   (?h org-agenda-hatch)
-                                                   (?\] org-planning-hatch))))
-  (map! (:map org-agenda-mode-map "i" #'org-agenda-incubate)
-        (:map org-agenda-mode-map "h" #'org-agenda-hatch)
-        (:map org-agenda-keymap "h" #'org-agenda-hatch)
-        (:map org-agenda-keymap "]" #'org-planning-hatch)
-        (:map evil-org-agenda-mode-map "h" #'org-agenda-hatch)
-        (:map evil-org-agenda-mode-map "]" #'org-planning-hatch)
-        (:map evil-org-agenda-mode-map :m "i" #'org-agenda-incubate)
-        (:map evil-org-agenda-mode-map :m "h" #'org-agenda-hatch)
-        (:map evil-org-agenda-mode-map :m "]" #'org-planning-hatch))
   (defvar +patch/refine-project-map (make-sparse-keymap)
     "Keymap for command `+patch/refine-project-mode', a minor mode.")
   
@@ -317,6 +269,116 @@
   :commands doct
   :defines +patch/doct-properties
   :config
+  ;; setq
+  (setq org-capture-templates
+        (append org-capture-templates
+                (doct '(("Inbox"
+                         :keys "i"
+                         :file "~/.local/share/notes/gtd/inbox.org"
+                         :template "* %?"
+                         :kill-buffer t)
+                        ("Email"
+                         :keys "e"
+                         :olp ("Email")
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         ;; :hook +patch/doct-properties
+                         ;; ;; NOTE: Timestamp needs to be inactive (using the third arg
+                         ;; ;;       of org-insert-time-stamp) to avoid the OPENED date
+                         ;; ;;       appearing in the agenda.
+                         ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
+                         :hook (lambda () (progn
+                                            (org-set-tags "@email")
+                                            (org-set-property "OPENED" (format-time-string (org-time-stamp-format) (org-read-date nil t "+0d")))))
+                         :kill-buffer t
+                         :children
+                         (("Todo"
+                           :keys "t"
+                           :template ("* TODO Reply: %a"
+                                      "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))"))
+                          ("Wait"
+                           :keys "w"
+                           :template ("* WAIT %a"))))
+                        ("Frontburner"
+                         :keys "f"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :olp ("Calendar")
+                         ;; :hook +patch/doct-properties
+                         ;; NOTE: Timestamp needs to be inactive (using the third arg
+                         ;;       of org-insert-time-stamp) to avoid the OPENED date
+                         ;;       appearing in the agenda.
+                         ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
+                         :hook (lambda ()
+                                 (org-set-tags "@@frontburner")
+                                 (progn (org-set-property "OPENED" (format-time-string (org-time-stamp-format) (org-read-date nil t "+0d"))))
+                                 ;; whitespace doesn't seem to be working properly in the template, so put a space between the cursor and the TODO/tags
+                                 (insert " ")
+                                 (insert " ")
+                                 (backward-char))
+                         :template "* TODO  %? "
+                         ;; :template ("* TODO  %? "
+                         ;;            "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                         :prepare-finalize (lambda () (progn (org-priority)
+                                                             (org-set-tags-command)))
+                         :kill-buffer t)
+                        ("Meeting"
+                         :keys "m"
+                         :children
+                         (("Retro"
+                           :keys "r"
+                           :file "~/.local/share/notes/meetings/retro.org"
+                           :datetree t
+                           :template "* %?"
+                           :kill-buffer t)
+                          ("Nico 1:1"
+                           :keys "n"
+                           :file "~/.local/share/notes/meetings/nico.org"
+                           :datetree t
+                           :template "* %?"
+                           :kill-buffer t)
+                          ("Haotian 1:1"
+                           :keys "h"
+                           :file "~/.local/share/notes/meetings/haotian.org"
+                           :datetree t
+                           :template "* %?"
+                           :kill-buffer t)
+                          ("Parking Lot"
+                           :keys "p"
+                           :file "~/.local/share/notes/meetings/parking-lot.org"
+                           :datetree t
+                           :template "* %?"
+                           :kill-buffer t)
+                          ("Kinso"
+                           :keys "k"
+                           :file "~/.local/share/notes/meetings/kinso.org"
+                           :datetree t
+                           :template "* %?"
+                           :kill-buffer t)))
+                        ("Shopping" :keys "s"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :template "* %?"
+                         :children
+                         (("Home" :keys "h" :olp ("Projects" "home improvement"))
+                          ("Christmas" :keys "c" :olp ("Projects" "christmas"))
+                          ("Gift" :keys "g" :olp ("Projects" "gifts")) ; TODO either add recipient as tag or in olp
+                          ("Groceries" :keys "o" :olp ("Projects" "groceries"))))
+                        (:group "Reference"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :template "* %?"
+                         :children
+                         (("Food"
+                           :keys "F"
+                           :children
+                           (("Recipe"     :keys "r" :olp ("Projects" "recipes"))
+                            ("Cocktail"   :keys "c" :olp ("Projects" "cocktails"))
+                            ("Restaurant" :keys "s" :olp ("Projects" "restaurants"))))
+                          ("Media" :keys "d"
+                           :children
+                           (("Movie"   :keys "m" :olp ("Projects" "movies"))
+                            ("Show"    :keys "s" :olp ("Projects" "shows"))
+                            ("Book"    :keys "b" :olp ("Projects" "books"))
+                            ("Article" :keys "a" :olp ("Projects" "articles"))
+                            ("Album"   :keys "l" :olp ("Projects" "albums"))))
+                          ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
   (defun +patch/doct-properties ()
     "Add declaration's :properties to current entry."
     (let ((properties (doct-get :properties)))
@@ -328,118 +390,6 @@
                         raw-value))
                (clean-value (replace-regexp-in-string "\n$" "" expanded-value)))
           (org-set-property property clean-value)))))
-  ;; Usage:
-  ;; (doct '(("My capture template"
-  ;;          ...
-  ;;          :hook +patch/org-property-drawer
-  ;;          :properties (:anki_deck "${category}"))))
-  ;; setq
-  (setq org-capture-templates
-   (append org-capture-templates
-           (doct '(("Inbox"
-                    :keys "i"
-                    :file "~/.local/share/notes/gtd/inbox.org"
-                    :template "* %?"
-                    :kill-buffer t)
-                   ("Email"
-                    :keys "e"
-                    :olp ("Email")
-                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
-                    ;; :hook +patch/doct-properties
-                    ;; ;; NOTE: Timestamp needs to be inactive (using the third arg
-                    ;; ;;       of org-insert-time-stamp) to avoid the OPENED date
-                    ;; ;;       appearing in the agenda.
-                    ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
-                    :kill-buffer t
-                    :children
-                    (("Todo"
-                      :keys "t"
-                      :template ("* TODO Reply: %a"
-                                 "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))"))
-                     ("Wait"
-                      :keys "w"
-                      :template ("* WAIT %a"))))
-                   ("Today"
-                    :keys "2"
-                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
-                    :olp ("Calendar")
-                    :hook +patch/doct-properties
-                    ;; NOTE: Timestamp needs to be inactive (using the third arg
-                    ;;       of org-insert-time-stamp) to avoid the OPENED date
-                    ;;       appearing in the agenda.
-                    :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
-                    :template ("* TODO %?"
-                               "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
-                    :prepare-finalize (lambda () (progn (org-priority)
-                                                        (org-set-tags-command)))
-                    :kill-buffer t)
-                   ("Meeting"
-                    :keys "m"
-                    :children
-                    (("Retro"
-                      :keys "r"
-                      :file "~/.local/share/notes/meetings/retro.org"
-                      :datetree t
-                      :template "* %?"
-                      :kill-buffer t)
-                     ("Nico 1:1"
-                      :keys "n"
-                      :file "~/.local/share/notes/meetings/nico.org"
-                      :datetree t
-                      :template "* %?"
-                      :kill-buffer t)
-                     ("Haotian 1:1"
-                      :keys "h"
-                      :file "~/.local/share/notes/meetings/haotian.org"
-                      :datetree t
-                      :template "* %?"
-                      :kill-buffer t)
-                     ("Parking Lot"
-                      :keys "p"
-                      :file "~/.local/share/notes/meetings/parking-lot.org"
-                      :datetree t
-                      :template "* %?"
-                      :kill-buffer t)
-                     ("Kinso"
-                      :keys "k"
-                      :file "~/.local/share/notes/meetings/kinso.org"
-                      :datetree t
-                      :template "* %?"
-                      :kill-buffer t)))
-                   ("Shopping" :keys "s"
-                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
-                    :template "* %?"
-                    :children
-                    (("Home" :keys "h" :olp ("Projects" "home improvement"))
-                     ("Christmas" :keys "c" :olp ("Projects" "christmas"))
-                     ("Gift" :keys "g" :olp ("Projects" "gifts")) ; TODO either add recipient as tag or in olp
-                     ("Groceries" :keys "o" :olp ("Projects" "groceries"))))
-                   (:group "Reference"
-                    :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
-                    :template "* %?"
-                    :children
-                    (("Food"
-                      :keys "f"
-                      :children
-                      (("Recipe"     :keys "r" :olp ("Projects" "recipes"))
-                       ("Cocktail"   :keys "c" :olp ("Projects" "cocktails"))
-                       ("Restaurant" :keys "s" :olp ("Projects" "restaurants"))))
-                     ("Media" :keys "d"
-                      :children
-                      (("Movie"   :keys "m" :olp ("Projects" "movies"))
-                       ("Show"    :keys "s" :olp ("Projects" "shows"))
-                       ("Book"    :keys "b" :olp ("Projects" "books"))
-                       ("Article" :keys "a" :olp ("Projects" "articles"))
-                       ("Album"   :keys "l" :olp ("Projects" "albums"))))
-                     ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
-  :config
-  (defun +patch/doct-properties ()
-    "Add declaration's :properties to current entry."
-    (let ((properties (doct-get :properties)))
-      (dolist (keyword (seq-filter #'keywordp properties))
-        (org-set-property (substring (symbol-name keyword) 1)
-                          (replace-regexp-in-string "\n$" ""
-                                                    (org-capture-fill-template (plist-get properties keyword)))))))
   ;; Usage:
   ;; (doct '(("My capture template"
   ;;          ...
@@ -508,26 +458,40 @@
   (advice-add 'org-todo           :after (η #'org-save-all-org-buffers))
   (advice-add 'org-refile         :after (η #'org-save-all-org-buffers))
   (run-with-idle-timer 300 t (lambda () (save-window-excursion (org-agenda nil ","))))
-  (defun org-agenda-reschedule-to-today (&optional arg)
+  (defun +patch-dayone/agenda/reschedule-to-today (&optional arg)
     "Reschedule selected task(s) for today."
     (interactive "P")
     (org-agenda-schedule arg "."))
   
-  (defun org-agenda-reschedule-to-tomorrow (&optional arg)
+  (defun +patch-dayone/agenda/reschedule-to-tomorrow (&optional arg)
     "Reschedule selected task(s) for tomorrow."
     (interactive "P")
     (org-agenda-schedule arg "+1d"))
   
-  (setq org-agenda-bulk-custom-functions '((?. org-agenda-reschedule-to-today)
-                                           (?> org-agenda-reschedule-to-tomorrow)))
-  (map! (:map org-agenda-mode-map "." #'org-agenda-reschedule-to-today)
-        (:map evil-org-agenda-mode-map :m "." #'org-agenda-reschedule-to-today)
-        (:map org-super-agenda-header-map "." #'org-agenda-reschedule-to-today)
-        (:map org-agenda-mode-map ">" #'org-agenda-reschedule-to-tomorrow)
-        (:map evil-org-agenda-mode-map :m ">" #'org-agenda-reschedule-to-tomorrow))
+  (defun +patch-dayone/agenda/unschedule ()
+    (interactive)
+    (org-agenda-schedule '(4)))
+  
+  (setq org-agenda-bulk-custom-functions '((?. +patch-dayone/agenda/reschedule-to-today)
+                                           (?< +patch-dayone/agenda/unschedule)
+                                           (?> +patch-dayone/agenda/reschedule-to-tomorrow)))
+  (map! (:map org-agenda-mode-map "." #'+patch-dayone/agenda/reschedule-to-today)
+        (:map evil-org-agenda-mode-map :m "." #'+patch-dayone/agenda/reschedule-to-today)
+        (:map org-agenda-mode-map "<" #'+patch-dayone/agenda/unschedule)
+        (:map evil-org-agenda-mode-map :m "<" #'+patch-dayone/agenda/unschedule)
+        (:map org-agenda-mode-map ">" #'+patch-dayone/agenda/reschedule-to-tomorrow)
+        (:map evil-org-agenda-mode-map :m ">" #'+patch-dayone/agenda/reschedule-to-tomorrow))
   (map! (:map org-agenda-mode-map
-              "C-RET" (cmd! (org-capture nil "2"))
-              "C-<return>" (cmd! (org-capture nil "2")))
+              ("C-RET" (cmd! (org-capture nil "f")))
+              ("C-<return>" (cmd! (org-capture nil "f"))))
+        (:map evil-org-agenda-mode-map :m
+              "C-RET" nil)
+        (:map evil-org-agenda-mode-map :m
+              "C-<return>" nil)
+        (:map org-super-agenda-header-map :m
+              "C-RET" nil)
+        (:map org-super-agenda-header-map :m
+              "C-<return>" nil)
         (:map global-map
               ("C-RET" nil)
               ("C-<return>" nil))
@@ -566,29 +530,33 @@
                        :order 0)
                       (:name "Remove anything else"
                        :discard (:anything t))))))
-       (org-ql-block '(and (scheduled :on +0)
+       ;; overdue
+       (org-ql-block '(and (scheduled :to -1)
+                           (not (children)) ; only look at actions, not projects
+                           (todo "NEXT" "TODO")
+                           (not (done))
+                           (not (tags "routine")))
+                     ((org-ql-block-header "\n Overdue")))
+       ;; routine
+       (org-ql-block '(and (scheduled :to today)
                            (not (children)) ; only look at actions, not projects
                            (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
                            (tags "routine")
                            (regexp ,org-ql-regexp-scheduled-without-time))
                      ((org-ql-block-header "\n Routine")))
-       (org-ql-block '(and (scheduled :on +0)
+       ;; todos
+       (org-ql-block '(and (scheduled :on today)
                            (not (children)) ; only look at actions, not projects
                            (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
                            (not (tags "routine"))
                            (regexp ,org-ql-regexp-scheduled-without-time))
                      ((org-ql-block-header "\n Todo")))
-       (org-ql-block '(and (scheduled
-                            ;; :from ,(->> (ts-now)
-                            ;;             (ts-adjust 'day (- (ts-dow (ts-now))))
-                            ;;             (ts-apply :hour 0 :minute 0 :second 0))
-                            :to -1)
-                           (not (children)) ; only look at actions, not projects
-                           (todo "NEXT" "TODO")
+       ;; frontburner
+       (org-ql-block '(and (tags "@@frontburner")
+                           (not (scheduled))
                            (not (done)))
-                     ((org-ql-block-header "\n Overdue")))
-       (org-ql-block '(and (todo "WAIT"))
-                     ((org-ql-block-header "\n Waiting")))
+                     ((org-ql-block-header "\n Frontburner")))
+       ;; jira
        (org-ql-block
         '(and
           (not (regexp ,org-ql-regexp-scheduled-with-time))
@@ -603,49 +571,14 @@
            (property "status" "Confirmed")))
         ;; (todo "CONFIRMED"))
         ((org-ql-block-header "\n Jira")))
+       ;; waiting
+       (org-ql-block '(todo "WAIT")
+                     ((org-ql-block-header "\n Waiting")))
+     
+       ;; completed today
        (org-ql-block '(closed :on today)
                      ((org-ql-block-header "\n Completed today")))))
-     ("." "What's happening"
-      ((agenda "" ((org-agenda-span 'day)
-                   (org-agenda-start-day "+0d")
-                   (org-super-agenda-groups
-                    '((:name "Today"
-                       :time-grid t
-                       :and (:scheduled today
-                             :not (:tag ("%quick" "%easy"))
-                             :not (:todo ("DONE" "CNCL" "WAIT")))
-                       :order 0)
-                      (:name "Remove anything else"
-                       :discard (:anything t))))))
-       (org-ql-block '(and (tags "%quick")
-                           (ts-a :on today)
-                           (not (todo "WAIT"))
-                           (not (done))
-                           (not (regexp ,org-ql-regexp-scheduled-with-time)))
-                     ((org-ql-block-header "\n Quick")))
-       (org-ql-block '(and (tags "%easy")
-                           (ts-a :on today)
-                           (not (todo "WAIT"))
-                           (not (done))
-                           (not (regexp ,org-ql-regexp-scheduled-with-time)))
-                     ((org-ql-block-header "\n Easy")))
-       (org-ql-block '(and (ts-a :to -1)
-                           (not (todo "WAIT"))
-                           (not (done))
-                           (level 2))
-                     ((org-ql-block-header "\n Overdue")))
-       (org-ql-block '(and (not (scheduled))
-                           (not (done))
-                           (not (tags "@@someday_maybe"))
-                           (level 2))
-                     ((org-ql-block-header "\n Unscheduled")))
-       (org-ql-block '(and (todo "WAIT"))
-                     ((org-ql-block-header "\n Waiting")))
-       (org-ql-block '(closed :on today)
-                     ((org-ql-block-header "\n Completed today")))
-       (org-ql-block '(and (tags ("%quick" "%easy"))
-                           (ts-a :from +1 :to +3))
-                     ((org-ql-block-header "\n Could pull in"))))))))
+     )))
 
 (after! evil-org-agenda
   (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map))
@@ -673,18 +606,20 @@
       (or (org-element-property :path task)
           (+patch--get-path (org-element-property :parent task)))))
   
+  ;; TODO need to compare the behavior of this with +patch--from-source-of-agenda-entry, and consolidate if possible
   (defmacro +patch--from-task-location (task &rest body)
     "Runs BODY from the buffer of the task specified by 'task'. This will try to
   find the buffer via the ':org-marker' property in the org element api, or by
   walking up ':parent' tasks until the top, and getting the ':path' property and
   getting a buffer (opening if necessary) for that file"
-     `(let ((buffer (if-let ((marker (org-element-property :org-marker ,task)))
+    `(let ((buffer (if-let ((marker (org-element-property :org-marker ,task)))
                        (marker-buffer marker)
                      (find-file-noselect (+patch--get-path task)))))
        (with-current-buffer buffer
          (org-mode)
          ,@body)))
   
+  ;; TODO leaving bc this seems somewhat general-purpose, but not sure if I actually need it (it isn't being used anywhere)
   (defun +patch--get-contents (task)
     "Using the org element API, get the contents of a task (i.e. the plain text
   after the headline).
@@ -692,12 +627,9 @@
   If there's a marker, use that (because it's more robust), otherwise recursively
   search up the task tree for a ':path' property (and hope for the best)."
     (+patch--from-task-location task
-      (let* ((beg (org-element-property :contents-begin task))
-             (end (org-element-property :contents-end task)))
-        (when beg (when end (buffer-substring-no-properties beg end))))))
-  
-  (defconst +patch/org-ql-opened-regexp
-    (rx bol ":OPENED:   " (group (1+ not-newline))))
+                                (let* ((beg (org-element-property :contents-begin task))
+                                       (end (org-element-property :contents-end task)))
+                                  (when beg (when end (buffer-substring-no-properties beg end))))))
   
   (defun +patch/get-opened-date (task)
     "Get the date a task was opened (i.e. moved from READY to TODO/NEXT) using
@@ -709,6 +641,17 @@
                (opened-date (ts-format "%Y-%m-%d" opened-ts)))
           opened-date))))
   
+  (defun +patch/get-quarter-planned-date (task)
+    "Get the quarter a task was planned during using
+  the org element api. Requires fetching the content of the task (which I don't
+  have a reliable process for yet)."
+    (let* ((opened-prop (org-element-property :OPENED task)))
+      (when opened-prop
+        (let* ((opened-ts (ts-parse opened-prop))
+               (opened-date (ts-format "%Y-%m-%d" opened-ts)))
+          opened-date))))
+  
+  ;; TODO want to move this definition to quarterly planning utils (bc it's a natural place for the definition), but I depend on it for my transient for inbox processing and need to sort out the load order.
   (defun +patch/set-opened-date (&optional pom date)
     "Set the OPENED date of a task."
     (interactive)
@@ -717,28 +660,7 @@
            (date-str (ts-format "%Y-%m-%d" (ts-parse date))))
       (org-entry-put pom "OPENED" date-str)))
   
-  (defun +patch/agenda-set-opened-date (arg &optional date)
-    "Set the OPENED date of a task from the org agenda."
-    (interactive "P")
-    (+patch/set-opened-date (org-get-at-bol 'org-marker) date))
-  
-  (defun +patch/reopen-task (&optional pom date)
-    "Change the OPENED date of a task, and unchedule any scheduled time."
-    (org-agenda-schedule '(4))  ;; prefix arg to unschedule
-    (+patch/set-opened-date pom date))
-  
-  (defun +patch/agenda-reopen-task (arg &optional date)
-    "Change the OPENED date of a task, and unchedule any scheduled time, from the
-  org agenda."
-    (interactive "P")
-    (+patch/reopen-task (org-get-at-bol 'org-marker) date))
-  
-  (defun +patch/mark-task-for-planning (&optional pom)
-    "Mark a task (at 'pom' or 'point') to be planned in yearly planning (i.e. set
-  the 'TO-PLAN' property)."
-    (interactive)
-    (org-entry-put (or pom (point)) "TO-PLAN" ""))
-  
+  ;; TODO move this to a more general location
   (defmacro +patch--from-source-of-agenda-entry (&rest body)
     "Goes to org file entry that corresponds to the entry at point in an agenda
   view, and runs BODY. Implementation largely taken from the
@@ -760,37 +682,6 @@
                    (org-fold-show-context 'agenda)
                    ,@body)))
          result)))
-  
-  (defun +patch-gtd/planning/agenda-mark-task-for-planning ()
-    "Mark current task in agenda to be planned in yearly planning (i.e. set
-  the 'TO-PLAN' property)."
-    (interactive)
-    (+patch--from-source-of-agenda-entry
-     ;; (org-priority ?\ )
-     (ignore-errors (org-priority 'remove ))
-     (ignore-errors (org-schedule '(4))) ;; prefix arg to unschedule
-     (org-entry-put (point) "OPENED" (ts-format "%Y-%m-%d" (ts-apply :hour 0 :minute 0 :second 0 (ts-now))))
-     ;; (org-entry-delete (point) "OPENED")
-     ;; (org-todo "READY")
-     (org-set-property "TO-PLAN" "")
-     ))
-  
-  (defun +patch/mark-task-as-planned (&optional pom)
-    "Mark a task (at 'pom' or 'point') as planned in yearly planning (i.e. unset
-  the 'TO-PLAN' property)."
-    (interactive)
-    (org-entry-delete (or pom (point)) "TO-PLAN"))
-  
-  (defun +patch/open-task-after-state-change ()
-    "Open a task (by setting the 'OPENED' and 'TO-PLAN' properties). Meant to be
-  used in the 'org-after-todo-state-change-hook'."
-    (when (equal org-last-state "READY")
-      (+patch/set-opened-date (point)
-                              (format-time-string
-                               "%Y-%m-%d"
-                               org-log-note-effective-time))
-      (+patch/mark-task-for-planning)))
-  (add-hook 'org-after-todo-state-change-hook '+patch/open-task-after-state-change)
   (org-ql-defpred opened (&key from to _on)
     "Return non-nil if current entry contains READY state change in given period."
     :normalizers ((`(,predicate-names ,(and num-days (pred numberp)))
@@ -822,10 +713,6 @@
                   (from (ts<= from opened-at))
                   (to (ts<= opened-at to))))))
     )
-  
-  (org-ql-defpred to-plan (&rest names)
-    "Check whether a task needs to be planned (i.e. has a 'TO-PLAN' property)."
-    :body (property "TO-PLAN"))
   (setq
    +patch/daily-agenda-super-groups
    `((:name "Routine"
@@ -856,11 +743,6 @@
       :and (:scheduled past
             :face error
             :not (:todo ("DONE" "CNCL" "WAIT"))))
-     ;; TODO omiting this for now, until I decide on semantics for unscheduled project items and action list items
-     ;; (:name "Unscheduled"
-     ;;  :face error
-     ;;  :and (:scheduled nil
-     ;;        :not (:todo "DONE")))
      (:name "Waiting"
       :todo "WAIT")
      (:name "Completed Today"
@@ -883,57 +765,7 @@
          (not (todo "CNCL")))
 
    org-ql-views
-   `(("Planning" :buffers-files
-      ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-      :query
-      (and
-       ;; only include tasks
-       ,+patch/is-action
-       ;; Get upcoming and unscheduled tasks
-       (or (ts :from today :to +45)
-           (and (not (scheduled)) (level 2)))
-       ;; only get tasks that are still "todo"
-       ;; (not (tags "Incubate"))
-       (not (todo "WAIT" "DONE" "CNCL"))
-       (not (tags "@@someday_maybe")))
-      :sort
-      (priority todo)
-      :narrow nil
-      :super-groups ((:name "Unscheduled"
-                      :scheduled nil
-                      :face error
-                      :order 0)
-                     (:auto-planning t))
-      :title "Planning")
-     ("Last Month" :buffers-files
-      ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-      :query
-      (and
-       ;; Get upcoming and unscheduled tasks
-       (or (ts :from (ts-format "%Y-%m-%d" (make-ts :day 1 :month (ts-month (ts-now)) :year (ts-year (ts-now))))
-               :to +45)
-           (and (not (scheduled)) (level 2)))
-       ;; only get tasks that are still "todo"
-       ;; (not (tags "Incubate"))
-       (not (todo "WAIT" "DONE" "CNCL"))
-       (not (tags "@@someday_maybe")))
-      :sort
-      (priority todo)
-      :narrow nil
-      :super-groups ((:name "Unscheduled"
-                      :scheduled nil
-                      :face error
-                      :order 0)
-                     (:auto-planning t))
-      :title "Last Month")
-     ("Daily"
-      :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-      :query ,+patch/daily-agenda-query
-      :sort (priority todo date)
-      :narrow nil
-      :super-groups ,+patch/daily-agenda-super-groups
-      :title "Daily")
-     ("Home"
+   `(("Home"
       :buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
       :query '(and (tags "@home" "@work" "@anywhere")
                    ,+patch/daily-agenda-query)
@@ -964,68 +796,61 @@
              (add-to-list 'org-ql-views `(,view-name . ,view-spec)))))
        (defun +patch-gtd/set-or-refresh-yearly-views ()
          (setq
+          +patch-dayone/is-active '(and (todo "TODO" "NEXT")
+                                      (not (tags "routine")))
           +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
-                                                  (not (ancestors (todo "TODO" "NEXT"))))
-          +patch/is-planned `(and ,+patch/is-top-level-selected-task
-                                  (not (to-plan)))
-          +patch/to-be-planned `(and ,+patch/is-top-level-selected-task
-                                     (to-plan)))
+                                                  (not (tags "routine"))
+                                                  (not (ancestors (todo "TODO" "NEXT")))))
        
          (+patch/set-orgql-view
-          "This Year's Projects"
+          "Active Tasks"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query ,+patch/to-be-planned
+            :query ,+patch-dayone/is-active
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
-            :title "This Year's Projects"))
+            :title "Active Tasks"))
        
+         ;; hoping to get rid of this, but leaving it for now
          (+patch/set-orgql-view
-          "Yearly Planning"
+          "Active Tasks Schedule"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query ,+patch/is-planned
+            :query ,+patch/is-top-level-selected-task
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-planning t))
             :title "Yearly Planning"))
        
+         ;; hoping to get rid of this, but leaving it for now
          (+patch/set-orgql-view
-          "Actions In-Queue"
+          "Active Projects" ;; previously "Yearly Planning"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and (todo "TODO" "NEXT") (not (to-plan)) ,+patch/is-action)
+            :query (and ,+patch/is-top-level-selected-task ,+patch/is-project)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
-            :title "Actions In-Queue"))
-       
-         (+patch/set-orgql-view
-          "Projects In-Queue"
-          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and ,+patch/is-planned ,+patch/is-project)
-            :sort (priority todo)
-            :narrow nil
-            :super-groups ((:auto-outline-path t))
-            :title "Projects In-Queue")))
+            :title "Active Projects")))
        
        (+patch-gtd/set-or-refresh-yearly-views)
        (defun +patch/start-of-this-quarter-ts (&optional as-of)
          (let* ((base-ts (or as-of (ts-now)))
                 (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
-                (this-month (ts-month base-date))
-                (last-month-of-quarter (cond ((< this-month 4) 3)
-                                             ((< this-month 7) 6)
-                                             ((< this-month 10) 9)
-                                             (t 12))))
+                ;; (this-month (ts-month base-date))
+                (this-quarter (+patch/ts-quarter base-date))
+                (last-month-of-quarter (* this-quarter 3)))
            (ts-dec 'month 2 (ts-apply :month last-month-of-quarter :day 1 base-date))))
+       
+       (defun +patch/start-of-this-year-ts (&optional as-of)
+         (let* ((base-ts (or as-of (ts-now))))
+           (ts-apply :month 1 :day 1 :hour 0 :minute 0 :second 0 base-ts)))
+       
+       
        
        (defun +patch/end-of-this-quarter-ts (&optional as-of)
          (let* ((base-ts (or as-of (ts-now)))
                 (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
-                (this-month (ts-month base-date))
-                (last-month-of-quarter (cond ((< this-month 4) 3)
-                                             ((< this-month 7) 6)
-                                             ((< this-month 10) 9)
-                                             (t 12)))
+                (this-quarter (+patch/ts-quarter base-date))
+                (last-month-of-quarter (* this-quarter 3))
                 (first-month-of-next-quarter (ts-inc 'month 1 (ts-apply :month last-month-of-quarter :day 1 base-date))))
            (ts-dec 'second 1 first-month-of-next-quarter)))
        
@@ -1039,15 +864,19 @@
                 (start-of-this-quarter (+patch/start-of-this-quarter-ts as-of)))
            (ts-dec 'second 1 start-of-this-quarter)))
        
+       
        (defun +patch-gtd/set-or-refresh-quarterly-views ()
          (setq
-          planned-for-this-quarter (let* ((end-of-quarter (+patch/end-of-this-quarter-ts)))
-                                     `(or (scheduled :to ,(ts-format end-of-quarter))
-                                          (ancestors (scheduled :to ,(ts-format end-of-quarter)))))
-          scheduled-for-this-quarter `(scheduled :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                                       :to ,(ts-format (+patch/end-of-this-quarter-ts)))
-          opened-this-quarter `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts))
-                                :to ,(ts-format (+patch/end-of-this-quarter-ts))))
+          +patch-dayone/is-open `(and ,+patch-dayone/is-active (property "OPENED"))
+          +patch-dayone/has-been-open `(and (not (tags "routine")) (property "OPENED"))
+          +patch-dayone/is-unopened-active-task `(and ,+patch-dayone/is-active (not (property "OPENED")))
+          +patch-dayone/closed-before-this-quarter `(closed :to ,(ts-format (+patch/start-of-this-quarter-ts)))
+          +patch-dayone/planned-for-this-quarter `(and ,+patch-dayone/has-been-open
+                                                       (not ,+patch-dayone/closed-before-this-quarter))
+          +patch-dayone/closed-before-this-year `(closed :to ,(ts-format (ts-dec 'second 1 (+patch/start-of-this-year-ts))))
+          +patch-dayone/planned-for-this-year `(and ,+patch-dayone/has-been-open
+                                                       (not ,+patch-dayone/closed-before-this-year))
+       )
        
          (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
            (length
@@ -1062,31 +891,26 @@
               :where `(opened :from ,(ts-format (+patch/start-of-this-quarter-ts as-of)) :to ,(ts-format (+patch/end-of-this-quarter-ts as-of))))))
        
          (+patch/set-orgql-view
-          "This Quarter's Projects"
+          "Backburner"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and
-                    (todo "TODO" "NEXT")
-                    ,+patch/is-action
-                    ,opened-this-quarter
-                    (not (scheduled)))
+            :query (and ,+patch-dayone/is-open ,+patch/is-action)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
-            :title "This Quarter's Projects"))
+            :title "Backburner"))
        
          (+patch/set-orgql-view
-          "Quarterly Planning"
+          "Unopened Active Tasks"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and
-                    (todo "TODO" "NEXT")
-                    ,+patch/is-action
-                    ,opened-this-quarter)
+            :query ,+patch-dayone/is-unopened-active-task
             :sort (priority todo)
             :narrow nil
-            :super-groups ((:auto-planning t))
-            :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter)))))
+            :super-groups ((:auto-outline-path t))
+            :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter))
+            )))
        
        (+patch-gtd/set-or-refresh-quarterly-views)
+       
        (defun +patch-gtd/set-or-refresh-weekly-views ()
          (setq
           scheduled-for-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
@@ -1116,9 +940,17 @@
                                              (dow (ts-day-of-week-num today))
                                              (start-of-week (ts-dec 'day dow today))
                                              (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
-                                             (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                                             (end-of-week (ts-dec 'second 1 start-of-next-week))
+                                             (end-of-period (ts-inc 'day 3 end-of-week)))
                                         `(scheduled
-                                          :to ,(ts-format end-of-week)))
+                                          :to ,(ts-format end-of-period)))
+          scheduled-through-around-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                                    (dow (ts-day-of-week-num today))
+                                                    (start-of-week (ts-dec 'day dow today))
+                                                    (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
+                                                    (end-of-week (ts-dec 'second 1 start-of-next-week)))
+                                               `(scheduled
+                                                 :to ,(ts-format end-of-week)))
           opened-through-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
                                           (dow (ts-day-of-week-num today))
                                           (start-of-week (ts-dec 'day dow today))
@@ -1132,50 +964,67 @@
                                (start-of-next-week (ts-inc 'day (- 6 dow) (ts-now)))
                                (end-of-week (ts-dec 'second 1 start-of-next-week)))
                           `(deadline :from ,(ts-format start-of-week) :to ,(ts-format end-of-week)))
+          due-through-around-this-week (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                              (dow (ts-day-of-week-num today))
+                                              (start-of-week (ts-dec 'day dow today))
+                                              (start-of-period (ts-dec 'day 3 start-of-week))
+                                              (start-of-next-week (ts-inc 'day (- 7 dow) (ts-now)))
+                                              (start-of-next-period (ts-inc 'day 3 start-of-next-week)))
+                                         `(deadline :to ,(ts-format start-of-next-period)))
           due-this-week-sa (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
                                   (dow (ts-day-of-week-num today))
                                   (start-of-week (ts-dec 'day dow today))
                                   (start-of-next-week (ts-inc 'day (- 7 dow) (ts-now)))
                                   (end-of-week (ts-dec 'second 1 start-of-next-week)))
-                             `(before ,(prin1-to-string (ts-format "%Y-%m-%d" start-of-next-week)))))
+                             `(before ,(prin1-to-string (ts-format "%Y-%m-%d" start-of-next-week))))
+          due-around-this-week-sa (let* ((today (ts-apply :hour 0 :minute 0 :second 0 (ts-now)))
+                                         (dow (ts-day-of-week-num today))
+                                         (start-of-week (ts-dec 'day dow today))
+                                         (start-of-period (ts-dec 'day 3 start-of-week))
+                                         (start-of-next-week (ts-inc 'day (- 7 dow) (ts-now)))
+                                         (start-of-next-period (ts-inc 'day 3 start-of-next-week)))
+                                    `(before ,(prin1-to-string (ts-format "%Y-%m-%d" start-of-next-period)))))
        
          (+patch/set-orgql-view
-          "This Week's Projects"
+          "Non-Scheduled Backburner"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
             :query (and
-                    (todo "TODO" "NEXT")
-                    (not (tags "routine"))
+                    ,+patch-dayone/is-open
                     ,+patch/is-action
-                    (not ,scheduled-around-this-week)
-                    (or
-                     ,opened-through-this-week
-                     ,due-this-week))
+                    (not ,scheduled-through-around-this-week))
+            :sort (priority todo)
+            :narrow nil
+            :super-groups ((:auto-outline-path t))
+            :title "Backburner (non-scheduled)"))
+       
+         (+patch/set-orgql-view
+          "This Week's Agenda"
+          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+            :query (and
+                    ,+patch-dayone/is-open
+                    ,+patch/is-action
+                    (or ,scheduled-through-around-this-week
+                        ,due-through-around-this-week
+                        (tags "@@frontburner")))
             :sort (priority todo)
             :narrow nil
             :super-groups ((:name "Upcoming Deadline"
-                            :and (:deadline ,due-this-week-sa
+                            :and (:deadline ,due-around-this-week-sa
+                                  :not (:todo ("DONE" "CNCL" "WAIT"))
+                                  :not (:scheduled future))
+                            :face error
+                            :order 0)
+                           (:name "Overdue"
+                            :and (:scheduled past
                                   :not (:todo ("DONE" "CNCL" "WAIT")))
                             :face error
                             :order 0)
-                           (:auto-outline-path t))
-            :title "This Week's Projects"))
-       
-         (+patch/set-orgql-view
-          "Weekly Planning"
-          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and
-                    (todo "TODO" "NEXT")
-                    (not (tags "routine"))
-                    ,+patch/is-action
-                    ,scheduled-around-this-week)
-            :sort (priority todo)
-            :narrow nil
-            :super-groups ((:name "Overdue"
-                            :and (:scheduled past
-                                  :face error
-                                  :not (:todo ("DONE" "CNCL" "WAIT"))))
-                           (:auto-planning t))
-            :title "Weekly Planning")))
+                           (:auto-planning t)
+                           (:name "--------------------------------------------------------------------------------------------\nFrontburner"
+                            :tag "@@frontburner"
+                            :order 9))
+            :title "This Week's Agenda"))
+         )
        
        (+patch-gtd/set-or-refresh-weekly-views)
 
@@ -1192,51 +1041,6 @@
     (interactive "xQuery: ")
     (let ((org-ql-view-query `(and ,query ,org-ql-view-query)))
       (org-ql-view-refresh))))
-
-(use-package! origami
-  :after (org-agenda evil-org-agenda org-super-agenda)
-  :hook ((org-agenda-mode . origami-mode)
-         (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
-  :config
-  (setq +patch/agenda-auto-hide-groups '("Waiting" "Completed Today" "Could Pull In" "Jira"))
-  (defun +patch/org-super-agenda-origami-fold-default ()
-    "Fold certain groups by default in Org Super Agenda buffer."
-    (evil-goto-first-line)
-
-    (--each +patch/agenda-auto-hide-groups
-      (goto-char (point-min))
-      (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
-        (origami-close-node (current-buffer) (point))))
-
-    (beginning-of-buffer))
-
-  (defun +patch/dont-show-waiting-in-agenda ()
-    (interactive)
-    (setq +patch/agenda-auto-hide-groups
-          (cons "Waiting" +patch/agenda-auto-show-groups))
-    (org-agenda-redo))
-
-  (defun +patch/show-waiting-in-agenda ()
-    (interactive)
-    (setq +patch/agenda-hide-show-groups
-          (remove "Waiting" +patch/agenda-auto-show-groups))
-    (org-agenda-redo))
-
-  (map!
-   (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node)
-   (:map evil-org-agenda-mode-map :m "<tab>" #'origami-toggle-node)
-   (:map evil-org-agenda-mode-map :m "TAB" #'origami-toggle-node)
-   (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node)
-   (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node)
-   (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)
-   (:map org-agenda-keymap "TAB" #'origami-toggle-node)
-   (:map org-agenda-keymap "<tab>" #'origami-toggle-node)
-   (:map org-agenda-mode-map "TAB" #'origami-toggle-node)
-   (:map org-agenda-mode-map "<tab>" #'origami-toggle-node)
-   :map org-agenda-mode-map
-   :localleader
-   ("w" #'+patch/show-waiting-in-agenda)
-   ("W" #'+patch/dont-show-waiting-in-agenda)))
 
 (use-package! ox-pandoc
   :after ox
@@ -1378,19 +1182,26 @@
   :commands org-mode
   :config
   (setq org-tag-alist '((:startgroup . nil)
-                        ("@home"           . ?h)
-                        ("@work"           . ?w)
-                        ("@comp"           . ?c)
-                        ("@cheryls"        . ?y)
-                        ("@parents"        . ?p)
-                        ("@errands"        . ?r)
+                        ("@anywhere"       . ?a)
                         ("@phone"          . ?o)
                         ("@email"          . ?m)
                         ("@book"           . ?b)
-                        ("@anywhere"       . ?a)
+                        ("@cheryls"        . ?y)
+                        ("@parents"        . ?p)
+                        ("@errands"        . ?r)
+                        ("@comp"           . ?c)
+                        ("@home"           . ?h)
+                        ("@work"           . ?w)
                         (:endgroup . nil)
+                        (:startgrouptag . nil)
+                        ("@work")
+                        (:grouptags)
+                        ("@anywhere")
+                        ("@comp")
+                        (:endgrouptag . nil)
                         ("@@someday_maybe" . ?s)
                         ("@@aspirational"  . ?z)
+                        ("@@frontburner"   . ?f)
                         ("%quick"          . ?q)
                         ("%easy"           . ?e)))
   (setq org-startup-with-latex-preview t)
@@ -1425,6 +1236,7 @@
                            (:prefix ("v" . "Planning Views")
                             :desc "Yearly Planning"     "y" #'+patch-gtd/planning/yearly-planning-layout
                             :desc "Quarterly Planning"  "q" #'+patch-gtd/planning/quarterly-planning-layout
+                            :desc "Quarterly Review"    "Q" #'+patch-gtd/planning/quarterly-review-layout
                             :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
                             ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
                             :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout
@@ -1445,20 +1257,20 @@
   :defer-incrementally (all-the-icons ob-jupyter org-caldav org-jira)
   :config
   (defun +patch/bookmark-org-ql-view (org-ql-view-name)
-      (bookmark-store
-       (format "Org QL View: %s" org-ql-view-name)
-       (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
-             '(handler . org-ql-view-bookmark-handler))
-       nil))
+    (bookmark-store
+     (format "Org QL View: %s" org-ql-view-name)
+     (list (cons 'org-ql-view-plist (alist-get org-ql-view-name org-ql-views nil nil #'string=))
+           '(handler . org-ql-view-bookmark-handler))
+     nil))
   
   ;; heavily inspired by the yequake code for setting up buffers
   (defun +patch/open-window-layout (buffer-refs-or-fns)
     "Show buffers or run functions in order defined in BUFFER-REFS-OR-FNS."
     (cl-flet ((open-buffer-or-call-fn (it) (cl-typecase it
-                          (string (or (get-buffer it)
-                                      (find-buffer-visiting it)
-                                      (find-file-noselect it)))
-                          (function (funcall it)))))
+                                             (string (or (get-buffer it)
+                                                         (find-buffer-visiting it)
+                                                         (find-file-noselect it)))
+                                             (function (funcall it)))))
       (let ((split-width-threshold 0)
             (split-height-threshold 0))
         ;; Switch to first buffer, pop to the rest.
@@ -1466,71 +1278,149 @@
         (dolist (buffer-ref-or-fn (cdr buffer-refs-or-fns))
           (when-let* ((ret (open-buffer-or-call-fn buffer-ref-or-fn)))
             (display-buffer-same-window ret nil))))))
-  (defun +patch-gtd/planning/yearly-planning-layout ()
-    (interactive)
-    (+patch-gtd/set-or-refresh-yearly-views)
-    (+patch/open-window-layout '(delete-other-windows
-                               (lambda () (org-ql-view "Yearly Planning"))
-                               delete-other-windows
-                               split-window-horizontally
-                               (lambda () (enlarge-window (/ (frame-width) 10) t))
-                               (lambda () (org-ql-view "This Year's Projects"))
-                               (lambda () (evil-window-right 1)))))
+  (defun +patch-dayone/clean-task ()
+    (ignore-errors (org-priority 'remove))
+    (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
+    (ignore-errors (org-entry-delete (point) "OPENED")))
   
+  (defun +patch-dayone/hatch (&optional pom)
+    (interactive)
+    (+patch-dayone/clean-task)
+    (org-todo "TODO"))
+  
+  (defun +patch-dayone/incubate ()
+    (interactive)
+    (+patch-dayone/clean-task)
+    (org-todo "READY"))
+  
+  (defun +patch-dayone/agenda/hatch ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/hatch)))
+  
+  (defun +patch-dayone/agenda/incubate ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/incubate)))
+  
+  (setq org-agenda-bulk-custom-functions
+        (append org-agenda-bulk-custom-functions '((?i +patch-dayone/agenda/incubate)
+                                                   (?h +patch-dayone/agenda/hatch))))
+  (map! (:map org-agenda-mode-map "i" #'+patch-dayone/agenda/incubate)
+        (:map org-agenda-mode-map "h" #'+patch-dayone/agenda/hatch)
+        (:map org-agenda-keymap "i" #'+patch-dayone/agenda/incubate)
+        (:map org-agenda-keymap "h" #'+patch-dayone/agenda/hatch)
+        (:map evil-org-agenda-mode-map :m "i" #'+patch-dayone/agenda/incubate)
+        (:map evil-org-agenda-mode-map :m "h" #'+patch-dayone/agenda/hatch))
   (defun +patch-gtd/planning/quarterly-planning-layout ()
     (interactive)
     (+patch-gtd/set-or-refresh-quarterly-views)
     (+patch/open-window-layout '(delete-other-windows
-                               (lambda () (org-ql-view "Quarterly Planning"))
+                               (lambda () (org-ql-view "Backburner"))
                                delete-other-windows
                                split-window-horizontally
                                (lambda () (enlarge-window (/ (frame-width) 10) t))
-                               (lambda () (org-ql-view "This Quarter Projects"))
+                               (lambda () (org-ql-view "Unopened Active Tasks"))
                                (lambda () (evil-window-right 1)))))
-  (defun +patch-gtd/planning/move-to-planning-queue ()
-    (interactive)
-    (+patch-gtd/planning/agenda-mark-task-for-planning)
-    (org-ql-view-refresh))
   
-  (defun +patch-gtd/planning/move-ready ()
-    (interactive)
-    (+patch-gtd/planning/incubate)
-    (org-ql-view-refresh))
   
-  (defun +patch-gtd/planning/open-this-quarter (&optional pom)
+  (defun +patch/ts-quarter (ts)
+    (let ((this-month (ts-month ts)))
+      (cond ((< this-month 4) 1)
+            ((< this-month 7) 2)
+            ((< this-month 10) 3)
+            (t 4))))
+  
+  (defun +patch/ts-quarter-with-year (ts)
+    (format "%s-Q%s" (ts-year (ts)) (+patch/ts-quarter (ts))))
+  
+  (defun +patch-dayone/open (&optional pom)
     (interactive)
-    (org-entry-delete (or pom (point)) "TO-PLAN")
+    ;; makes it so I can use this to demote tasks from the frontburner, as well as promote to the backburner
+    (org-toggle-tag "@@frontburner" 'off)
+    (when (not (org-entry-get nil "OPENED"))
+      (+patch/set-opened-date (or pom (point)) (ts-format (ts-now)))))
+  
+  (defun +patch-dayone/open-this-quarter (&optional pom)
+    (interactive)
+    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
     (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
   
-  (defun +patch-gtd/planning/agenda-open-this-quarter ()
+  (defun +patch-dayone/open-this-year (&optional pom)
     (interactive)
-    (+patch--from-source-of-agenda-entry
-     (+patch-gtd/planning/open-this-quarter)))
+    (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
+    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts))))
   
-  (defun +patch-gtd/planning/agenda-open-this-quarter-move ()
+  (defun +patch-dayone/agenda/open ()
     (interactive)
-    (+patch-gtd/planning/agenda-open-this-quarter)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/open)))
+  
+  (defun +patch-dayone/agenda/open-this-quarter ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-quarter)))
+  
+  (defun +patch-dayone/agenda/open-this-year ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-year)))
+  
+  (defun +patch-dayone/planning/open ()
+    (interactive)
+    (+patch--from-source-of-agenda-entry (+patch-dayone/open))
     (org-ql-view-refresh))
   
-  (defun +patch-gtd/planning/punt (&optional pom)
-    (interactive)
-    (org-entry-delete (or pom (point)) "TO-PLAN")
-    ;; (ignore-errors (org-entry-delete (or pom (point)) "TO-PLAN"))
-    (+patch/set-opened-date (or pom (point))))
-  
-  (defun +patch-gtd/planning/agenda-punt ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry
-     (+patch-gtd/planning/punt)))
-  
-  (defun +patch-gtd/planning/agenda-punt-move ()
-    (interactive)
-    (+patch-gtd/planning/agenda-punt)
-    (org-ql-view-refresh))
+  (setq org-agenda-bulk-custom-functions
+        (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
+  (map! (:map (org-agenda-mode-map org-agenda-keymap) "o" #'+patch-dayone/agenda/open)
+        (:map evil-org-agenda-mode-map :m "o" #'+patch-dayone/agenda/open)
+        (:map evil-org-agenda-mode-map :m "O" nil)
+        (:map org-super-agenda-header-map :m "O" nil)
+        (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
+              (:prefix ("O" . "Open At Time")
+               :desc "Now"              "n"   #'+patch-dayone/agenda/open
+               :desc "For This Quarter" "q"   #'+patch-dayone/agenda/open-this-quarter
+               :desc "For This Year"    "y"   #'+patch-dayone/agenda/open-this-year)))
   (defun +patch/generate-quarters-burnup-plot ()
     (interactive)
     (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
     (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarters-tasks"))
+  (defun +patch/generate-years-burnup-plot ()
+    (interactive)
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "years-tasks")
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-years-tasks"))
+  
+  (defun +patch/generate-quarterly-velocity-plot ()
+    (interactive)
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "all-time-tasks")
+    (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "plot-quarterly-velocity"))
+  
+  (defun +patch-gtd/set-or-refresh-quarterly-review-views ()
+    (+patch/set-orgql-view
+     "Backburner Review"
+     `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
+       :query (and ,+patch-dayone/is-open ,+patch/is-action)
+       :sort (priority todo)
+       :narrow nil
+       :super-groups ((:auto-outline-path t))
+       :title ,(format "[Completed last quarter: %s] [Planned for this quarter: %s]" (+patch/num-tasks-completed-last-quarter) (+patch/num-tasks-planned-for-this-quarter)))))
+  
+  (defun +patch-gtd/planning/quarterly-review-layout ()
+    (interactive)
+    (after! ob-jupyter
+      (org-babel-jupyter-aliases-from-kernelspecs))
+    (+patch-gtd/set-or-refresh-quarterly-review-views)
+    (+patch/generate-years-burnup-plot)
+    (+patch/generate-quarterly-velocity-plot)
+    (+patch/open-window-layout '(delete-other-windows
+                                 (lambda () (org-ql-view "Backburner Review"))
+                                 delete-other-windows  ;; bc org-ql does weird things with opening windows...
+                                 split-window-horizontally
+                                 "~/.config/.../.config/doom/modules/lang/org-patch/years-burnup.png"
+                                 split-window-vertically
+                                 "~/.config/.../.config/doom/modules/lang/org-patch/quarterly-velocity.png"
+                                 (lambda () (evil-window-right 1))
+                                 (lambda () (enlarge-window (/ (frame-width) 10) t))
+                                 )))
+  
+  
   (defun +patch-gtd/planning/weekly-planning-layout ()
     (interactive)
     (after! ob-jupyter
@@ -1538,17 +1428,41 @@
     (+patch-gtd/set-or-refresh-weekly-views)
     (+patch/generate-quarters-burnup-plot)
     (+patch/open-window-layout '(delete-other-windows
-                                 (lambda () (org-ql-view "Weekly Planning"))
+                                 (lambda () (org-ql-view "This Week's Agenda"))
                                  delete-other-windows
                                  split-window-horizontally
-                                 (lambda () (enlarge-window (/ (frame-width) 10) t))
-                                 (lambda () (org-ql-view "This Week's Projects"))
+                                 (lambda () (org-ql-view "Non-Scheduled Backburner"))
                                  (lambda () (evil-window-right 1))
+                                 (lambda () (enlarge-window (/ (frame-width) 10) t))
+                                 (lambda () (evil-window-left 1))
+                                 +patch-dayone/hide-all-org-ql-groups
                                  ;; other-window
                                  split-window-vertically
                                  (lambda () (evil-window-down 1))
                                  "~/.config/.../.config/doom/modules/lang/org-patch/quarters-burnup.png"
-                                 (lambda () (evil-window-up 1)))))
+                                 ;; I think this consult call is to update the plot, but iirc it isn't working anyway
+                                 ;; (lambda () (funcall consult--buffer-display "quarters-burnup.png"))
+                                 (lambda () (evil-window-up 1))
+                                 ;; "quarters-burnup.png"
+                                 ;; "*Org QL View: Weekly Planning*"
+                                 (lambda () (evil-window-right 1))
+                                 ;; (lambda () (funcall consult--buffer-display "*Org QL View: This Week's Agenda*"))
+                                 )))
+  (defun +patch-dayone/send-to-frontburner ()
+    (interactive)
+    (org-schedule '(4))
+    (org-set-tags "@@frontburner"))
+  
+  (defun +patch-dayone/agenda/send-to-frontburner ()
+    (interactive)
+    (org-agenda-schedule '(4))
+    (org-agenda-set-tags "@@frontburner"))
+  
+  (setq org-agenda-bulk-custom-functions
+        (append org-agenda-bulk-custom-functions '((?F +patch-dayone/agenda/send-to-frontburner))))
+  (map! (:map org-agenda-mode-map "f" #'+patch-dayone/agenda/send-to-frontburner)
+        (:map org-agenda-keymap "f" #'+patch-dayone/agenda/send-to-frontburner)
+        (:map evil-org-agenda-mode-map :m "f" #'+patch-dayone/agenda/send-to-frontburner))
   (defun +patch/is-substr (comparison-string query-string)
     (string-match-p (regexp-quote query-string) comparison-string))
   
@@ -1637,17 +1551,79 @@
           ,(prin1-to-string (org-element-property :todo-type raw-task))
           ,(+patch/maybe-parse-element-date :closed raw-task)
           ,(+patch/maybe-parse-element-date :scheduled raw-task)
-          ,(+patch/get-opened-date raw-task))))
+          ,(+patch/get-opened-date raw-task)
+          ,(org-element-property :PLANNED-FOR-YEAR raw-task)
+          ,(org-element-property :PLANNED-FOR-QUARTER raw-task))))
 
-    (defun this-quarters-tasks (&optional as-of)
+    (defun +patch-dayone/this-quarters-tasks (&optional as-of)
       (org-ql-query
         :select #'+patch/find-and-parse-task
         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-        :where `(and
-                 (or ,opened-this-quarter
-                     ;; keeping scheduled so this quarter is still accurate, but this should be removed afterward
-                     ,scheduled-for-this-quarter)
-                 (not (tags "routine")))))))
+        :where +patch-dayone/planned-for-this-quarter))
+
+    (defun +patch-dayone/this-years-tasks (&optional as-of)
+      (org-ql-query
+        :select #'+patch/find-and-parse-task
+        :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+        :where +patch-dayone/planned-for-this-year))
+
+    (defun +patch-dayone/all-time-tasks (&optional as-of)
+      (org-ql-query
+        :select #'+patch/find-and-parse-task
+        :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+        :where +patch-dayone/has-been-open))))
+
+(use-package! origami
+  :after (org-agenda evil-org-agenda org-super-agenda)
+  :hook ((org-agenda-mode . origami-mode)
+         (org-agenda-finalize . +patch/org-super-agenda-origami-fold-default))
+  :config
+  (setq +patch/agenda-auto-hide-groups '("Waiting" "Completed Today" "Could Pull In" "Jira" "Frontburner"))
+  (defun +patch/org-super-agenda-origami-fold-default ()
+    "Fold certain groups by default in Org Super Agenda buffer."
+    (evil-goto-first-line)
+
+    (--each +patch/agenda-auto-hide-groups
+      (goto-char (point-min))
+      (when (re-search-forward (rx-to-string `(seq bol " " ,it)) nil t)
+        (origami-close-node (current-buffer) (point))))
+
+    (beginning-of-buffer))
+
+  (defun +patch/dont-show-waiting-in-agenda ()
+    (interactive)
+    (setq +patch/agenda-auto-hide-groups
+          (cons "Waiting" +patch/agenda-auto-show-groups))
+    (org-agenda-redo))
+
+  (defun +patch/show-waiting-in-agenda ()
+    (interactive)
+    (setq +patch/agenda-hide-show-groups
+          (remove "Waiting" +patch/agenda-auto-show-groups))
+    (org-agenda-redo))
+
+  (defun +patch-dayone/hide-all-org-ql-groups ()
+    (evil-goto-first-line)
+    (forward-line 1)
+    (cl-loop do (origami-forward-toggle-node (current-buffer) (point))
+             while (origami-forward-fold-same-level (current-buffer) (point)))
+    (evil-goto-first-line))
+
+  (map!
+   (:map evil-org-agenda-mode-map "TAB" #'origami-toggle-node)
+   (:map evil-org-agenda-mode-map :m "<tab>" #'origami-toggle-node)
+   (:map evil-org-agenda-mode-map :m "TAB" #'origami-toggle-node)
+   (:map org-super-agenda-header-map :m "<tab>" #'origami-toggle-node)
+   (:map org-super-agenda-header-map :m "TAB" #'origami-toggle-node)
+   (:map org-super-agenda-header-map "TAB" #'origami-toggle-node)
+   (:map org-agenda-keymap "TAB" #'origami-toggle-node)
+   (:map org-agenda-keymap "<tab>" #'origami-toggle-node)
+   (:map org-agenda-mode-map "TAB" #'origami-toggle-node)
+   (:map org-agenda-mode-map "<tab>" #'origami-toggle-node)
+   :map org-agenda-mode-map
+   :localleader
+   ("w" #'+patch/show-waiting-in-agenda)
+   ("W" #'+patch/dont-show-waiting-in-agenda)))
 
 (use-package! transient
   :after ts
@@ -1786,19 +1762,25 @@
       :reader 'transient-read-date)
     
     ;; "presets" that set typical combinations of infix args
-    (transient-define-infix +patch-gtd/planning/someday-maybe-preset ()
+    (transient-define-infix +patch-dayone/planning/someday-maybe-preset ()
       :class transient-preset
       :arguments '("--todo=READY"))
     
-    (transient-define-infix +patch-gtd/planning/in-queue-preset ()
+    (transient-define-infix +patch-dayone/planning/active-task-preset ()
       :class transient-preset
-      :arguments `("--todo=TODO" ,(format "--opened-date=%s" (org-read-date nil nil "today"))))
+      :arguments '("--todo=TODO"))
     
-    (transient-define-infix +patch-gtd/planning/to-schedule-preset ()
+    (transient-define-infix +patch-dayone/planning/backburner-preset ()
+      :class transient-preset
+      :arguments `("--todo=TODO"
+                   ,(format "--opened-date=%s" (org-read-date nil nil "today"))))
+    
+    (transient-define-infix +patch-dayone/planning/frontburner-preset ()
       :class transient-preset
       :arguments `("--todo=NEXT"
                    ,(format "--opened-date=%s"
-                            (ts-format "%Y-%m-%d" (ts-apply :hour 0 :minute 0 :second 0 (ts-now))))))
+                            (ts-format "%Y-%m-%d" (ts-apply :hour 0 :minute 0 :second 0 (ts-now))))
+                   "--tags=@@frontburner"))
     
     (transient-define-suffix +patch-gtd/apply-task-attrs ()
       "Set whichever attributes are necessary for the task being processed."
@@ -1839,9 +1821,10 @@
     necessary for the particular task."
       :value '("--todo=READY")
       ["Presets"
-       ("s" "Someday/Maybe" +patch-gtd/planning/someday-maybe-preset)
-       ("q" "In-Queue" +patch-gtd/planning/in-queue-preset)
-       ("t" "To-Schedule" +patch-gtd/planning/to-schedule-preset)]
+       ("s" "Someday/Maybe" +patch-dayone/planning/someday-maybe-preset)
+       ("a" "Active Tasks" +patch-dayone/planning/active-task-preset)
+       ("b" "Backburner" +patch-dayone/planning/backburner-preset)
+       ("f" "Frontburner" +patch-dayone/planning/frontburner-preset)]
       ["Task Attributes"
        (+patch-gtd/planning/opened-date-infix)
        (+patch-gtd/planning/scheduled-date-infix)
@@ -2027,9 +2010,14 @@
   ;; need to figure out what's appropriate, but this fixed pushing tasks to gcal
   (org-icalendar-use-scheduled '(todo-start event-if-todo event-if-not-todo))
   (org-icalendar-use-deadline '(event-if-todo event-if-not-todo todo-due))
+  ;; don't want my routine tasks cluttering my calendar
+  (org-caldav-exclude-tags '("routine"))
+  ;; don't prompt me to delete things from the cal (especially annoying for recurring tasks)
+  (org-caldav-delete-calendar-entries "always")
   :config
   (add-to-list 'org-agenda-files org-caldav-inbox)
   ;; sync every 1 hour
+  ;; TODO need to keep this from adding again if the timer already exists
   (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync))
 
 (after! org
