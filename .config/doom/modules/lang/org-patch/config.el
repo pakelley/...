@@ -1510,8 +1510,8 @@
     (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
                                  (lambda () (org-agenda nil ","))
                                  delete-other-windows))
-    (save-excursion
-      (org-jira-get-issues (org-jira-get-issue-list)))
+      (save-excursion
+        (org-jira-get-issues (org-jira-get-issue-list)))
     )
   (defun +patch-gtd/planning/gtd-file-layout ()
     (interactive)
@@ -1955,7 +1955,7 @@
       (let* ((issue-id (alist-get 'id (jiralib-get-issue jira-key)))
              (dev-info (jiralib--rest-call-it (format "/rest/dev-status/latest/issue/summary?issueId=%s" issue-id)))
              (pr-info (alist-get 'pullrequest (alist-get 'summary dev-info)))
-             (pr-count (alist-get 'count (alist-get 'overall section-info))))
+             (pr-count (alist-get 'count (alist-get 'overall pr-info))))
         (if (> pr-count 0)
             (let* ((application-type (alist-get 'name (cdar (alist-get 'byInstanceType pr-info))))
                    (detail-info (jiralib--rest-call-it (format "/rest/dev-status/latest/issue/detail?issueId=%s&applicationType=%s&dataType=%s" issue-id application-type 'pullrequest)))
@@ -1977,7 +1977,7 @@
   
     (defun +patch/start-review-for-ticket (jira-key)
       "Open a PR associated with ticket JIRA-KEY in `code-review`, if one exists."
-      (let ((pr-url (+patch/get-pr-url-for-ticket jira-key 'pullrequest)))
+      (let ((pr-url (+patch/get-pr-url-for-ticket jira-key)))
         (if pr-url
             (code-review-start pr-url)
           (message (format "No PR found for ticket %s" jira-key)))))
