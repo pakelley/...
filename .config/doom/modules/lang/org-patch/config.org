@@ -871,10 +871,8 @@ Future enhancements
   (org-agenda-include-deadlines t)
   (org-agenda-tags-column 100) ;; from testing this seems to be a good value
   (org-agenda-compact-blocks t)
-  (org-agenda-custom-commands
-   `(
-     <<daily-planning-agenda-view>>
-     )))
+  <<daily-planning-agenda-view>>
+  )
 #+end_src
 Use evil bindings on agenda headers created by super agenda (using best-looking solution from [[https://github.com/alphapapa/org-super-agenda/issues/50][this issue]])
 - [ ] should do a proper evil-ification of this eventually
@@ -2235,67 +2233,69 @@ Agenda keybindings for filtering:
 #+end_src
 #+name: daily-planning-agenda-view
 #+begin_src emacs-lisp :tangle no
-("," "Today"
- ((agenda "" ((org-agenda-span 'day)
-              (org-agenda-start-day "+0d")
-              (org-super-agenda-groups
-               '((:name "Agenda"
-                  :time-grid t
-                  :and (:scheduled today
-                        :regexp ,org-ql-regexp-scheduled-with-time
-                        :not (:todo ("DONE" "CNCL" "WAIT")))
-                  :order 0)
-                 (:name "Remove anything else"
-                  :discard (:anything t))))))
-  ;; overdue
-  (org-ql-block '(and (scheduled :to -1)
-                      (not (children)) ; only look at actions, not projects
-                      (todo "NEXT" "TODO")
-                      (not (done))
-                      (not (tags "routine")))
-                ((org-ql-block-header "\n Overdue")))
-  ;; routine
-  (org-ql-block '(and (scheduled :to today)
-                      (not (children)) ; only look at actions, not projects
-                      (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
-                      (tags "routine")
-                      (regexp ,org-ql-regexp-scheduled-without-time))
-                ((org-ql-block-header "\n Routine")))
-  ;; todos
-  (org-ql-block '(and (scheduled :on today)
-                      (not (children)) ; only look at actions, not projects
-                      (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
-                      (not (tags "routine"))
-                      (regexp ,org-ql-regexp-scheduled-without-time))
-                ((org-ql-block-header "\n Todo")))
-  ;; frontburner
-  (org-ql-block '(and (tags "@@frontburner")
-                      (not (scheduled))
-                      (not (done)))
-                ((org-ql-block-header "\n Frontburner")))
-  ;; jira
-  (org-ql-block
-   '(and
-     (not (regexp ,org-ql-regexp-scheduled-with-time))
-     (or
-      ;; my work
-      (and (property "assignee" "Patrick Kelley")
-           (todo "READY" "TODO"))
-      ;; needs review
-      (property "status" "In Review")
-      ;; (todo "REVIEW")
-      ;; needs to be deployed
-      (property "status" "Confirmed")))
-   ;; (todo "CONFIRMED"))
-   ((org-ql-block-header "\n Jira")))
-  ;; waiting
-  (org-ql-block '(todo "WAIT")
-                ((org-ql-block-header "\n Waiting")))
+(org-agenda-custom-commands
+;; (setq org-agenda-custom-commands
+ `(("," "Today"
+    ((agenda "" ((org-agenda-span 'day)
+                 (org-agenda-start-day "+0d")  ;; don't include overdue entries in the time grid
+                 (org-agenda-entry-types '(:scheduled :deadline)) ;; don't include tasks in the time grid just because they're opened today
+                 (org-super-agenda-groups
+                  '((:name "Agenda"
+                     :time-grid t
+                     :and (:scheduled today
+                           :regexp ,org-ql-regexp-scheduled-with-time
+                           :not (:todo ("DONE" "CNCL" "WAIT"))))
+                    (:name "Remove anything else"
+                     :discard (:anything t))))))
+     ;; overdue
+     (org-ql-block '(and (scheduled :to -1)
+                         (not (children)) ; only look at actions, not projects
+                         (todo "NEXT" "TODO")
+                         (not (done))
+                         (not (tags "routine")))
+                   ((org-ql-block-header "\n Overdue")))
+     ;; routine
+     (org-ql-block '(and (scheduled :to today)
+                         (not (children)) ; only look at actions, not projects
+                         (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
+                         (tags "routine")
+                         (regexp ,org-ql-regexp-scheduled-without-time))
+                   ((org-ql-block-header "\n Routine")))
+     ;; todos
+     (org-ql-block '(and (scheduled :on today)
+                         (not (children)) ; only look at actions, not projects
+                         (not (todo "DONE" "CNCL" "WAIT" "INCUBATE"))
+                         (not (tags "routine"))
+                         (regexp ,org-ql-regexp-scheduled-without-time))
+                   ((org-ql-block-header "\n Todo")))
+     ;; frontburner
+     (org-ql-block '(and (tags "@@frontburner")
+                         (not (scheduled))
+                         (not (done)))
+                   ((org-ql-block-header "\n Frontburner")))
+     ;; jira
+     (org-ql-block
+      '(and
+        (not (regexp ,org-ql-regexp-scheduled-with-time))
+        (or
+         ;; my work
+         (and (property "assignee" "Patrick Kelley")
+              (todo "READY" "TODO"))
+         ;; needs review
+         (property "status" "In Review")
+         ;; (todo "REVIEW")
+         ;; needs to be deployed
+         (property "status" "Confirmed")))
+      ;; (todo "CONFIRMED"))
+      ((org-ql-block-header "\n Jira")))
+     ;; waiting
+     (org-ql-block '(todo "WAIT")
+                   ((org-ql-block-header "\n Waiting")))
 
-  ;; completed today
-  (org-ql-block '(closed :on today)
-                ((org-ql-block-header "\n Completed today")))))
-  #+end_src
+     ;; completed today
+     (org-ql-block '(closed :on today)
+                   ((org-ql-block-header "\n Completed today")))))))
+#+end_src
 *** Automatically collapse sections of my daily agenda I don't need often [0/1]
 Also allow myself to (semi-permanently) expand sections that are useful to regularly see depending on what's in them.
 #+begin_src elisp

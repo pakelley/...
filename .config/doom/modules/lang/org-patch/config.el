@@ -517,17 +517,17 @@
   (org-agenda-tags-column 100) ;; from testing this seems to be a good value
   (org-agenda-compact-blocks t)
   (org-agenda-custom-commands
-   `(
-     ("," "Today"
+  ;; (setq org-agenda-custom-commands
+   `(("," "Today"
       ((agenda "" ((org-agenda-span 'day)
-                   (org-agenda-start-day "+0d")
+                   (org-agenda-start-day "+0d")  ;; don't include overdue entries in the time grid
+                   (org-agenda-entry-types '(:scheduled :deadline)) ;; don't include tasks in the time grid just because they're opened today
                    (org-super-agenda-groups
                     '((:name "Agenda"
                        :time-grid t
                        :and (:scheduled today
                              :regexp ,org-ql-regexp-scheduled-with-time
-                             :not (:todo ("DONE" "CNCL" "WAIT")))
-                       :order 0)
+                             :not (:todo ("DONE" "CNCL" "WAIT"))))
                       (:name "Remove anything else"
                        :discard (:anything t))))))
        ;; overdue
@@ -574,11 +574,11 @@
        ;; waiting
        (org-ql-block '(todo "WAIT")
                      ((org-ql-block-header "\n Waiting")))
-     
+  
        ;; completed today
        (org-ql-block '(closed :on today)
-                     ((org-ql-block-header "\n Completed today")))))
-     )))
+                     ((org-ql-block-header "\n Completed today")))))))
+  )
 
 (after! evil-org-agenda
   (setq org-super-agenda-header-map (copy-keymap evil-org-agenda-mode-map))
