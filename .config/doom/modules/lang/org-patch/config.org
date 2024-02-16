@@ -2800,9 +2800,69 @@ If the ticket has many PRs, ask the user which one to return the URL for."
   (org-caldav-delete-calendar-entries "always")
   :config
   (add-to-list 'org-agenda-files org-caldav-inbox)
+  ;; NOTE the order for loading my auth sources seems to be weird sometimes, so
+  ;;      if the client id and secret were attempted before we had access,
+  ;;      re-initialize them
+  (when (or (null org-caldav-oauth2-client-id) (null org-caldav-oauth2-client-secret))
+    (auth-source-forget-all-cached)
+    (setq org-caldav-oauth2-client-id (plist-get (car (auth-source-search :host "org-caldav")) :clientid)
+          org-caldav-oauth2-client-secret (auth-source-pick-first-password :host "org-caldav")))
   ;; sync every 1 hour
-  ;; TODO need to keep this from adding again if the timer already exists
-  (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync))
+  ;; NOTE noly start the timer if it hasn't been started already
+  (unless (boundp '+patch--org-caldav-timer-store)
+    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar))))
+#+end_src
+
+Auth has proved to be difficult here, storing some of the things here that have been helpful when debugging.
+Somewhat common for me to have to delete the "~/.config/doom-emacs/.local/cache/oauth2.plstore" file (i.e. the `oauth2-token-file`).
+#+begin_src emacs-lisp :tangle no
+;; see if the secret info is showing up in the plist/plstore
+;; for example: the `:access-token` should be non-nil
+(let* ((plstore (plstore-open oauth2-token-file))
+       (id (oauth2-compute-id "https://accounts.google.com/o/oauth2/v2/auth" "https://www.googleapis.com/oauth2/v4/token" "https://www.googleapis.com/auth/calendar"))
+       (plist (cdr (plstore-get plstore id))))
+  (plstore-get plstore id)
+  ;; (plist-get plist :access-token)
+  )
+
+;; try to auth (and store result in `+patch/debug/token`)
+(let* (
+       (auth-url "https://accounts.google.com/o/oauth2/v2/auth")
+       (token-url "https://www.googleapis.com/oauth2/v4/token")
+       (scope "https://www.googleapis.com/auth/calendar")
+       (client-id org-caldav-oauth2-client-id)
+       (client-secret org-caldav-oauth2-client-secret)
+       (plstore (plstore-open oauth2-token-file))
+       (id (oauth2-compute-id auth-url token-url scope))
+       )
+  (let ((token (oauth2-auth auth-url token-url
+                            client-id client-secret scope nil nil)))
+    ;; Set the plstore
+    (setq +patch/debug/token token)
+    (setf (oauth2-token-plstore token) plstore)
+    (setf (oauth2-token-plstore-id token) id)
+    (plstore-put plstore id nil `(:access-token
+                                  ,(oauth2-token-access-token token)
+                                  :refresh-token
+                                  ,(oauth2-token-refresh-token token)
+                                  :access-response
+                                  ,(oauth2-token-access-response token)))
+    (plstore-save plstore)
+    token))
+
+
+;; if that isn't working, step through the process and isolate what's going wrong
+(setf (oauth2-token-plstore +patch/debug/token) (plstore-open oauth2-token-file))
+(setf (oauth2-token-plstore-id +patch/debug/token) (oauth2-compute-id "https://accounts.google.com/o/oauth2/v2/auth" "https://www.googleapis.com/oauth2/v4/token" "https://www.googleapis.com/auth/calendar"))
+(plstore-put (plstore-open oauth2-token-file) (oauth2-compute-id "https://accounts.google.com/o/oauth2/v2/auth" "https://www.googleapis.com/oauth2/v4/token" "https://www.googleapis.com/auth/calendar")
+             nil
+             `(:access-token
+               ,(oauth2-token-access-token +patch/debug/token)
+               :refresh-token
+               ,(oauth2-token-refresh-token +patch/debug/token)
+               :access-response
+               ,(oauth2-token-access-response +patch/debug/token)))
+(plstore-save (plstore-open oauth2-token-file))
 #+end_src
 * Routine tasks
 I use [[https://orgmode.org/manual/Tracking-your-habits.html][habit-style tasks]] for my routine tasks. This lets me repeat tasks, but also gives me a running tally of how often I complete these on time (which is useful to identify tasks that I need to rething how to be consistent about).

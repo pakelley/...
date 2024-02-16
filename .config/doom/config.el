@@ -42,5 +42,9 @@
 (fset 'epg-wait-for-status 'ignore)
 
 (setq epa-file-encrypt-to '("pakelley@hey.com"))
+(setq plstore-encrypt-to '("pakelley@hey.com"))
 
-(setq auth-sources (push "~/.authinfo.gpg" auth-sources))
+;; (setq auth-sources (push "~/.authinfo.gpg" auth-sources))
+;; previously: (macos-keychain-generic macos-keychain-internet "~/.config/doom-emacs/.local/state/authinfo.gpg" "~/.authinfo.gpg")
+(auth-source-forget-all-cached)
+(setq auth-sources '("~/.authinfo.gpg"))

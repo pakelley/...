@@ -81,11 +81,17 @@ e.g. from [[https://stackoverflow.com/a/76389612][this SE post]] and [[https://w
 #+end_src
 ** set default recipient, to avoid symmetric encryption
 If there's no default recipient for gpg, emacs will default to using symmetric encryption (and prompt for a password, then... seems to just brick the file) when saving '.gpg' files, rather than using my gpg keys. Set the default recipient to avoid this.
+This also happens when the oauth2 library tries to save secrets to a plstore file, so set the recipient for that too.
 #+begin_src emacs-lisp :tangle yes
 (setq epa-file-encrypt-to '("pakelley@hey.com"))
+(setq plstore-encrypt-to '("pakelley@hey.com"))
 #+end_src
 ** make sure 'authinfo.gpg' is at the front of auth-sources
 to avoid defaulting to the keyring, and sometimes breaking things bc of unsupported capabilities
+Also, invalidate any cached auth info
 #+begin_src emacs-lisp :tangle yes
-(setq auth-sources (push "~/.authinfo.gpg" auth-sources))
+;; (setq auth-sources (push "~/.authinfo.gpg" auth-sources))
+;; previously: (macos-keychain-generic macos-keychain-internet "~/.config/doom-emacs/.local/state/authinfo.gpg" "~/.authinfo.gpg")
+(auth-source-forget-all-cached)
+(setq auth-sources '("~/.authinfo.gpg"))
 #+end_src

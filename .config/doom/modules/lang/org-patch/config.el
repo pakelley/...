@@ -2017,9 +2017,17 @@
   (org-caldav-delete-calendar-entries "always")
   :config
   (add-to-list 'org-agenda-files org-caldav-inbox)
+  ;; NOTE the order for loading my auth sources seems to be weird sometimes, so
+  ;;      if the client id and secret were attempted before we had access,
+  ;;      re-initialize them
+  (when (or (null org-caldav-oauth2-client-id) (null org-caldav-oauth2-client-secret))
+    (auth-source-forget-all-cached)
+    (setq org-caldav-oauth2-client-id (plist-get (car (auth-source-search :host "org-caldav")) :clientid)
+          org-caldav-oauth2-client-secret (auth-source-pick-first-password :host "org-caldav")))
   ;; sync every 1 hour
-  ;; TODO need to keep this from adding again if the timer already exists
-  (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync))
+  ;; NOTE noly start the timer if it hasn't been started already
+  (unless (boundp '+patch--org-caldav-timer-store)
+    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar))))
 
 (after! org
   (setq org-todo-repeat-to-state "TODO"))
