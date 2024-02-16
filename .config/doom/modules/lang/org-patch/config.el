@@ -832,6 +832,62 @@
             :title "Active Projects")))
        
        (+patch-gtd/set-or-refresh-yearly-views)
+       (defun +patch/ts-quarter (ts)
+         (let ((this-month (ts-month ts)))
+           (cond ((< this-month 4) 1)
+                 ((< this-month 7) 2)
+                 ((< this-month 10) 3)
+                 (t 4))))
+       
+       (defun +patch/ts-quarter-with-year (ts)
+         (format "%s-Q%s" (ts-year (ts)) (+patch/ts-quarter (ts))))
+       
+       (defun +patch-dayone/open (&optional pom)
+         (interactive)
+         ;; makes it so I can use this to demote tasks from the frontburner, as well as promote to the backburner
+         (org-toggle-tag "@@frontburner" 'off)
+         (when (not (org-entry-get nil "OPENED"))
+           (+patch/set-opened-date (or pom (point)) (ts-format (ts-now)))))
+       
+       (defun +patch-dayone/open-this-quarter (&optional pom)
+         (interactive)
+         (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+         (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
+       
+       (defun +patch-dayone/open-this-year (&optional pom)
+         (interactive)
+         (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
+         (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+         (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts))))
+       
+       (defun +patch-dayone/agenda/open ()
+         (interactive)
+         (+patch--from-source-of-agenda-entry (+patch-dayone/open)))
+       
+       (defun +patch-dayone/agenda/open-this-quarter ()
+         (interactive)
+         (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-quarter)))
+       
+       (defun +patch-dayone/agenda/open-this-year ()
+         (interactive)
+         (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-year)))
+       
+       (defun +patch-dayone/planning/open ()
+         (interactive)
+         (+patch--from-source-of-agenda-entry (+patch-dayone/open))
+         (org-ql-view-refresh))
+       
+       (setq org-agenda-bulk-custom-functions
+             (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
+       (map! (:map (org-agenda-mode-map org-agenda-keymap) "o" #'+patch-dayone/agenda/open)
+             (:map evil-org-agenda-mode-map :m "o" #'+patch-dayone/agenda/open)
+             (:map evil-org-agenda-mode-map :m "O" nil)
+             (:map org-super-agenda-header-map :m "O" nil)
+             (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
+                   (:prefix ("O" . "Open At Time")
+                    :desc "Now"              "n"   #'+patch-dayone/agenda/open
+                    :desc "For This Quarter" "q"   #'+patch-dayone/agenda/open-this-quarter
+                    :desc "For This Year"    "y"   #'+patch-dayone/agenda/open-this-year)))
        (defun +patch/start-of-this-quarter-ts (&optional as-of)
          (let* ((base-ts (or as-of (ts-now)))
                 (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))

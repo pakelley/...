@@ -981,6 +981,7 @@ Notably, this is where I'm defining what a task vs project are:
       :title "Email")))
        <<orgql-view-setter>>
        <<yearly-planning-orgql-views>>
+       <<quarterly-planning-utils>>
        <<quarterly-planning-orgql-views>>
        <<weekly-planning-orgql-views>>
 
