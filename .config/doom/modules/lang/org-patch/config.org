@@ -2224,12 +2224,28 @@ Agenda keybindings for filtering:
 #+begin_src emacs-lisp :tangle no
 (defun +patch-gtd/planning/daily-planning-layout ()
   (interactive)
+  (save-excursion
+    (with-current-buffer (find-file-noselect "~/.local/share/notes/gtd/jira/DIA.org")
+      (delete-region (point-min) (point-max))
+      (save-buffer))
+    ;; Two things:
+    ;;  1. org-jira-get-issues passes a callback to org-jira-get-issue-list, which
+    ;;     makes it hard not to open the org file org-jira syncs to after syncing
+    ;;  2. trying to manually call org-jira-get-issues and pass my own list,
+    ;;     without providing the callback, is breaking with cryptic eieio errors
+    ;; So, for now, I'm just nulling out the callback then calling
+    ;; org-jira-get-issues interactively, since that's all I've managed to get
+    ;; to work.
+    ;; (org-jira-get-issues (org-jira-get-issue-list))
+    (let ((org-jira-get-issue-list-callback nil))
+      (call-interactively #'org-jira-get-issues))
+    )
   ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
   (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
                                (lambda () (org-agenda nil ","))
                                delete-other-windows))
-    (save-excursion
-      (org-jira-get-issues (org-jira-get-issue-list)))
+
+
   )
 #+end_src
 #+name: daily-planning-agenda-view
@@ -2706,7 +2722,8 @@ Include JIRA tasks in my org workflow so I can plan/prioritize all in one place
       '(("Ready for Dev" . "READY")
         ("In Progress" . "TODO")
         ("In Review" . "REVIEW")
-        ("Confirmed" . "CONFIRMED")))
+        ("Confirmed" . "CONFIRMED")
+        ("Delivered" . "DONE")))
   :config
   (add-to-list 'org-agenda-files org-jira-working-dir)
   (defconst org-jira-progress-issue-flow
