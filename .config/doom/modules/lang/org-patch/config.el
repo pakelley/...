@@ -188,7 +188,8 @@
            :children
            (("Default"
              :keys "d"
-             :template "%?")
+             :template "%?"
+             :file "%(expand-file-name \"pages\" org-roam-directory)/${slug}.org")
             ("Literature Note"
                :keys "n"
                :template "%?"
@@ -203,7 +204,8 @@
                                           ; NOTE this only sets the first tag as ANKI_DECK
                         (org-set-property "ANKI_DECK" (car tags))))
              :template ("* ${title}"
-                        "%?"))))))
+                        "%?")
+             :file "%(expand-file-name \"pages\" org-roam-directory)/${slug}.org")))))
   
   (setq org-roam-dailies-directory "journals/"
         org-roam-dailies-capture-templates
@@ -237,8 +239,45 @@
            :file-name "Journal/%<%Y-%m-%d>"
            :olp ("Log")
            :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
+  (cl-defmethod org-roam-node-type ((node org-roam-node))
+    "Return the TYPE of NODE."
+    (condition-case nil
+        (file-name-nondirectory
+         (directory-file-name
+          (file-name-directory
+           (file-relative-name (org-roam-node-file node) org-roam-directory))))
+      (error "")))
+  
+  (setq org-roam-node-display-template
+        (concat "${type:15} ${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
   ;; start org-roam on startup
   (org-roam-db-autosync-mode))
+
+(defun +patch/fix-pandoc-conversion ()
+  (interactive)
+  (beginning-of-buffer)
+  (replace-regexp "collapsed:: true" "")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\(" "$")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\)" "$")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\\\[" "$$\n")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\\\]" "\n$$\n")
+  (beginning-of-buffer)
+  (word-search-forward ":END:")
+  (set-mark-command nil)
+  (end-of-buffer)
+  (org-toggle-heading)
+  (deactivate-mark)
+  ;; (beginning-of-buffer)
+  ;; (replace-regexp " collapsed:: true" "")
+  (beginning-of-buffer))
+
+(use-package! org-roam-logseq)
+;; (use-package org-roam-logseq
+;;   :quelpa (org-roam-logseq :fetcher github :repo "idanov/org-roam-logseq.el"))
 
 (after! org-protocol
   (defun org-roam-protocol-open-daily (info)
@@ -271,10 +310,16 @@
   :config
   ;; setq
   (setq org-capture-templates
-        (append org-capture-templates
+        ;; need to remove doom's journal capture template, as I prefer my own
+        (append (seq-remove (lambda (capture-template) (equal (car capture-template) "j")) org-capture-templates)
                 (doct '(("Inbox"
                          :keys "i"
                          :file "~/.local/share/notes/gtd/inbox.org"
+                         :template "* %?"
+                         :kill-buffer t)
+                        ("Journal Entry"
+                         :keys "j"
+                         :file (lambda () (concat "~/.local/share/notes/zettelkasten/journals/" (format-time-string "%Y_%m_%d.org")))
                          :template "* %?"
                          :kill-buffer t)
                         ("Email"
@@ -397,44 +442,20 @@
   ;;          :properties (:anki_deck "${category}"))))
   )
 
-(after! emacs-everywhere
-  (defun get-app-name ()
-    "Get the name of the current app (useful for returning to that app later). Currently uses osascript, so only useful on macos."
-    (let ((app-name (emacs-everywhere-app-id (emacs-everywhere-app-info))))
-      ;; For some reason, wezterm returns "wezterm-gui" for its app name, but
-      ;; osascript can only find "wezterm".
-      (if (equal app-name "wezterm-gui")
-          "wezterm"
-        app-name)))
-
-  (defun capture-everywhere ()
-    "Create a new frame and run `org-capture'."
-    (interactive)
-    (require 'noflet)
-    (make-frame `((name . "capture")
-                  (top . 300)
-                  (left . 700)
-                  (width . 80)
-                  (height . 25)
-                  (emacs-everywhere-prior-app . ,(get-app-name))))
-
-    (select-frame-by-name "capture")
-    (delete-other-windows)
-    (noflet ((switch-to-buffer-other-window (buf) (switch-to-buffer buf)))
-      (org-capture)))
-
-
-  (defadvice org-capture-finalize
-      (after delete-capture-frame activate)
-    "Advise capture-finalize to close the frame and return to the app we came from"
-    (when (and emacs-everywhere-window-focus-command (frame-parameter nil 'emacs-everywhere-prior-app))
-      (apply #'call-process (car emacs-everywhere-window-focus-command)
-             nil nil nil
-             (mapcar (lambda (arg)
-                       (when-let ((prior-app (frame-parameter nil 'emacs-everywhere-prior-app))) (replace-regexp-in-string "%w" prior-app arg)))
-                     (cdr emacs-everywhere-window-focus-command))))
-    (when (frame-parameter nil 'emacs-everywhere-prior-app)
-      (delete-frame))))
+(use-package yequake
+  :custom
+  (yequake-frames
+   '(("org-capture"
+      (buffer-fns . (yequake-org-capture))
+      (width . 0.75)
+      (height . 0.5)
+      (alpha . 0.95)
+      (frame-parameters . ((undecorated . t)
+                           (skip-taskbar . t)
+                           (sticky . t))))))
+  :config
+  ;; make sure server is started so capture can work outside emacs
+  (server-start))
 
 (use-package! org-agenda
   :commands org-agenda
@@ -2082,12 +2103,16 @@
   (plstore-cache-passphrase-for-symmetric-encryption t)
   ;; following values taken from this GH issue: https://github.com/dengste/org-caldav/issues/267#issuecomment-1412135274
   ;; need to figure out what's appropriate, but this fixed pushing tasks to gcal
-  (org-icalendar-use-scheduled '(todo-start event-if-todo event-if-not-todo))
-  (org-icalendar-use-deadline '(event-if-todo event-if-not-todo todo-due))
+  ;; (org-icalendar-use-scheduled '(todo-start event-if-todo event-if-not-todo))
+  ;; (org-icalendar-use-deadline '(event-if-todo event-if-not-todo todo-due))
+  (org-icalendar-use-scheduled '(event-if-todo event-if-not-todo))
+  (org-icalendar-use-deadline '(event-if-todo event-if-not-todo))
+  (org-icalendar-include-todo nil)
   ;; don't want my routine tasks cluttering my calendar
   (org-caldav-exclude-tags '("routine"))
   ;; don't prompt me to delete things from the cal (especially annoying for recurring tasks)
   (org-caldav-delete-calendar-entries "always")
+  (org-caldav-delete-org-entries "always")
   :config
   (add-to-list 'org-agenda-files org-caldav-inbox)
   ;; NOTE the order for loading my auth sources seems to be weird sometimes, so
@@ -2135,4 +2160,79 @@
 
   (add-hook 'org-checkbox-statistics-hook '+patch/org-checkbox-todo))
 
-(use-package! org-noter)
+(use-package! org-noter
+  :after (org-roam citar-org-roam)
+  :defines (+patch/org-noter
+            +patch/org-noter-open
+            +patch/org-noter-kill-session)
+  :init
+  (map! :after (org-roam citar-org-roam)
+        :leader
+        (:prefix-map "n"
+                 (:prefix ("n" . "noter")
+                  :desc "Open noter for current file" "." #'+patch/org-noter
+                  :desc "Select file and open noter"  "n" #'+patch/org-noter-open
+                  :desc "Close current noter session" "k" #'+patch/org-noter-kill-session))
+        (:map org-noter-doc-mode-map
+              :desc "Insert note" "RET" #'org-noter-insert-note)
+        (:map doc-view-mode-map
+              "RET" nil
+              :n "RET" nil)
+        (:map evil-motion-state-map "RET" nil)
+        )
+  :config
+  (setq org-noter-notes-search-path (list (expand-file-name citar-org-roam-subdir org-roam-directory)))
+
+  (defun +patch/get-file-title-for-current-zotero-file ()
+    (let* ((file-path (buffer-file-name (window-buffer (minibuffer-selected-window))))
+           (file-name (file-name-nondirectory file-path))
+           (file-title (file-name-sans-extension file-name))
+           )
+      file-title))
+
+  (defun +patch/get-author-name-for-current-zotero-file ()
+    (let* ((file-title (+patch/get-file-title-for-current-zotero-file))
+           (author-name (car (s-split " " file-title))))
+      (downcase author-name)))
+
+  (defun +patch/get-citekey-for-current-zotero-file ()
+    (let* ((author-name (+patch/get-author-name-for-current-zotero-file))
+           (citekey-selection (citar-select-refs :filter (lambda (citekey) (cl-search author-name citekey)))))
+      (car citekey-selection)))
+
+  (defun +patch/widen-noter-notes-buffer (&rest _)
+    (evil-window-right 1)
+    (widen)
+    (beginning-of-buffer)
+    (end-of-buffer)
+    (evil-window-left 1)
+    )
+  ;; (setq org-noter--doc-goto-location-hook nil)
+  (add-hook 'org-noter--doc-goto-location-hook '+patch/widen-noter-notes-buffer)
+
+  (defun +patch/org-noter (&optional citekey)
+    (interactive)
+    (let* ((citekey (or citekey (+patch/get-citekey-for-current-zotero-file)))
+           (citar-filename (format "%s.org" citekey))
+           (org-noter-default-notes-file-names (list citar-filename))
+           (citar-file-path (expand-file-name citar-filename (car org-noter-notes-search-path))))
+      (unless (file-exists-p citar-file-path)
+        (save-window-excursion
+          (citar-open-notes (list citekey))
+          (org-capture-finalize)))
+
+      (org-noter)))
+
+  (defun +patch/org-noter-open ()
+    (interactive)
+    (let* ((citekeys (citar-select-refs))
+           (citekey (car citekeys)))
+      (citar-open citekeys)
+      (+patch/org-noter citekey)))
+
+  (defun +patch/org-noter-kill-session ()
+    (interactive)
+    (org-noter-kill-session)
+    (delete-frame nil t))
+
+  )

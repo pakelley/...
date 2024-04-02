@@ -148,6 +148,7 @@ I tried to get !done? to work here, but it seemed to work the opposite of how I'
   :config
   <<doct-org-roam>>
   <<org-roam-capture-templates>>
+  <<org-roam-note-types>>
   ;; start org-roam on startup
   (org-roam-db-autosync-mode))
 #+end_src
@@ -250,6 +251,54 @@ Note this does validate the :org-roam plist's values or keywords."
       (doct declarations))))
 #+end_src
 Notably, the backtick is crucial for setting the hook in my anki template
+For viewing/editing notes from my phone, I like Logseq. A couple config values here makes roam play nicely with Logseq. See [[https://coredumped.dev/2021/05/26/taking-org-roam-everywhere-with-logseq][this article]] for a good start for integrating org-roam and logseq, though I'm using [[https://github.com/idanov/org-roam-logseq.el][org-roam-logseq.el]] instead of the gist from @zot suggested there.
+If you already have files in logseq and/or org-roam, you'll want to normalize everything:
+For pages already created in org-roam:
+- Move pages to the `pages` subdirectory inside your `org-roam-directory`(which should also be your parent directory for logseq)
+- Open all of your pages in emacs, to apply the macro from `org-roam-logseq`. There's probably an automated way to do this, but I didn't have many so I just did it manually
+For pages already created in logseq:
+- Convert any markdown pages to org files. There's [[https://discuss.logseq.com/t/org-to-markdown-converter-and-create-pages-in-non-preferred-format/2202][this thread]] in the logseq forum, but it isn't very helpful... I used pandoc, see [[https://emacs.stackexchange.com/a/5467][this SE answer]] for a quick method of converting. In particular, I followed the comment below that answer suggesting running:
+#+begin_src bash :tangle no
+for f in *.md ; do
+    pandoc -f markdown -t org -o "${f%%.md}".org "$f" ;
+done
+# then (after checking that things seemed to convert properly)
+rm *.md
+#+end_src
+- This is just ok... headings are typically just converted to bullets in a single text area, for example. I don't see a better solution at the moment, so I'm just accepting that I'll be gradually fixing the formatting of these whenever I edit one of them.
+  The `org-toggle-heading` function (after selecting the whole file) and `(query-replace-regexp " collapsed:: true" "")` are helpful here. Here's a function that does most common things automatically (most notably, you'll have to combine lines that were automatically split afterward, and it does still mess up some things, like some codeblocks and latex):
+  #+begin_src emacs-lisp :tangle yes
+(defun +patch/fix-pandoc-conversion ()
+  (interactive)
+  (beginning-of-buffer)
+  (replace-regexp "collapsed:: true" "")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\(" "$")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\)" "$")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\\\[" "$$\n")
+  (beginning-of-buffer)
+  (replace-regexp "\\\\\\]" "\n$$\n")
+  (beginning-of-buffer)
+  (word-search-forward ":END:")
+  (set-mark-command nil)
+  (end-of-buffer)
+  (org-toggle-heading)
+  (deactivate-mark)
+  ;; (beginning-of-buffer)
+  ;; (replace-regexp " collapsed:: true" "")
+  (beginning-of-buffer))
+  #+end_src
+#+begin_src emacs-lisp :tangle packages.el
+(package! org-roam-logseq
+  :recipe (:host github :repo "idanov/org-roam-logseq.el"))
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! org-roam-logseq)
+;; (use-package org-roam-logseq
+;;   :quelpa (org-roam-logseq :fetcher github :repo "idanov/org-roam-logseq.el"))
+#+end_src
 #+name: org-roam-capture-templates
 #+begin_src elisp :tangle no
 (setq org-roam-completion-system 'default
@@ -314,6 +363,23 @@ Notably, the backtick is crucial for setting the hook in my anki template
          :olp ("Log")
          :head "#+title: %<%Y-%m-%d %a>\n\n[[roam:%<%Y-%B>]]\n\n")))
 #+end_src
+** Show what the type of note when searching notes
+From the section of [[https://jethrokuan.github.io/org-roam-guide/][Jethro Kuan's org-roam guide]] explaining how to display "types" of notes
+#+name: org-roam-note-types
+#+begin_src emacs-lisp :tangle no
+(cl-defmethod org-roam-node-type ((node org-roam-node))
+  "Return the TYPE of NODE."
+  (condition-case nil
+      (file-name-nondirectory
+       (directory-file-name
+        (file-name-directory
+         (file-relative-name (org-roam-node-file node) org-roam-directory))))
+    (error "")))
+
+(setq org-roam-node-display-template
+      (concat "${type:15} ${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
+#+end_src
+
 ** Dailies Protocol
 #+begin_src emacs-lisp
 (after! org-protocol
@@ -558,10 +624,16 @@ Appending to existing templates to keep project templates
 #+begin_src elisp :tangle no
 ;; setq
 (setq org-capture-templates
-      (append org-capture-templates
+      ;; need to remove doom's journal capture template, as I prefer my own
+      (append (seq-remove (lambda (capture-template) (equal (car capture-template) "j")) org-capture-templates)
               (doct '(("Inbox"
                        :keys "i"
                        :file "~/.local/share/notes/gtd/inbox.org"
+                       :template "* %?"
+                       :kill-buffer t)
+                      ("Journal Entry"
+                       :keys "j"
+                       :file (lambda () (concat "~/.local/share/notes/zettelkasten/journals/" (format-time-string "%Y_%m_%d.org")))
                        :template "* %?"
                        :kill-buffer t)
                       ("Email"
@@ -668,10 +740,35 @@ Appending to existing templates to keep project templates
                         ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
 #+end_src
 ** capture everywhere
+*** yequake
+Use yequake for capturing. Add the following command to a macro:
+#+begin_src shell :tangle no
+/opt/homebrew/bin/emacsclient -n -e '(yequake-toggle "org-capture")'
+#+end_src
+#+begin_src emacs-lisp :tangle packages.el
+(package! yequake :recipe (:host github :repo "alphapapa/yequake"))
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package yequake
+  :custom
+  (yequake-frames
+   '(("org-capture"
+      (buffer-fns . (yequake-org-capture))
+      (width . 0.75)
+      (height . 0.5)
+      (alpha . 0.95)
+      (frame-parameters . ((undecorated . t)
+                           (skip-taskbar . t)
+                           (sticky . t))))))
+  :config
+  ;; make sure server is started so capture can work outside emacs
+  (server-start))
+#+end_src
+*** manual implementation (not in use, but keeping around)
 When I'm doing things outside of emacs, it would be nice to still use the same capture interface. I used to use org protocol plus an alfred command, but I opted for something that utilizes org-mode's typical capture interface, by popping up a new emacs frame and capturing from there.
 Heavily inspired by [[https://macowners.club/posts/org-capture-from-everywhere-macos/][this blog post]] (for the majority of the logic) and [[https://github.com/tecosaur/emacs-everywhere][emacs-everywhere]] (borrowed the logic for getting back to the app I was in before capturing).
 Similar to my setup for emacs-everywhere, I have an algfred workflow that uses a keybinding to trigger a script running `/usr/local/bin/emacsclient --eval "(capture-everywhere)"`.
-#+begin_src elisp
+#+begin_src elisp :tangle no
 (after! emacs-everywhere
   (defun get-app-name ()
     "Get the name of the current app (useful for returning to that app later). Currently uses osascript, so only useful on macos."
@@ -1857,11 +1954,18 @@ today = pd.Timestamp.today()
 monthly_index = pd.date_range(start=df["opened"].min(),
                               end=today,
                               freq="D", normalize=True)
+quarter_planned_tasks = df[df["planned-for-quarter"].notnull()]
 velocity_counts = pd.DataFrame({
     "opened": df.groupby("opened").count()["headline"],
     "closed": df.groupby("closed").count()["headline"],
     "planned-for-quarter": df.groupby("planned-for-quarter").count()["headline"],
+    "closed/planned-for-quarter": quarter_planned_tasks.groupby("closed").count()["headline"],
 }, index=monthly_index).asfreq("D").resample("Q").sum().fillna(0.0)
+
+# quarter_planned_velocity_counts = pd.DataFrame({
+#     "closed/planned-for-quarter": quarter_planned_tasks.groupby("closed").count()["headline"],
+# }, index=monthly_index).asfreq("D").resample("Q").sum().fillna(0.0)
+# velocity_counts["closed/planned-for-quarter"]
 
 xtick_positions = [p for p in velocity_counts.index]
 # %q in pandas's strftime isn't working for some reason
@@ -1873,6 +1977,7 @@ ax.set_xticklabels(xtick_labels)
 ax.bar_label(ax.containers[0], fontsize=10)
 ax.bar_label(ax.containers[1], fontsize=10)
 ax.bar_label(ax.containers[2], fontsize=10)
+ax.bar_label(ax.containers[3], fontsize=10)
 ax.get_figure().savefig("./quarterly-velocity.png")
 #+end_src
 
@@ -2810,12 +2915,16 @@ If the ticket has many PRs, ask the user which one to return the URL for."
   (plstore-cache-passphrase-for-symmetric-encryption t)
   ;; following values taken from this GH issue: https://github.com/dengste/org-caldav/issues/267#issuecomment-1412135274
   ;; need to figure out what's appropriate, but this fixed pushing tasks to gcal
-  (org-icalendar-use-scheduled '(todo-start event-if-todo event-if-not-todo))
-  (org-icalendar-use-deadline '(event-if-todo event-if-not-todo todo-due))
+  ;; (org-icalendar-use-scheduled '(todo-start event-if-todo event-if-not-todo))
+  ;; (org-icalendar-use-deadline '(event-if-todo event-if-not-todo todo-due))
+  (org-icalendar-use-scheduled '(event-if-todo event-if-not-todo))
+  (org-icalendar-use-deadline '(event-if-todo event-if-not-todo))
+  (org-icalendar-include-todo nil)
   ;; don't want my routine tasks cluttering my calendar
   (org-caldav-exclude-tags '("routine"))
   ;; don't prompt me to delete things from the cal (especially annoying for recurring tasks)
   (org-caldav-delete-calendar-entries "always")
+  (org-caldav-delete-org-entries "always")
   :config
   (add-to-list 'org-agenda-files org-caldav-inbox)
   ;; NOTE the order for loading my auth sources seems to be weird sometimes, so
@@ -2928,5 +3037,80 @@ For reading pdfs/epubs from emacs, for easier note-taking (integrated w/ org-roa
   :recipe (:host github :repo "org-noter/org-noter"))
 #+end_src
 #+begin_src emacs-lisp :tangle yes
-(use-package! org-noter)
+(use-package! org-noter
+  :after (org-roam citar-org-roam)
+  :defines (+patch/org-noter
+            +patch/org-noter-open
+            +patch/org-noter-kill-session)
+  :init
+  (map! :after (org-roam citar-org-roam)
+        :leader
+        (:prefix-map "n"
+                 (:prefix ("n" . "noter")
+                  :desc "Open noter for current file" "." #'+patch/org-noter
+                  :desc "Select file and open noter"  "n" #'+patch/org-noter-open
+                  :desc "Close current noter session" "k" #'+patch/org-noter-kill-session))
+        (:map org-noter-doc-mode-map
+              :desc "Insert note" "RET" #'org-noter-insert-note)
+        (:map doc-view-mode-map
+              "RET" nil
+              :n "RET" nil)
+        (:map evil-motion-state-map "RET" nil)
+        )
+  :config
+  (setq org-noter-notes-search-path (list (expand-file-name citar-org-roam-subdir org-roam-directory)))
+
+  (defun +patch/get-file-title-for-current-zotero-file ()
+    (let* ((file-path (buffer-file-name (window-buffer (minibuffer-selected-window))))
+           (file-name (file-name-nondirectory file-path))
+           (file-title (file-name-sans-extension file-name))
+           )
+      file-title))
+
+  (defun +patch/get-author-name-for-current-zotero-file ()
+    (let* ((file-title (+patch/get-file-title-for-current-zotero-file))
+           (author-name (car (s-split " " file-title))))
+      (downcase author-name)))
+
+  (defun +patch/get-citekey-for-current-zotero-file ()
+    (let* ((author-name (+patch/get-author-name-for-current-zotero-file))
+           (citekey-selection (citar-select-refs :filter (lambda (citekey) (cl-search author-name citekey)))))
+      (car citekey-selection)))
+
+  (defun +patch/widen-noter-notes-buffer (&rest _)
+    (evil-window-right 1)
+    (widen)
+    (beginning-of-buffer)
+    (end-of-buffer)
+    (evil-window-left 1)
+    )
+  ;; (setq org-noter--doc-goto-location-hook nil)
+  (add-hook 'org-noter--doc-goto-location-hook '+patch/widen-noter-notes-buffer)
+
+  (defun +patch/org-noter (&optional citekey)
+    (interactive)
+    (let* ((citekey (or citekey (+patch/get-citekey-for-current-zotero-file)))
+           (citar-filename (format "%s.org" citekey))
+           (org-noter-default-notes-file-names (list citar-filename))
+           (citar-file-path (expand-file-name citar-filename (car org-noter-notes-search-path))))
+      (unless (file-exists-p citar-file-path)
+        (save-window-excursion
+          (citar-open-notes (list citekey))
+          (org-capture-finalize)))
+
+      (org-noter)))
+
+  (defun +patch/org-noter-open ()
+    (interactive)
+    (let* ((citekeys (citar-select-refs))
+           (citekey (car citekeys)))
+      (citar-open citekeys)
+      (+patch/org-noter citekey)))
+
+  (defun +patch/org-noter-kill-session ()
+    (interactive)
+    (org-noter-kill-session)
+    (delete-frame nil t))
+
+  )
 #+end_src
