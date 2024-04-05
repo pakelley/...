@@ -105,11 +105,26 @@ use [[https://github.com/astral-sh/ruff][ruff]] for linting
 ** isort
 use [[https://github.com/PyCQA/isort][isort]] to sort imports.
 may be able to get rid of this in favor of ruff.
+** docformatter and pyment for doc formatting
+still haven't decided which I want to use, so just use both for now. Use docformatter second though, to prefer it's formatting (since it's made by pycqa).
+#+begin_src emacs-lisp :tangle yes
+(after! reformatter
+  (reformatter-define docformatter-format
+                      :program "docformatter"
+                      :args '("--style" "numpy" "--in-place" "-")
+                      :group 'python)
+  (reformatter-define pyment-format
+                      :program "pyment"
+                      :args '("--output" "numpydoc" "-")
+                      :group 'python))
+#+end_src
 ** one func for all python formatting
 isort before blue, so blue takes precedence
 #+begin_src emacs-lisp :tangle yes
 (defun +patch-python/lint ()
   (py-isort-before-save)
+  ;; (pyment-format-buffer)
+  (docformatter-format-buffer)
   (ruff-format-buffer)
   (blacken-buffer))
 

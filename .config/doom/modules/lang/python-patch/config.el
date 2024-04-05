@@ -69,8 +69,20 @@ packages), find the path to the packages."
                       :args '("--fix" "-")
                       :group 'python))
 
+(after! reformatter
+  (reformatter-define docformatter-format
+                      :program "docformatter"
+                      :args '("--style" "numpy" "--in-place" "-")
+                      :group 'python)
+  (reformatter-define pyment-format
+                      :program "pyment"
+                      :args '("--output" "numpydoc" "-")
+                      :group 'python))
+
 (defun +patch-python/lint ()
   (py-isort-before-save)
+  ;; (pyment-format-buffer)
+  (docformatter-format-buffer)
   (ruff-format-buffer)
   (blacken-buffer))
 
