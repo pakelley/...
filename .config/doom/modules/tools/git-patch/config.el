@@ -16,12 +16,12 @@
    'replace)
   (remove-hook 'magit-status-sections-hook 'magit-insert-unpulled-from-upstream))
 
-(use-package! magit-arcanist
-  :defer t
-  :after magit
-  :ghook ('magit-mode-hook #'magit-arcanist-enable)
-  :custom
-  (magit-arcanist-key (kbd "#")))
+;; (use-package! magit-arcanist
+;;   :defer t
+;;   :after magit
+;;   :ghook ('magit-mode-hook #'magit-arcanist-enable)
+;;   :custom
+;;   (magit-arcanist-key (kbd "#")))
 
 (use-package! git-link
   :after git-gutter-mode

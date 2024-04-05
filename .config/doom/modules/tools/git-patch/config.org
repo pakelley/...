@@ -1,8 +1,8 @@
 #+TITLE: Config
 * packages
 #+begin_src elisp :tangle packages.el
-(package! magit-arcanist
-  :recipe (:host github :repo "sideshowcoder/magit-arcanist"))
+;; (package! magit-arcanist
+;;   :recipe (:host github :repo "sideshowcoder/magit-arcanist"))
 (package! git-link)
 #+end_src
 * code-review
@@ -41,12 +41,12 @@ Additionally, useful to add the following to your `.git/config`
 #+end_src
 * magit-arcanist
 #+begin_src elisp
-(use-package! magit-arcanist
-  :defer t
-  :after magit
-  :ghook ('magit-mode-hook #'magit-arcanist-enable)
-  :custom
-  (magit-arcanist-key (kbd "#")))
+;; (use-package! magit-arcanist
+;;   :defer t
+;;   :after magit
+;;   :ghook ('magit-mode-hook #'magit-arcanist-enable)
+;;   :custom
+;;   (magit-arcanist-key (kbd "#")))
 #+end_src
 * git link (for quickly getting a sourcegraph link)
 | Keybinding        | Description                     |
