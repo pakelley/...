@@ -1,4 +1,9 @@
 (package! numpydoc)
+;; required for msgu, a dep of ts-docstr
+;; (add-to-list 'package-archives '( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/") t)
+;; (package! msgu :recipe (:host github :repo "jcs-elpa/msgu"))
+;; (package! ts-docstr
+;;   :recipe (:host github :repo "emacs-vs/ts-docstr" :files (:defaults "langs/*.el")))
 
 (package! blacken)
 

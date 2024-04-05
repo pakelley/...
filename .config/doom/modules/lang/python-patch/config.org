@@ -5,6 +5,11 @@
 * Packages
 #+begin_src elisp :tangle packages.el
 (package! numpydoc)
+;; required for msgu, a dep of ts-docstr
+;; (add-to-list 'package-archives '( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/") t)
+;; (package! msgu :recipe (:host github :repo "jcs-elpa/msgu"))
+;; (package! ts-docstr
+;;   :recipe (:host github :repo "emacs-vs/ts-docstr" :files (:defaults "langs/*.el")))
 #+end_src
 
 * numpydoc
@@ -145,4 +150,8 @@ isort before blue, so blue takes precedence
   (advice-add 'python-pytest--run :before (lambda (&rest args) (setq python-pytest-executable (format "%s.venv/bin/pytest" (project-root (project-current))))))
   (advice-add 'python-pytest--run :after (lambda (&rest args) (setq python-pytest-executable "pytest")))
   )
+#+end_src
+* ts-docstr
+#+begin_src emacs-lisp :tangle yes
+;; (use-package! ts-docstr)
 #+end_src

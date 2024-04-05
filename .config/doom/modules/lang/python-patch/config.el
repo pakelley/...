@@ -101,3 +101,5 @@ packages), find the path to the packages."
   (advice-add 'python-pytest--run :before (lambda (&rest args) (setq python-pytest-executable (format "%s.venv/bin/pytest" (project-root (project-current))))))
   (advice-add 'python-pytest--run :after (lambda (&rest args) (setq python-pytest-executable "pytest")))
   )
+
+;; (use-package! ts-docstr)
