@@ -2016,6 +2016,15 @@
                         ;; Group remaining buffers by directory, then major mode.
                         (auto-directory)
                         (auto-mode))))
+(defun +patch-gtd/archive-all-done ()
+  (interactive)
+  (org-ql-query
+    ;; :select #'org-archive-to-archive-sibling
+    ;; :select '(org-archive-to-archive-sibling)
+    :select '(org-get-heading)
+    :from "~/.local/share/notes/gtd/org-gtd-tasks.org"
+    :where '(and (closed) (not (tags "ARCHIVE")))))
+
 
 (use-package! org-jira
   :custom
