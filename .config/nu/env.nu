@@ -155,5 +155,10 @@ $env.NOTMUCH_CONFIG = ("~/.config/notmuch/default/config" | path expand)
 # scala
 $env.PATH = ($env.PATH | append ("~/Library/Application Support/Coursier/bin" | path expand))
 
+# java
+$env.JAVA_HOME = (brew --prefix openjdk)
+$env.MAVEN_HOME = (brew --prefix maven)
+$env.PATH = ($env.PATH | append $"($env.JAVA_HOME)/bin" | append $"($env.MAVEN_HOME)/bin")
+
 # lua, for digestif (LaTeX LSP server)
 $env.PATH = ($env.PATH | append ("~/.luarocks/bin" | path expand))
