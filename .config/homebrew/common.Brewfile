@@ -5,12 +5,14 @@ tap "wez/wezterm"
 brew "direnv"
 brew "git"
 # cask "iterm2"
+brew "mr"  # myrepos
 brew "ojford/formulae/loginitems"
 brew "pandoc"
 brew "python@3.9"
 brew "svn" # needed to install some fonts
 brew "syncthing", restart_service: true
 brew "koekeishiya/formulae/skhd"
+brew "topgrade"
 brew "koekeishiya/formulae/yabai"
 brew "ykman"
 cask "alfred"

@@ -1,0 +1,124 @@
+# Include any additional configuration file(s)
+# [include] sections are processed in the order you write them
+# Files in $CONFIG_DIR/topgrade.d/ are automatically included before this file
+[include]
+# paths = ["/etc/topgrade.toml"]
+
+
+[misc]
+# Run `sudo -v` to cache credentials at the start of the run
+# This avoids a blocking password prompt in the middle of an unattended run
+# (default: false)
+# pre_sudo = false
+
+# Sudo command to be used
+# sudo_command = "sudo"
+
+# Disable specific steps - same options as the command line flag
+# disable = ["system", "emacs"]
+
+# Ignore failures for these steps
+# ignore_failures = ["powershell"]
+
+# Do not set the terminal title (default: true)
+# set_title = true
+
+# Display the time in step titles (default: true)
+# display_time = true
+
+# Don't ask for confirmations (no default value)
+# assume_yes = true
+
+# Do not ask to retry failed steps (default: false)
+# no_retry = true
+
+# Cleanup temporary or old files (default: false)
+# cleanup = true
+
+# Send a notification for every step (default: false)
+# notify_each_step = false
+
+# Skip sending a notification at the end of a run (default: false)
+# skip_notify = true
+
+# The Bash-it branch to update (default: "stable")
+# bashit_branch = "stable"
+
+# Run specific steps - same options as the command line flag
+# only = ["system", "emacs"]
+
+# Whether to self update
+#
+# this will be ignored if the binary is built without self update support
+#
+# available also via setting the environment variable TOPGRADE_NO_SELF_UPGRADE)
+# no_self_update = true
+
+# Extra tracing filter directives
+# These are prepended to the `--log-filter` argument
+# See: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives
+# log_filters = ["topgrade::command=debug", "warn"]
+
+
+# Commands to run before anything
+[pre_commands]
+# "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+
+
+# Commands to run after anything
+[post_commands]
+# "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+
+
+# Custom commands
+[commands]
+# "Python Environment" = "~/dev/.env/bin/pip install -i https://pypi.python.org/simple -U --upgrade-strategy eager jupyter"
+# "Custom command using interactive shell (unix)" = "-i vim_upgrade"
+"Doom Emacs" = "doom upgrade --force"
+
+
+[python]
+# enable_pip_review = true                         ###disabled by default
+# enable_pip_review_local = true                   ###disabled by default
+# enable_pipupgrade = true                         ###disabled by default
+# pipupgrade_arguments = "-y -u --pip-path pip"    ###disabled by default
+
+
+[brew]
+# greedy_cask = true
+# autoremove = true
+
+[git]
+# max_concurrency = 5
+
+# Additional git repositories to pull
+repos = [
+    "~/code/*/",
+    "~/.config/..."
+]
+
+# Don't pull the predefined git repos
+# pull_predefined = false
+
+# Arguments to pass Git when pulling Repositories
+# arguments = "--rebase --autostash"
+
+[npm]
+# Use sudo if the NPM directory isn't owned by the current user
+# use_sudo = true
+
+
+[yarn]
+# Run `yarn global upgrade` with `sudo`
+# use_sudo = true
+
+
+[firmware]
+# Offer to update firmware; if false just check for and display available updates
+# upgrade = true
+
+
+
+# containers = ["archlinux-latest"]
+[containers]
+# ignored_containers = ["ghcr.io/rancher-sandbox/rancher-desktop/rdx-proxy:latest"]
