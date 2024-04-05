@@ -19,11 +19,16 @@
 
 (package! org :pin "ca873f7")
 
+(package! org-roam-logseq
+  :recipe (:host github :repo "idanov/org-roam-logseq.el"))
+
+(package! yequake :recipe (:host github :repo "alphapapa/yequake"))
+
 (package! ts)
 
 (package! all-the-icons)
 
-(package! bufler)
+(package! transient :pin "85ecbc6")
 
 (package! bufler)
 
