@@ -18,5 +18,44 @@ As suggested in [[https://blog.tecosaur.com/tmio/2021-07-31-citations.html#worki
 * literature notes
 Use citar-org-roam to take literature notes on papers as I read them.
 #+begin_src emacs-lisp :tangle yes
-(setq citar-org-roam-subdir "literature-notes")
+(use-package! citar-org-roam
+  :after (citar org-roam)
+  :custom
+  (citar-org-roam-subdir "literature-notes")
+  ;; Tell citar-org-roam which capture template to use (as suggested in the README)
+  (citar-org-roam-capture-template-key "n")
+  )
 #+end_src
+* literature search
+#+begin_src emacs-lisp :tangle no
+(map!
+ :leader
+ (:prefix-map "a"
+              (:prefix-map ("b" . "Literature Search")
+               :desc "Search arXiv"                            "a" #'arxiv-lookup
+               :desc "Search CrossRef"                         "c" #'crossref-lookup
+               :desc "Search biblio"                           "b" #'biblio-lookup
+               :desc "Search IEEE"                             "i" #'ieee-lookup
+               :desc "Search DBLP"                             "b" #'dblp-lookup
+               :desc "Search HAL"                              "h" #'hal-lookup
+               :desc "Insert DOI"                              "d" #'biblio-doi-insert-bibtex
+               :desc "Check Open Access Status (via Dissemin)" "m" #'dissemin-lookup
+               )))
+#+end_src
+* set up quick capture
+Using [[https://sandbox.self.li/bookmarklet-to-extension/][bookmarklet-to-extension]] (or some similar tool), and optionally using [[https://www.chromeextensionimages.com/][chromeextensionimages]] (or some similar tool) to create an icon (and replace icons in the folder downloaded when using bookmarklet-to-extension), create an extension using the following bookmarklet:
+#+begin_src text :tangle no
+javascript:location.href =
+    'org-protocol://roam-ref?template=r&ref='
+    + encodeURIComponent(location.href)
+    + '&title='
+    + encodeURIComponent(document.title)
+    + '&body='
+    + encodeURIComponent(window.getSelection())
+#+end_src
+Then bind it to a keybinding (in arc, you can add the extension by going to arc://extensions/shortcuts then turning "Developer Mode" on, and clicking "Load Unpacked" to load from the downloaded extension folder. Then set the shortcut from the same page (arc://extensions/shortcuts)).
+* Set zotero folder to XDG-based path
+Settings -> Advanced -> Files & Folders -> Data Directory Location -> Custom -> `~/.local/share/zotero`
+** TODO see if I can set this from `osascript` or something
+** TODO sync this with syncthing
+** TODO run pdf-tools-install when boostrapping dotfiles
