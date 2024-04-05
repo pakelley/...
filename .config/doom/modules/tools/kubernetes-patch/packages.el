@@ -2,3 +2,4 @@
 (package! kubernetes-evil)
 ;; (package! kubernetes-tramp)
 (package! k8s-mode)
+(package! kele)
