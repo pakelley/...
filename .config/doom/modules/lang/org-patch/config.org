@@ -105,9 +105,10 @@ Keybindings while creating a project:
   <<org-gtd-edna>>
   <<refile-utils>>
   <<gtd-projects>>
+  <<archive-sans-id>>
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
-               :desc "Archive"             "a" #'org-archive-to-archive-sibling
+               :desc "Archive"             "a" #'+patch-dayone/archive-task
                :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
@@ -138,6 +139,16 @@ Right now this is only the recommendations from `org-gtd`, but I'll probably add
 Notably, I use the following property for edna to keep tasks from marking DONE tasks as NEXT:
 :TRIGGER: if next-sibling match("/+DONE") then else next-sibling todo!(NEXT) endif
 I tried to get !done? to work here, but it seemed to work the opposite of how I'd expect.
+** Archive
+Remove ID when archiving, to avoid constant warnings about "duplicate" ids from org-caldav
+#+name: archive-sans-id
+#+begin_src emacs-lisp :tangle no
+(defun +patch-dayone/archive-task ()
+  (interactive)
+  (org-entry-delete (point) "ID")
+  (org-archive-to-archive-sibling))
+
+#+end_src
 * Roam
 #+begin_src elisp :noweb no-export
 (use-package! org-roam
@@ -2951,7 +2962,10 @@ If the ticket has many PRs, ask the user which one to return the URL for."
   ;; sync every 1 hour
   ;; NOTE noly start the timer if it hasn't been started already
   (unless (boundp '+patch--org-caldav-timer-store)
-    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar))))
+    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar)))
+  ;; skip entries that shouldn't go in the cal, to avoid weird duplicate id issue (which seems to happen mostly for completed/archived tasks)
+  (setq org-caldav-skip-conditions '(nottimestamp 'todo ("DONE" "CNCL")))
+  )
 #+end_src
 
 Auth has proved to be difficult here, storing some of the things here that have been helpful when debugging.
