@@ -42,9 +42,15 @@
 (fset 'epg-wait-for-status 'ignore)
 
 (setq epa-file-encrypt-to '("pakelley@hey.com"))
+(setq epa-file-encrypt-to-key '("pakelley@hey.com"))
+(setq epa-file-select-keys nil) ;; make sure we don't use symmetric encryption
 (setq plstore-encrypt-to '("pakelley@hey.com"))
 
 ;; (setq auth-sources (push "~/.authinfo.gpg" auth-sources))
 ;; previously: (macos-keychain-generic macos-keychain-internet "~/.config/doom-emacs/.local/state/authinfo.gpg" "~/.authinfo.gpg")
+(use-package auth-source)
 (auth-source-forget-all-cached)
 (setq auth-sources '("~/.authinfo.gpg"))
+
+(setq epa-pinentry-mode 'ask)
+(setq epg-pinentry-mode 'ask)
