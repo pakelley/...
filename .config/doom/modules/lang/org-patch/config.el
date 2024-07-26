@@ -915,7 +915,7 @@
                  (t 4))))
        
        (defun +patch/ts-quarter-with-year (ts)
-         (format "%s-Q%s" (ts-year (ts)) (+patch/ts-quarter (ts))))
+         (format "%s-Q%s" (ts-year ts) (+patch/ts-quarter ts)))
        
        (defun +patch-dayone/open (&optional pom)
          (interactive)
@@ -951,6 +951,18 @@
          (interactive)
          (+patch--from-source-of-agenda-entry (+patch-dayone/open))
          (org-ql-view-refresh))
+       
+       (defun +patch-dayone/send-to-backburner (&optional pom)
+         (interactive)
+         (+patch-dayone/open pom))
+       
+       (defun +patch-dayone/agenda/send-to-backburner (&optional pom)
+         (interactive)
+         (+patch-dayone/agenda/open pom))
+       
+       (defun +patch-dayone/planning/send-to-backburner ()
+         (interactive)
+         (+patch-dayone/planning/open))
        
        (setq org-agenda-bulk-custom-functions
              (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
@@ -1008,6 +1020,31 @@
           +patch-dayone/planned-for-this-year `(and ,+patch-dayone/has-been-open
                                                        (not ,+patch-dayone/closed-before-this-year))
        )
+       
+         (defun +patch-dayone--show-closed-without-scheduled()
+           (interactive)
+           (org-ql-search
+           (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+               '(and (closed) (not (scheduled)))))
+       
+         (defun +patch-dayone--set-scheduled-to-closed ()
+           (org-back-to-heading t)
+           (let ((closed (org-entry-get (point) "CLOSED")))
+             (if closed
+                 (let* ((closed-ts (ts-parse-org closed))
+                       (scheduled-string (ts-format "SCHEDULED: <%Y-%m-%d %a>" closed-ts)))
+                   (forward-line)
+                   (end-of-line)
+                   (insert " " scheduled-string)))))
+       
+         (defun +patch-dayone--fix-closed-without-scheduled()
+           (interactive)
+           (org-ql-query
+           :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
+               :where '(and (closed) (not (scheduled)))
+               :select #'+patch-dayone--set-scheduled-to-closed))
+       
+       
        
          (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
            (length
@@ -1289,7 +1326,7 @@
           ,(list ?E (all-the-icons-faicon "bed" :face 'all-the-icons-blue)))))
 
 (use-package! org-modern
-  :after org
+  :after (org all-the-icons)
   :hook
   (org-mode . org-modern-mode)
   ;; until I figure out how to keep org-modern from inverting face on agenda priorities, leave off org-modern-agenda
@@ -1413,7 +1450,9 @@
   (defun +patch-dayone/clean-task ()
     (ignore-errors (org-priority 'remove))
     (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
-    (ignore-errors (org-entry-delete (point) "OPENED")))
+    (ignore-errors (org-entry-delete (point) "OPENED"))
+    (ignore-errors (org-entry-delete (point) "PLANNED-FOR-QUARTER"))
+    (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR")))
   
   (defun +patch-dayone/hatch (&optional pom)
     (interactive)
@@ -1462,7 +1501,7 @@
             (t 4))))
   
   (defun +patch/ts-quarter-with-year (ts)
-    (format "%s-Q%s" (ts-year (ts)) (+patch/ts-quarter (ts))))
+    (format "%s-Q%s" (ts-year ts) (+patch/ts-quarter ts)))
   
   (defun +patch-dayone/open (&optional pom)
     (interactive)
@@ -1498,6 +1537,18 @@
     (interactive)
     (+patch--from-source-of-agenda-entry (+patch-dayone/open))
     (org-ql-view-refresh))
+  
+  (defun +patch-dayone/send-to-backburner (&optional pom)
+    (interactive)
+    (+patch-dayone/open pom))
+  
+  (defun +patch-dayone/agenda/send-to-backburner (&optional pom)
+    (interactive)
+    (+patch-dayone/agenda/open pom))
+  
+  (defun +patch-dayone/planning/send-to-backburner ()
+    (interactive)
+    (+patch-dayone/planning/open))
   
   (setq org-agenda-bulk-custom-functions
         (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
