@@ -4,7 +4,6 @@ import pathlib
 import re
 import subprocess
 import sys
-from shutil import which
 
 from simple_term_menu import TerminalMenu
 
@@ -115,7 +114,8 @@ subprocess.run(
         'git',
         'clone',
         'https://github.com/plexus/chemacs2.git',
-        str(pathlib.Path.home() / '.emacs.d'),
+        # str(pathlib.Path.home() / '.emacs.d'),
+        str(pathlib.Path.home() / '.config' / 'emacs'),
     ]
 )
 
@@ -128,13 +128,16 @@ subprocess.run(
         str(pathlib.Path.home() / '.config/doom-emacs'),
     ]
 )
-subprocess.run(['doom', 'install', '-!'])
+subprocess.run(
+    [str(pathlib.Path.home() / '.config/doom-emacs/bin/doom'), 'install', '-!']
+)
 
 LOG.info('Linking doom (so topgrade can find it)')
 subprocess.run(
     [
         'mkdir',
-        '~/.emacs.d/bin',
+        # '~/.emacs.d/bin',
+        '~/.config/emacs/bin',
     ]
 )
 subprocess.run(
@@ -142,7 +145,8 @@ subprocess.run(
         'ln',
         '-svf',
         '~/.config/doom-emacs/bin/doom',
-        '~/.emacs.d/bin/doom',
+        # '~/.emacs.d/bin/doom',
+        '~/.config/emacs/bin/doom',
     ]
 )
 
