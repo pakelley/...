@@ -365,6 +365,52 @@
                          :prepare-finalize (lambda () (progn (org-priority)
                                                              (org-set-tags-command)))
                          :kill-buffer t)
+                        ("Today"
+                         :keys "2"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :olp ("Calendar")
+                         ;; :hook +patch/doct-properties
+                         ;; NOTE: Timestamp needs to be inactive (using the third arg
+                         ;;       of org-insert-time-stamp) to avoid the OPENED date
+                         ;;       appearing in the agenda.
+                         ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
+                         :hook (lambda ()
+                                 (org-set-tags "@@frontburner")
+                                 (progn (org-set-property "OPENED" (format-time-string (org-time-stamp-format) (org-read-date nil t "+0d")))
+                                        (org-agenda-schedule nil "."))
+                                 ;; whitespace doesn't seem to be working properly in the template, so put a space between the cursor and the TODO/tags
+                                 (insert " ")
+                                 (insert " ")
+                                 (backward-char))
+                         :template "* TODO  %? "
+                         ;; :template ("* TODO  %? "
+                         ;;            "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                         :prepare-finalize (lambda () (progn (org-priority)
+                                                             (org-set-tags-command)))
+                         :kill-buffer t)
+                        ("Standup"
+                         :keys "u"
+                         :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
+                         :olp ("Calendar")
+                         ;; :hook +patch/doct-properties
+                         ;; NOTE: Timestamp needs to be inactive (using the third arg
+                         ;;       of org-insert-time-stamp) to avoid the OPENED date
+                         ;;       appearing in the agenda.
+                         ;; :properties (:OPENED "%(org-insert-time-stamp (org-read-date nil t \"+0d\") nil t)")
+                         :hook (lambda ()
+                                 (org-set-tags "@@frontburner")
+                                 (progn (org-set-property "OPENED" (format-time-string (org-time-stamp-format) (org-read-date nil t "+0d")))
+                                        (org-agenda-schedule nil ".")
+                                        (org-priority "A")
+                                        (org-set-tags "work"))
+                                 ;; whitespace doesn't seem to be working properly in the template, so put a space between the cursor and the TODO/tags
+                                 (insert " ")
+                                 (insert " ")
+                                 (backward-char))
+                         :template "* TODO  %? "
+                         ;; :template ("* TODO  %? "
+                         ;;            "SCHEDULED: %(org-insert-time-stamp (org-read-date nil t \"+0d\"))")
+                         :kill-buffer t)
                         ("Meeting"
                          :keys "m"
                          :children
