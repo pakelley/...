@@ -68,3 +68,6 @@ defaults write org.herf.Flux wakeTime 420
 defaults write com.apple.controlcenter "NSStatusItem Visible Sound" -bool true
 defaults write com.apple.controlcenter "NSStatusItem Visible WiFi" -bool false
 defaults write com.apple.menuextra.clock.plist "DateFormat" "EEE MMM d  h:mm:ss"
+
+# remove siri from menu bar
+defaults write com.apple.Siri StatusMenuVisible -bool false
