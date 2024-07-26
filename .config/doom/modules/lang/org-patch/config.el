@@ -621,7 +621,8 @@
        ;; frontburner
        (org-ql-block '(and (tags "@@frontburner")
                            (not (scheduled))
-                           (not (done)))
+                           (not (done))
+                           (not (todo "DONE" "CNCL" "WAIT" "INCUBATE")))
                      ((org-ql-block-header "\n Frontburner")))
        ;; jira
        (org-ql-block
@@ -1189,7 +1190,8 @@
                             :order 0)
                            (:auto-planning t)
                            (:name "--------------------------------------------------------------------------------------------\nFrontburner"
-                            :tag "@@frontburner"
+                            :and (:tag "@@frontburner"
+                                  :not (:todo ("DONE" "CNCL" "WAIT")))
                             :order 9))
             :title "This Week's Agenda"))
          )
