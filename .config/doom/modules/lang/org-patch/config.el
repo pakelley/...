@@ -590,7 +590,7 @@
            ;; (todo "REVIEW")
            ;; needs to be deployed
            (property "status" "Confirmed")))
-        ;; (todo "CONFIRMED"))
+        ;; (todo "CONFIRMED")
         ((org-ql-block-header "\n Jira")))
        ;; waiting
        (org-ql-block '(todo "WAIT")
@@ -598,7 +598,15 @@
   
        ;; completed today
        (org-ql-block '(closed :on today)
-                     ((org-ql-block-header "\n Completed today")))))))
+                     ((org-ql-block-header "\n Completed today")))))
+      ("y" "Yesterday (for SU)"
+      (;; completed yesterday
+       (org-ql-block '(closed :on -1)
+                     ((org-ql-block-header "\n Completed yesterday")))
+       ;; completed today (for things I complete before SU)
+       (org-ql-block '(closed :on today)
+                     ((org-ql-block-header "\n Completed today")))
+       ))))
   )
 
 (after! evil-org-agenda
@@ -1311,14 +1319,15 @@
   (map! (:map (evil-normal-state-map evil-org-agenda-mode-map org-super-agenda-header-map org-agenda-keymap)
               (:prefix-map ("DEL" . "GTD")
                            (:prefix ("v" . "Planning Views")
-                            :desc "Yearly Planning"     "y" #'+patch-gtd/planning/yearly-planning-layout
-                            :desc "Quarterly Planning"  "q" #'+patch-gtd/planning/quarterly-planning-layout
-                            :desc "Quarterly Review"    "Q" #'+patch-gtd/planning/quarterly-review-layout
-                            :desc "Weekly Planning"     "w" #'+patch-gtd/planning/weekly-planning-layout
-                            ;; :desc "Refresh Weekly Data" "W" #'+patch/refresh-weekly-planning-view
-                            :desc "Daily Planning"      "d" #'+patch-gtd/planning/daily-planning-layout
-                            :desc "GTD File"            "g" #'+patch-gtd/planning/gtd-file-layout
-                            :desc "Inbox"               "i" #'+patch-gtd/planning/inbox-layout)
+                            :desc "Yearly Planning"          "y" #'+patch-gtd/planning/yearly-planning-layout
+                            :desc "Quarterly Planning"       "q" #'+patch-gtd/planning/quarterly-planning-layout
+                            :desc "Quarterly Review"         "Q" #'+patch-gtd/planning/quarterly-review-layout
+                            :desc "Weekly Planning"          "w" #'+patch-gtd/planning/weekly-planning-layout
+                            ;; :desc "Refresh Weekly Data"      "W" #'+patch/refresh-weekly-planning-view
+                            :desc "Daily Planning"           "d" #'+patch-gtd/planning/daily-planning-layout
+                            :desc "Completed Yesterday (SU)" "D" #'+patch-gtd/planning/completed-yesterday-layout
+                            :desc "GTD File"                 "g" #'+patch-gtd/planning/gtd-file-layout
+                            :desc "Inbox"                    "i" #'+patch-gtd/planning/inbox-layout)
                            (:prefix ("p" . "Planning Actions")
                             :desc "Mark as 'to-plan'"       "p" #'+patch-gtd/planning/move-to-planning-queue
                             :desc "Mark as READY"           "r" #'+patch-gtd/planning/move-ready
@@ -1606,6 +1615,13 @@
   
   
     )
+  
+  (defun +patch-gtd/planning/completed-yesterday-layout ()
+    (interactive)
+    ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
+    (+patch/open-window-layout '((lambda () (ignore-errors delete-other-windows))
+                                 (lambda () (org-agenda nil "y"))
+                                 delete-other-windows)))
   (defun +patch-gtd/planning/gtd-file-layout ()
     (interactive)
     ;; sometimes emacs seems to think we're in a side window when we're not, but I can't figure out why so just ignore the error.
