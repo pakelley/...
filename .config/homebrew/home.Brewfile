@@ -1,14 +1,18 @@
 brew gerbv
+cask "darktable"
 cask "discord"
 cask "gimp"
 cask "gnucash"
 cask "hammerspoon"
 cask "inkscape"
 # cask "iterm2"
+cask "kap"  # screen recording
 cask "kicad"
 cask "libreoffice"
 cask "malwarebytes"
+cask "obs"
 cask "qbittorrent"
+# cask "rawtherapee"
 cask "steam"
 # cask "thunderbird"
 cask "vlc"

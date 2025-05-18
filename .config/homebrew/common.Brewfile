@@ -13,6 +13,8 @@ brew "svn" # needed to install some fonts
 brew "syncthing", restart_service: true
 brew "koekeishiya/formulae/skhd"
 brew "topgrade"
+brew "unison"
+cask "fsmonitor"  # to support watch sync for unison
 brew "koekeishiya/formulae/yabai"
 brew "ykman"
 cask "alfred"
