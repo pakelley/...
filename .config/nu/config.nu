@@ -10,13 +10,21 @@ $env.config = {
       event: [
         {
           send: ExecuteHostCommand
-          cmd: "commandline (
+          cmd: "commandline edit --insert (
             history
-              | each { |it| $it.command }
-              | uniq
+              | get command
               | reverse
+              | uniq
               | str join (char -i 0)
-              | fzf --read0 --layout=reverse --height=40% --tiebreak=index -q (commandline)
+              | fzf
+                --preview='echo -n {} | nu --stdin -c \'nu-highlight\''
+                --preview-window 'right:30%'
+                --scheme history
+                --read0
+                --layout=reverse
+                --height=40%
+                --tiebreak=index
+                --query (commandline)
               | decode utf-8
               | str trim
           )"
