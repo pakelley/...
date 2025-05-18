@@ -52,7 +52,7 @@ gpg --card-status
        | grep Password
        | sed 's/Password: //')
  | gpg --encrypt --armor --recipient $env.KEYID -o ~/.local/share/mail/account.protonmail/pass.gpg)
-let-env DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mail/account.protonmail/pass.gpg)
+$env.DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mail/account.protonmail/pass.gpg)
 # set up ssl
 openssl s_client -starttls imap -connect 127.0.0.1:1143 -showcerts
 # copy cert and write to file:
@@ -64,6 +64,11 @@ mbsync --all --config ~/.config/mbsync/mbsyncrc
 # if you run into issues, uninstall with the uninstall script (which also clears the logs; convenient for debugging)
 ~/.config/goimapnotify/uninstall-mailbox-daemon.sh --mailbox=protonmail
 #+end_src
+If you get errors about "UIDVALIDITY of both far side <CHANNEL_NAME> and near side <CHANNEL_NAME> changed.", then (using the near side name, if they differ):
+#+begin_src sh
+rm $"/Users/pakelley/.local/share/mail/account.protonmail/($env.CHANNEL_NAME)/.uidvalidity"
+rm $"/Users/pakelley/.local/share/mail/account.protonmail/($env.CHANNEL_NAME)/.mbsyncstate"
+#+end_src
 * contacts
 Manage contacts with org mode, so they're easy to interact with from emacs (especially notmuch).
 Also, we'll want it to be easy to set/get an email group from notmuch for a given email, so let's define that here.
@@ -71,8 +76,8 @@ Also, we'll want it to be easy to set/get an email group from notmuch for a give
 (package! org-contacts)
 #+end_src
 #+begin_src elisp
-(use-package org-contacts
-  :ensure nil
+(use-package! org-contacts
+  ;; :ensure nil
   :after (org doct)
   :custom
   (org-contacts-files '("~/.local/share/notes/contacts.org"))
@@ -190,16 +195,16 @@ I use this header in my contacts file, so that it renders as a column view (see 
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
    :prefix ","
-   "t" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
-                       (notmuch-search-show-thread)
+   "t" `(,(cmd! (progn (notmuch-search-show-thread)
                        (org-capture nil "et")
                        (ignore-errors (org-capture-finalize))
-                       (notmuch-bury-or-kill-this-buffer))) :which-key "todo")
-   "w" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
-                       (notmuch-search-show-thread)
+                       (notmuch-bury-or-kill-this-buffer)
+                       (+patch-notmuch/move-thread-to-group "todo"))) :which-key "todo")
+   "w" `(,(cmd! (progn (notmuch-search-show-thread)
                        (org-capture nil "ew")
                        (ignore-errors (org-capture-finalize))
-                       (notmuch-bury-or-kill-this-buffer))) :which-key "wait"))
+                       (notmuch-bury-or-kill-this-buffer)
+                       (+patch-notmuch/move-thread-to-group "todo"))) :which-key "wait"))
 
   (defgroup patch-notmuch nil
     "My personal notmuch config group"

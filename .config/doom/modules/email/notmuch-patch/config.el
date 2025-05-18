@@ -1,5 +1,5 @@
-(use-package org-contacts
-  :ensure nil
+(use-package! org-contacts
+  ;; :ensure nil
   :after (org doct)
   :custom
   (org-contacts-files '("~/.local/share/notes/contacts.org"))
@@ -129,16 +129,16 @@
    :keymaps 'notmuch-search-mode-map
    :states '(normal)
    :prefix ","
-   "t" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
-                       (notmuch-search-show-thread)
+   "t" `(,(cmd! (progn (notmuch-search-show-thread)
                        (org-capture nil "et")
                        (ignore-errors (org-capture-finalize))
-                       (notmuch-bury-or-kill-this-buffer))) :which-key "todo")
-   "w" `(,(cmd! (progn (+patch-notmuch/move-thread-to-group "todo")
-                       (notmuch-search-show-thread)
+                       (notmuch-bury-or-kill-this-buffer)
+                       (+patch-notmuch/move-thread-to-group "todo"))) :which-key "todo")
+   "w" `(,(cmd! (progn (notmuch-search-show-thread)
                        (org-capture nil "ew")
                        (ignore-errors (org-capture-finalize))
-                       (notmuch-bury-or-kill-this-buffer))) :which-key "wait"))
+                       (notmuch-bury-or-kill-this-buffer)
+                       (+patch-notmuch/move-thread-to-group "todo"))) :which-key "wait"))
 
   (defgroup patch-notmuch nil
     "My personal notmuch config group"
