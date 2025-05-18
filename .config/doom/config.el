@@ -54,3 +54,19 @@
 
 (setq epa-pinentry-mode 'ask)
 (setq epg-pinentry-mode 'ask)
+
+(use-package! age
+  :ensure t
+  :demand t
+  :custom
+  (age-program "rage")
+  (age-default-identity "~/.local/share/private/age/yubikey-main-identity.txt")
+  (age-default-recipient
+   '("~/.local/share/private/age/yubikey-main-recipient.txt"
+     "~/.local/share/private/age/yubikey-backup-recipient.txt"))
+  (age-pinentry-mode 'ask)
+  :config
+  (age-file-enable))
+(use-package! pinentry
+  :config
+  (pinentry-start))

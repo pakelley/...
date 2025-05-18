@@ -73,15 +73,16 @@ Makes working in a monorepo less terrible
  (:map vertico-map "C-k" nil)
  (:map vertico-map :i "C-k" nil))
 #+end_src
-* gpg setup
+* encryption/authentication
+** gpg setup
 a few things to make gpg run smoother
-** make epg work with emacs 29.1
+*** make epg work with emacs 29.1
 This seems to be the generally accepted way to get epg to play nicely with emacs 29.1,
 e.g. from [[https://stackoverflow.com/a/76389612][this SE post]] and [[https://www.masteringemacs.org/article/keeping-secrets-in-emacs-gnupg-auth-sources][this mastering emacs post]].
 #+begin_src emacs-lisp :tangle yes
 (fset 'epg-wait-for-status 'ignore)
 #+end_src
-** set default recipient, to avoid symmetric encryption
+*** set default recipient, to avoid symmetric encryption
 If there's no default recipient for gpg, emacs will default to using symmetric encryption (and prompt for a password, then... seems to just brick the file) when saving '.gpg' files, rather than using my gpg keys. Set the default recipient to avoid this.
 This also happens when the oauth2 library tries to save secrets to a plstore file, so set the recipient for that too.
 #+begin_src emacs-lisp :tangle yes
@@ -90,7 +91,7 @@ This also happens when the oauth2 library tries to save secrets to a plstore fil
 (setq epa-file-select-keys nil) ;; make sure we don't use symmetric encryption
 (setq plstore-encrypt-to '("pakelley@hey.com"))
 #+end_src
-** make sure 'authinfo.gpg' is at the front of auth-sources
+*** make sure 'authinfo.gpg' is at the front of auth-sources
 to avoid defaulting to the keyring, and sometimes breaking things bc of unsupported capabilities
 Also, invalidate any cached auth info
 #+begin_src emacs-lisp :tangle yes
@@ -100,10 +101,37 @@ Also, invalidate any cached auth info
 (auth-source-forget-all-cached)
 (setq auth-sources '("~/.authinfo.gpg"))
 #+end_src
-** use external pinentry program
+*** use external pinentry program
 ...as opposed to prompting from the minibuffer (can switch back to `'loopback` for this behavior)
 convenient bc it prompts me to put in my smart card before prompting for my pin
 #+begin_src emacs-lisp :tangle yes
 (setq epa-pinentry-mode 'ask)
 (setq epg-pinentry-mode 'ask)
+#+end_src
+** age
+#+begin_src emacs-lisp :tangle packages.el
+(package! age :recipe (:host github :repo "anticomputer/age.el"))
+(package! pinentry)
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! age
+  :ensure t
+  :demand t
+  :custom
+  (age-program "rage")
+  (age-default-identity "~/.local/share/private/age/yubikey-main-identity.txt")
+  (age-default-recipient
+   '("~/.local/share/private/age/yubikey-main-recipient.txt"
+     "~/.local/share/private/age/yubikey-backup-recipient.txt"))
+  (age-pinentry-mode 'ask)
+  :config
+  (age-file-enable))
+(use-package! pinentry
+  :config
+  (pinentry-start))
+#+end_src
+#+begin_src elisp :tangle packages.el
+(package! magit :pin "692cc5e")
+(package! forge :pin "8bace81")
+(package! transient :pin "ab22ba0")
 #+end_src
