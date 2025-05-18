@@ -36,3 +36,4 @@ For reference, this is what I still need after running the script:
   - tools -> addons -> get addons -> 2055492159 (code for anki connect addon) -> 1030875226 (code for auto markdown addon) -> 937148547 (code for Edit LaTeX) -> restart anki
 - Log into Zotero, add [[https://retorque.re/zotero-better-bibtex/installation/][BetterBibTeX]] extension, and [[https://blog.tecosaur.com/tmio/2021-07-31-citations.html#working-with-zotero][set up auto-export]]
 - Install Omnivore
+- Install "Fenced code plus" Logseq plugin for mermaid support
