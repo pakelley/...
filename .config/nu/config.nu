@@ -61,3 +61,39 @@ def listening [
     sudo lsof -iTCP -sTCP:LISTEN -n -P | grep -i --color $port
   }
 }
+
+def pull-email [] {
+  if (not ("DECRYPTED_PASS" in $env)) {
+     echo "testing"
+     $env.DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mbsync/account.protonmail.pass.gpg)
+  }
+  mbsync -a -c ~/.config/mbsync/mbsyncrc
+  gmi sync -C ~/.local/share/mail/account.human-signal
+  gmi sync -C ~/.local/share/mail/account.kelleys-gmail
+}
+
+def index-email [] {
+   notmuch new
+   notmuch tag +kelleys -- path:account.kelleys-gmail/**
+   notmuch tag +human-signal -- path:account.human-signal/**
+   notmuch tag +protonmail -- is:new path:account.protonmail/**
+   notmuch tag +calendar -new -- is:new attachment:*.ics
+   afew --tag --new
+   afew --move-mails
+}
+
+def push-email [] {
+  if (not ("DECRYPTED_PASS" in $env)) {
+     echo "testing"
+     $env.DECRYPTED_PASS = (gpg --use-agent --decrypt --armor --local-user 0x7FE626F169E66EFA ~/.local/share/mbsync/account.protonmail.pass.gpg)
+  }
+  mbsync -a -c ~/.config/mbsync/mbsyncrc
+  gmi push -C ~/.local/share/mail/account.human-signal
+  gmi push -C ~/.local/share/mail/account.kelleys-gmail
+}
+
+def sync-email [] {
+   pull-email
+   index-email
+   push-email
+}
