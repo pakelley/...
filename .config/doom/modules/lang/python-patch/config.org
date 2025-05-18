@@ -3,16 +3,12 @@
 #+property: header-args:elisp :tangle yes
 
 * Packages
-#+begin_src elisp :tangle packages.el
-(package! numpydoc)
-;; required for msgu, a dep of ts-docstr
-;; (add-to-list 'package-archives '( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/") t)
-;; (package! msgu :recipe (:host github :repo "jcs-elpa/msgu"))
-;; (package! ts-docstr
-;;   :recipe (:host github :repo "emacs-vs/ts-docstr" :files (:defaults "langs/*.el")))
-#+end_src
 
 * numpydoc
+Add docstrings quicker, based on function signature.
+#+begin_src elisp :tangle packages.el
+(package! numpydoc)
+#+end_src
 #+begin_src emacs-lisp :tangle yes
 (use-package! numpydoc
   :after python
@@ -23,16 +19,21 @@
         :map python-mode-map
         ("d" #'numpydoc-generate)))
 #+end_src
-* lsp
-#+begin_src emacs-lisp
-(defun +patch/get-pdm-venv-packages-path ()
+* env managers
+** pdm
+#+begin_src emacs-lisp :tangle yes
+(defun +patch-python/pdm-base-path ()
+  (string-trim (shell-command-to-string "pdm venv --path in-project")))
+
+(defun +patch-python/pdm-bin-path ()
+  (format "%s/bin" (+patch-python/pdm-base-path)))
+
+(defun +patch-python/pdm-venv-site-packages-path ()
   "For the current PDM project (using venv, rather than pep-582, to install
 packages), find the path to the packages."
-  (let ((packages-path
-         (string-trim (shell-command-to-string "pdm venv --path in-project"))))
-    (concat packages-path "/lib/python3.10/site-packages")))
+  (concat (+patch-python/pdm-base-path) "/lib/python3.10/site-packages"))
 
-(defun +patch/get-pdm-pep582-packages-path ()
+(defun +patch-python/pdm-pep582-packages-path ()
   "For the current PDM project (using pep-582, rather than venv, to install
 packages), find the path to the packages."
   (let ((packages-path
@@ -41,19 +42,51 @@ packages), find the path to the packages."
 
 ;; I don't think this works anymore... but I'm using the pyright-specific
 ;; method below. Keeping this around in case I migrate away from pyright.
-(defun +patch/eglot-extraPaths-workspace-config (server)
+(defun +patch-python/pdm-eglot-workspace-config (server)
   "For the current PDM project, dynamically generate a python lsp config."
-  `(:python\.analysis (:extraPaths ,(vector (+patch/get-pdm-venv-packages-path)))))
+  `(:python\.analysis (:extraPaths ,(vector (+patch-python/pdm-venv-site-packages-path)))))
+#+end_src
+** poetry
+#+begin_src emacs-lisp :tangle yes
+(defun +patch-python/poetry-base-path ()
+  (string-trim (shell-command-to-string "poetry env info --path")))
 
-(defun +patch/eglot-pyright-venv-workspace-config (server)
-  "For the current PDM project, dynamically generate a python lsp config."
+(defun +patch-python/poetry-bin-path ()
+  (format "%s/bin" (+patch-python/poetry-base-path)))
+
+(defun +patch-python/poetry-python-path ()
+  (format "%s/python" (+patch-python/poetry-bin-path)))
+
+(defun +patch/poetry-eglot-workspace-config (server)
+  "For the current venv-based project, dynamically generate a python lsp config."
   `((:python .
      (:venvPath "."
-      :venv ".venv"
-      :pythonPath  "./.venv/bin/python"))))
+      :venv ,(+patch-python/poetry-base-path)
+      :pythonPath  ,(+patch-python/poetry-python-path)))))
+#+end_src
+** venv
+#+begin_src emacs-lisp :tangle yes
+(defun +patch-python/venv-base-path ()
+  (format "%s.venv" (project-root (project-current))))
 
-(setq-default eglot-workspace-configuration #'+patch/eglot-pyright-venv-workspace-config)
+(defun +patch-python/venv-bin-path ()
+  (format "%s/bin" (+patch-python/venv-base-path)))
 
+(defun +patch-python/venv-python-path ()
+  (format "%s/python" (+patch-python/venv-bin-path)))
+
+(defun +patch/venv-eglot-workspace-config (server)
+  "For the current venv-based project, dynamically generate a python lsp config."
+  `((:python .
+     (:venvPath "."
+      :venv ,(+patch-python/venv-base-path)
+      :pythonPath  ,(+patch-python/venv-python-path)))))
+#+end_src
+* lsp
+My Language Server Protocol for python. From the server, automatically find environments for pdm and poetry projects.
+Need to add the `pyright` package to your env.
+#+begin_src emacs-lisp
+(setq-default eglot-workspace-configuration #'+patch/poetry-eglot-workspace-config)
 ;; while we're at it, remove doom's hook to stop hearing errors about it
 (remove-hook! 'python-mode-local-vars-hook #'+python-init-anaconda-mode-maybe-h)
 
@@ -61,6 +94,7 @@ packages), find the path to the packages."
 * lint
 ** blue
 use [[https://github.com/grantjenks/blue][blue]] for auto-formatting.
+Need to add the `black` and `blue` packages to your env.
 #+begin_src emacs-lisp :tangle packages.el
 (package! blacken)
 #+end_src
@@ -68,17 +102,25 @@ use [[https://github.com/grantjenks/blue][blue]] for auto-formatting.
 (use-package! blacken
   :config
   (setq blacken-executable "blue")
-  (defun +patch/set-apheleia-black-executable (exec-path)
-    (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path))
 
-  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
-  (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
-  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
-  (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  (defun +patch/set-apheleia-black-executable (exec-path)
+    (setf (alist-get 'black apheleia-formatters) `(,exec-path))
+    ;; (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path)
+    )
+
+  ;; (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  ;; (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s/blue" (+patch-python/poetry-bin-path)))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s/blue" (+patch-python/poetry-bin-path)))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
   )
 #+end_src
 ** ruff
 use [[https://github.com/astral-sh/ruff][ruff]] for linting
+Need to add the `ruff-lsp` package to your env.
 #+begin_src emacs-lisp :tangle packages.el
 (package! flymake-ruff
   :recipe (:type git :host github :repo "erickgnavar/flymake-ruff"))
@@ -104,15 +146,17 @@ use [[https://github.com/astral-sh/ruff][ruff]] for linting
   :config
   (reformatter-define ruff-format
                       :program "ruff"
-                      :args '("--fix" "-")
+                      :args '("check" "--fix" "-")
                       :group 'python))
 #+end_src
 ** isort
 use [[https://github.com/PyCQA/isort][isort]] to sort imports.
 may be able to get rid of this in favor of ruff.
+Need to add the `isort` package to your env.
 ** docformatter and pyment for doc formatting
 still haven't decided which I want to use, so just use both for now. Use docformatter second though, to prefer it's formatting (since it's made by pycqa).
-#+begin_src emacs-lisp :tangle yes
+Turning this off for now
+#+begin_src emacs-lisp :tangle no
 (after! reformatter
   (reformatter-define docformatter-format
                       :program "docformatter"
@@ -129,7 +173,7 @@ isort before blue, so blue takes precedence
 (defun +patch-python/lint ()
   (py-isort-before-save)
   ;; (pyment-format-buffer)
-  (docformatter-format-buffer)
+  ;; (docformatter-format-buffer)
   (ruff-format-buffer)
   (blacken-buffer))
 
@@ -143,6 +187,15 @@ isort before blue, so blue takes precedence
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
 #+end_src
+** coverage
+#+begin_src emacs-lisp :tangle packages.el
+(package! cov)
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! cov
+  :config
+  (add-hook 'python-mode-hook #'cov-mode))
+#+end_src
 * pytest
 #+begin_src emacs-lisp :tangle yes
 (use-package! python-pytest
@@ -152,6 +205,13 @@ isort before blue, so blue takes precedence
   )
 #+end_src
 * ts-docstr
+#+begin_src elisp :tangle packages.el
+;; required for msgu, a dep of ts-docstr
+;; (add-to-list 'package-archives '( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/") t)
+;; (package! msgu :recipe (:host github :repo "jcs-elpa/msgu"))
+;; (package! ts-docstr
+;;   :recipe (:host github :repo "emacs-vs/ts-docstr" :files (:defaults "langs/*.el")))
+#+end_src
 #+begin_src emacs-lisp :tangle yes
 ;; (use-package! ts-docstr)
 #+end_src

@@ -7,14 +7,18 @@
         :map python-mode-map
         ("d" #'numpydoc-generate)))
 
-(defun +patch/get-pdm-venv-packages-path ()
+(defun +patch-python/pdm-base-path ()
+  (string-trim (shell-command-to-string "pdm venv --path in-project")))
+
+(defun +patch-python/pdm-bin-path ()
+  (format "%s/bin" (+patch-python/pdm-base-path)))
+
+(defun +patch-python/pdm-venv-site-packages-path ()
   "For the current PDM project (using venv, rather than pep-582, to install
 packages), find the path to the packages."
-  (let ((packages-path
-         (string-trim (shell-command-to-string "pdm venv --path in-project"))))
-    (concat packages-path "/lib/python3.10/site-packages")))
+  (concat (+patch-python/pdm-base-path) "/lib/python3.10/site-packages"))
 
-(defun +patch/get-pdm-pep582-packages-path ()
+(defun +patch-python/pdm-pep582-packages-path ()
   "For the current PDM project (using pep-582, rather than venv, to install
 packages), find the path to the packages."
   (let ((packages-path
@@ -23,32 +27,63 @@ packages), find the path to the packages."
 
 ;; I don't think this works anymore... but I'm using the pyright-specific
 ;; method below. Keeping this around in case I migrate away from pyright.
-(defun +patch/eglot-extraPaths-workspace-config (server)
+(defun +patch-python/pdm-eglot-workspace-config (server)
   "For the current PDM project, dynamically generate a python lsp config."
-  `(:python\.analysis (:extraPaths ,(vector (+patch/get-pdm-venv-packages-path)))))
+  `(:python\.analysis (:extraPaths ,(vector (+patch-python/pdm-venv-site-packages-path)))))
 
-(defun +patch/eglot-pyright-venv-workspace-config (server)
-  "For the current PDM project, dynamically generate a python lsp config."
+(defun +patch-python/poetry-base-path ()
+  (string-trim (shell-command-to-string "poetry env info --path")))
+
+(defun +patch-python/poetry-bin-path ()
+  (format "%s/bin" (+patch-python/poetry-base-path)))
+
+(defun +patch-python/poetry-python-path ()
+  (format "%s/python" (+patch-python/poetry-bin-path)))
+
+(defun +patch/poetry-eglot-workspace-config (server)
+  "For the current venv-based project, dynamically generate a python lsp config."
   `((:python .
      (:venvPath "."
-      :venv ".venv"
-      :pythonPath  "./.venv/bin/python"))))
+      :venv ,(+patch-python/poetry-base-path)
+      :pythonPath  ,(+patch-python/poetry-python-path)))))
 
-(setq-default eglot-workspace-configuration #'+patch/eglot-pyright-venv-workspace-config)
+(defun +patch-python/venv-base-path ()
+  (format "%s.venv" (project-root (project-current))))
 
+(defun +patch-python/venv-bin-path ()
+  (format "%s/bin" (+patch-python/venv-base-path)))
+
+(defun +patch-python/venv-python-path ()
+  (format "%s/python" (+patch-python/venv-bin-path)))
+
+(defun +patch/venv-eglot-workspace-config (server)
+  "For the current venv-based project, dynamically generate a python lsp config."
+  `((:python .
+     (:venvPath "."
+      :venv ,(+patch-python/venv-base-path)
+      :pythonPath  ,(+patch-python/venv-python-path)))))
+
+(setq-default eglot-workspace-configuration #'+patch/poetry-eglot-workspace-config)
 ;; while we're at it, remove doom's hook to stop hearing errors about it
 (remove-hook! 'python-mode-local-vars-hook #'+python-init-anaconda-mode-maybe-h)
 
 (use-package! blacken
   :config
   (setq blacken-executable "blue")
-  (defun +patch/set-apheleia-black-executable (exec-path)
-    (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path))
 
-  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
-  (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
-  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
-  (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  (defun +patch/set-apheleia-black-executable (exec-path)
+    (setf (alist-get 'black apheleia-formatters) `(,exec-path))
+    ;; (setf (car (cdr (assoc 'black apheleia-formatters))) exec-path)
+    )
+
+  ;; (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  ;; (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s.venv/bin/blue" (project-root (project-current))))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (setq blacken-executable (format "%s/blue" (+patch-python/poetry-bin-path)))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (setq blacken-executable "blue")))
+  (advice-add 'blacken-buffer :before (lambda () (+patch/set-apheleia-black-executable (format "%s/blue" (+patch-python/poetry-bin-path)))))
+  ;; (advice-add 'blacken-buffer :after (lambda () (+patch/set-apheleia-black-executable "blue")))
   )
 
 (use-package! flymake-ruff
@@ -66,23 +101,13 @@ packages), find the path to the packages."
   :config
   (reformatter-define ruff-format
                       :program "ruff"
-                      :args '("--fix" "-")
-                      :group 'python))
-
-(after! reformatter
-  (reformatter-define docformatter-format
-                      :program "docformatter"
-                      :args '("--style" "numpy" "--in-place" "-")
-                      :group 'python)
-  (reformatter-define pyment-format
-                      :program "pyment"
-                      :args '("--output" "numpydoc" "-")
+                      :args '("check" "--fix" "-")
                       :group 'python))
 
 (defun +patch-python/lint ()
   (py-isort-before-save)
   ;; (pyment-format-buffer)
-  (docformatter-format-buffer)
+  ;; (docformatter-format-buffer)
   (ruff-format-buffer)
   (blacken-buffer))
 
@@ -95,6 +120,10 @@ packages), find the path to the packages."
     (remove-hook 'before-save-hook '+patch-python/lint t)))
 ;; (add-hook 'before-save-hook #'+patch-python/lint)
 (add-hook 'python-mode-hook #'+patch-python/lint-mode)
+
+(use-package! cov
+  :config
+  (add-hook 'python-mode-hook #'cov-mode))
 
 (use-package! python-pytest
   :config
