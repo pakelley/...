@@ -119,7 +119,7 @@ $env.NVM_DIR = ("~/.nvm" | path expand)
 # zoxide init nushell | save -f ~/.local/share/.zoxide.nu
 
 # xdg bin
-$env.PATH = ($env.PATH | append ("~/.local/bin" | path expand))
+$env.PATH = ($env.PATH | prepend ("~/.local/bin" | path expand))
 
 # pdm
 def gen_pdm_pythonpath [] {
