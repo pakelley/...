@@ -63,7 +63,7 @@ defaults write org.herf.Flux locationType L
 ## set wake time to 7am
 defaults write org.herf.Flux wakeTime 420
 
-# bluetooth and sound in menu bar
+# bluetooth, sound, and WiFi in menu bar
 # defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth" -bool false
 defaults write com.apple.controlcenter "NSStatusItem Visible Sound" -bool true
 defaults write com.apple.controlcenter "NSStatusItem Visible WiFi" -bool false
