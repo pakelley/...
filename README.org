@@ -13,7 +13,7 @@ I have a modular/literate config, so docs are included in the code and each majo
 I also have chemacs set up, which I only really use to declare emacs bankruptcy and start a new config.
 
 ** wezterm/nushell
-For a terminal emulator, I use wezterm (a quick and modern terminal emulator with a human readble/editable config file and modular keybindings).
+For a terminal emulator, I use wezterm (a quick and modern terminal emulator with a human readable/editable config file and modular keybindings).
 
 For a shell, I use nushell (a quick shell with nice semantics).
 
