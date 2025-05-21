@@ -133,20 +133,20 @@ subprocess.run(
 )
 
 LOG.info('Linking doom (so topgrade can find it)')
+emacs_bin = pathlib.Path.home() / '.config' / 'emacs' / 'bin'
 subprocess.run(
     [
         'mkdir',
-        # '~/.emacs.d/bin',
-        '~/.config/emacs/bin',
+        '-p',
+        str(emacs_bin),
     ]
 )
 subprocess.run(
     [
         'ln',
         '-svf',
-        '~/.config/doom-emacs/bin/doom',
-        # '~/.emacs.d/bin/doom',
-        '~/.config/emacs/bin/doom',
+        str(pathlib.Path.home() / '.config' / 'doom-emacs' / 'bin' / 'doom'),
+        str(emacs_bin / 'doom'),
     ]
 )
 
