@@ -90,7 +90,7 @@ for groupname, brewfile in selected_brewfiles.items():
     subprocess.run(['brew', 'bundle', 'install', '--file', brewfile_path])
     LOG.info('Finished installing %s dependencies!', groupname)
 
-if 'latex.Brewfile' in selected_brewfiles:
+if 'latex' in selected_brewfiles:
     LOG.info('LaTeX option selected; installing digestif.')
     subprocess.run(
         ['sh', str(pathlib.Path(__file__).parent / 'install-digestif.sh')]
