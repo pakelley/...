@@ -17,7 +17,7 @@ For a terminal emulator, I use wezterm (a quick and modern terminal emulator wit
 
 For a shell, I use nushell (a quick shell with nice semantics).
 
-** mackup
+** chexmoi
 bootstrapping tool for linking configurations to the appropriate place
 
 ** yabai/skhd
@@ -27,13 +27,7 @@ tiling window manager for macos, and its keybinding software
 The `bin/virus.exe` script is made to be idempotent, so I can safely re-run at any point.
 Also, notably, the script is only set up for configuring a mac for now.
 For reference, this is what I still need after running the script:
-- Set up my syncthing folders at http://localhost:8384 (as of now, my notes, alfred preferences, and calibre library)
-- Activate licenses for the few apps I'm willing to pay for (alfred, fantastical, dash)
-  - Enable clipboard history for alfred
-- Add Keepass database
+- Activate licenses for the few apps I'm willing to pay for (fantastical, dash, raycast)
 - Log into whatever needs it (spotify, anki (web), etc)
-- Add anki connect plugin
-  - tools -> addons -> get addons -> 2055492159 (code for anki connect addon) -> 1030875226 (code for auto markdown addon) -> 937148547 (code for Edit LaTeX) -> restart anki
 - Log into Zotero, add [[https://retorque.re/zotero-better-bibtex/installation/][BetterBibTeX]] extension, and [[https://blog.tecosaur.com/tmio/2021-07-31-citations.html#working-with-zotero][set up auto-export]]
-- Install Omnivore
-- Install "Fenced code plus" Logseq plugin for mermaid support
+- Install "Fenced code plus" Logseq plugin for mermaid support, and setup zotero integration

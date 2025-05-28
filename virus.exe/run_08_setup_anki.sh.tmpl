@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+{{ if has "anki" .optionalGroups }}
+echo "[anki] Please add Anki plugins manually, restart Anki, then press enter when finished"
+echo -e "\t\t Go to tools -> addons -> get addons"
+echo -e "\t\t\t 2055492159 (code for anki connect addon)"
+echo -e "\t\t\t 1030875226 (code for auto markdown addon)"
+echo -e "\t\t\t 937148547 (code for Edit LaTeX)"
+terminal-notifier -message "Please add Anki plugins manually, restart Anki, then press enter when finished" -title "dotfiles"
+read
+
+echo "[anki] Setting up Anki Connect"
+defaults write net.ankiweb.dtop NSAppSleepDisabled -bool true
+defaults write net.ichi2.anki NSAppSleepDisabled -bool true
+defaults write org.qt-project.Qt.QtWebEngineCore NSAppSleepDisabled -bool true
+{{ end }}

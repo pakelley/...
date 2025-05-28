@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+{{ .brewPrefix }}/bin/notmuch tag +protonmail -- is:new path:account.protonmail/**
+{{ .brewPrefix }}/bin/notmuch tag +kelleys -- is:new path:account.kelleys/**
+{{ .brewPrefix }}/bin/notmuch tag +calendar -new -- is:new attachment:*.ics
+$HOME/.pyenv/shims/afew --tag --new
+$HOME/.pyenv/shims/afew --move-mails

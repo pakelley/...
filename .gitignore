@@ -1,2 +1,3 @@
-/.config/nu/history.txt
-/.config/doom/modules/lang/org-patch/quarters-burnup.png
+**.DS_Store
+/dot_config/nu/history.txt
+/dot_config/doom/modules/lang/org-patch/**.png

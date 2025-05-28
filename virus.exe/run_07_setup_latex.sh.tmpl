@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+{{ if has "latex" .optionalGroups }}
+echo "[latex] Installing digestif (LaTeX LSP)"
+luarocks install digestif --local
+{{ end }}
