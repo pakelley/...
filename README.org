@@ -27,6 +27,7 @@ tiling window manager for macos, and its keybinding software
 On a new machine:
 
 #+BEGIN_SRC sh
+xcode-select --install  # if not installed already
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply pakelley/...
 #+END_SRC
 
