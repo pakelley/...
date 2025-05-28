@@ -50,6 +50,10 @@ fi
 
 echo "[python] Ensure python/uv is installed …"
 if ! command -v python &> /dev/null || ! command -v uv &> /dev/null; then
+  brew install pyenv
+  pyenv install 3.12
+  pyenv global 3.12
+  eval "$(pyenv init - sh)"
   brew install uv
 fi
 
