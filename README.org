@@ -17,15 +17,27 @@ For a terminal emulator, I use wezterm (a quick and modern terminal emulator wit
 
 For a shell, I use nushell (a quick shell with nice semantics).
 
-** chexmoi
+** chezmoi
 bootstrapping tool for linking configurations to the appropriate place
 
 ** yabai/skhd
 tiling window manager for macos, and its keybinding software
 
 * Installation
-The `bin/virus.exe` script is made to be idempotent, so I can safely re-run at any point.
-Also, notably, the script is only set up for configuring a mac for now.
+On a new machine:
+
+#+BEGIN_SRC sh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply pakelley/...
+#+END_SRC
+
+To re-run:
+
+#+BEGIN_SRC sh
+chezmoi apply
+#+END_SRC
+
+Notably, the scripts are only set up for configuring a mac for now.
+
 For reference, this is what I still need after running the script:
 - Activate licenses for the few apps I'm willing to pay for (fantastical, dash, raycast)
 - Log into whatever needs it (spotify, anki (web), etc)
