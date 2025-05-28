@@ -75,4 +75,34 @@ defaults write com.apple.menuextra.clock.plist "DateFormat" "EEE MMM d  h:mm:ss"
 # remove siri from menu bar
 defaults write com.apple.Siri StatusMenuVisible -bool false
 
+# add ~/.local and ~/.config to finder favorites
+for d in "$HOME/.local" "$HOME/.config"; do
+  mkdir -p "$d"
+  osascript - "$d" <<'APPLESCRIPT'
+on run argv
+  set targetAlias to POSIX file (item 1 of argv) as alias
+
+  tell application "Finder"
+      -- remember how many windows we had before we open a new one
+      set preCount to count of windows
+
+      reveal targetAlias          -- opens a window & selects the folder
+      activate                    -- bring Finder frontmost
+  end tell
+
+  -- 3 – hit ⌘⌃T  (“Add to Sidebar”)
+  tell application "System Events" to keystroke "t" using {command down, control down}
+
+  -- 4 – if we created a new window, close it
+  tell application "Finder"
+      if (count of windows) > preCount then
+          close front window
+      end if
+  end tell
+end run
+APPLESCRIPT
+done
+
+
+
 {{ end }}
