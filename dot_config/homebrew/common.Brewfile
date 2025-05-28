@@ -1,4 +1,3 @@
-tap "homebrew/cask-fonts"
 # tap "ojford/formulae"
 tap "koekeishiya/formulae"
 tap "wez/wezterm"
