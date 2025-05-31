@@ -1,4 +1,4 @@
-source ~/.config/dots/.config/nu/starship/init.nu
+source ~/.config/nushell/starship/init.nu
 
 $env.config = {
   keybindings: [

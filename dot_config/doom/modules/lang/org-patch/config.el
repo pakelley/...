@@ -79,9 +79,14 @@
       (save-excursion
         (save-restriction
           (funcall hook)))))
+  (defun +patch-dayone/archive-task ()
+    (interactive)
+    (org-entry-delete (point) "ID")
+    (org-archive-to-archive-sibling))
+  
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
-               :desc "Archive"             "a" #'org-archive-to-archive-sibling
+               :desc "Archive"             "a" #'+patch-dayone/archive-task
                :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
@@ -1598,9 +1603,9 @@
                                  (lambda () (org-ql-view "Backburner Review"))
                                  delete-other-windows  ;; bc org-ql does weird things with opening windows...
                                  split-window-horizontally
-                                 "~/.config/.../.config/doom/modules/lang/org-patch/years-burnup.png"
+                                 "~/.config/doom/modules/lang/org-patch/years-burnup.png"
                                  split-window-vertically
-                                 "~/.config/.../.config/doom/modules/lang/org-patch/quarterly-velocity.png"
+                                 "~/.config/doom/modules/lang/org-patch/quarterly-velocity.png"
                                  (lambda () (evil-window-right 1))
                                  (lambda () (enlarge-window (/ (frame-width) 10) t))
                                  )))
@@ -1624,7 +1629,7 @@
                                  ;; other-window
                                  split-window-vertically
                                  (lambda () (evil-window-down 1))
-                                 "~/.config/.../.config/doom/modules/lang/org-patch/quarters-burnup.png"
+                                 "~/.config/doom/modules/lang/org-patch/quarters-burnup.png"
                                  ;; I think this consult call is to update the plot, but iirc it isn't working anyway
                                  ;; (lambda () (funcall consult--buffer-display "quarters-burnup.png"))
                                  (lambda () (evil-window-up 1))
@@ -2249,7 +2254,10 @@
   ;; sync every 1 hour
   ;; NOTE noly start the timer if it hasn't been started already
   (unless (boundp '+patch--org-caldav-timer-store)
-    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar))))
+    (setq +patch--org-caldav-timer-store (run-with-timer 0 (* 60 (* 60 1)) #'org-caldav-sync-calendar)))
+  ;; skip entries that shouldn't go in the cal, to avoid weird duplicate id issue (which seems to happen mostly for completed/archived tasks)
+  (setq org-caldav-skip-conditions '(nottimestamp 'todo ("DONE" "CNCL")))
+  )
 
 (after! org
   (setq org-todo-repeat-to-state "TODO"))

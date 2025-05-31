@@ -1960,9 +1960,9 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
                                (lambda () (org-ql-view "Backburner Review"))
                                delete-other-windows  ;; bc org-ql does weird things with opening windows...
                                split-window-horizontally
-                               "~/.config/.../.config/doom/modules/lang/org-patch/years-burnup.png"
+                               "~/.config/doom/modules/lang/org-patch/years-burnup.png"
                                split-window-vertically
-                               "~/.config/.../.config/doom/modules/lang/org-patch/quarterly-velocity.png"
+                               "~/.config/doom/modules/lang/org-patch/quarterly-velocity.png"
                                (lambda () (evil-window-right 1))
                                (lambda () (enlarge-window (/ (frame-width) 10) t))
                                )))
@@ -2341,7 +2341,7 @@ The view for my weekly planning has all actions currently scheduled (up until th
                                ;; other-window
                                split-window-vertically
                                (lambda () (evil-window-down 1))
-                               "~/.config/.../.config/doom/modules/lang/org-patch/quarters-burnup.png"
+                               "~/.config/doom/modules/lang/org-patch/quarters-burnup.png"
                                ;; I think this consult call is to update the plot, but iirc it isn't working anyway
                                ;; (lambda () (funcall consult--buffer-display "quarters-burnup.png"))
                                (lambda () (evil-window-up 1))

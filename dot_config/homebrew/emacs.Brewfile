@@ -1,4 +1,5 @@
 tap "d12frosted/emacs-plus"
+brew "automake"  # seems to be necessary for emacs to build zmq for jupyter
 brew "cscope"
 brew "global"
 brew "hunspell"

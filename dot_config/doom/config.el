@@ -8,10 +8,10 @@
        :desc "M-x"  "SPC" #'execute-extended-command))
 
 (map! (:map evil-window-map
-       "/" #'+evil-window-vsplit-a
-       "?" #'+evil/window-vsplit-and-follow
-       "-" #'+evil-window-split-a
-       "_" #'+evil/window-split-and-follow))
+            "/" #'+evil-window-vsplit-a
+            "?" #'+evil/window-vsplit-and-follow
+            "-" #'+evil-window-split-a
+            "_" #'+evil/window-split-and-follow))
 
 (setq display-line-numbers-type 'relative)
 
@@ -56,7 +56,6 @@
 (setq epg-pinentry-mode 'ask)
 
 (use-package! age
-  :ensure t
   :demand t
   :custom
   (age-program "rage")
@@ -70,3 +69,5 @@
 (use-package! pinentry
   :config
   (pinentry-start))
+
+(use-package! chezmoi)

@@ -3,7 +3,6 @@
 
 * Packages
 #+begin_src elisp :tangle packages.el
-(package! benchmark-init)
 (package! transient)
 (package! with-editor :pin "391e76a256aeec6b9e4cbd733088f30c677d965b")
 #+end_src
@@ -28,10 +27,10 @@ I don't like pressing two keys for my localleader... And you have to unbind evil
 I think these are easier to remember than the doom defaults (plus they're what I use in tmux)
 #+begin_src elisp
 (map! (:map evil-window-map
-       "/" #'+evil-window-vsplit-a
-       "?" #'+evil/window-vsplit-and-follow
-       "-" #'+evil-window-split-a
-       "_" #'+evil/window-split-and-follow))
+            "/" #'+evil-window-vsplit-a
+            "?" #'+evil/window-vsplit-and-follow
+            "-" #'+evil-window-split-a
+            "_" #'+evil/window-split-and-follow))
 #+end_src
 * Relative line numbers
 Makes it easier to prefix commands with numbers (e.g. `5 j` would go 5 down, and I can see where that will put me with relative line numbers)
@@ -115,7 +114,6 @@ convenient bc it prompts me to put in my smart card before prompting for my pin
 #+end_src
 #+begin_src emacs-lisp :tangle yes
 (use-package! age
-  :ensure t
   :demand t
   :custom
   (age-program "rage")
@@ -134,4 +132,30 @@ convenient bc it prompts me to put in my smart card before prompting for my pin
 (package! magit :pin "692cc5e")
 (package! forge :pin "8bace81")
 (package! transient :pin "ab22ba0")
+#+end_src
+
+** benchmark-init
+#+begin_src elisp :tangle packages.el
+(package! benchmark-init)
+#+end_src
+#+begin_src elisp :tangle true
+(use-package benchmark-init
+  :init
+  (when init-file-debug
+    (benchmark-init/activate)
+    (add-hook 'doom-first-input-hook #'benchmark-init/deactivate))
+)
+#+end_src
+** chezmoi
+Useful for easily editing chezmoi source files, and having them synced to their target locations.
+#+begin_src elisp :tangle packages.el
+(package! chezmoi)
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+(use-package! chezmoi)
+#+end_src
+
+I have the following in my '.dir-locals.el' for the repo, which triggers the sync:
+#+begin_src emacs-lisp :tangle no
+((nil . ((eval . (add-hook 'after-save-hook #'chezmoi-write nil t)))))
 #+end_src

@@ -1,6 +1,7 @@
 # tap "ojford/formulae"
 tap "koekeishiya/formulae"
 tap "wez/wezterm"
+brew "chezmoi"
 # brew "ojford/formulae/loginitems"
 # brew "mr"  # myrepos
 brew "pandoc"

@@ -14,6 +14,3 @@ brew "pipes-sh"
 brew "socat"  # for ncmpcpp's visualizer
 brew "tree"
 brew "cjbassi/gotop/gotop"
-brew "mopidy/mopidy/mopidy"
-brew "mopidy/mopidy/mopidy-soundcloud"
-brew "mopidy/mopidy/mopidy-spotify"
