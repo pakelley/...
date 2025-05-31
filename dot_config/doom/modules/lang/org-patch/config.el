@@ -1165,7 +1165,8 @@
             :query (and
                     ,+patch-dayone/is-open
                     ,+patch/is-action
-                    (not ,scheduled-through-around-this-week))
+                    (not ,scheduled-through-around-this-week)
+                    (not (tags "@@frontburner")))
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
