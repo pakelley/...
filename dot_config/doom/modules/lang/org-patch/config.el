@@ -425,24 +425,6 @@
                            :datetree t
                            :template "* %?"
                            :kill-buffer t)
-                          ("Nico 1:1"
-                           :keys "n"
-                           :file "~/.local/share/notes/meetings/nico.org"
-                           :datetree t
-                           :template "* %?"
-                           :kill-buffer t)
-                          ("Haotian 1:1"
-                           :keys "h"
-                           :file "~/.local/share/notes/meetings/haotian.org"
-                           :datetree t
-                           :template "* %?"
-                           :kill-buffer t)
-                          ("Parking Lot"
-                           :keys "p"
-                           :file "~/.local/share/notes/meetings/parking-lot.org"
-                           :datetree t
-                           :template "* %?"
-                           :kill-buffer t)
                           ("Kinso"
                            :keys "k"
                            :file "~/.local/share/notes/meetings/kinso.org"
@@ -456,7 +438,7 @@
                          (("Home" :keys "h" :olp ("Projects" "home improvement"))
                           ("Christmas" :keys "c" :olp ("Projects" "christmas"))
                           ("Gift" :keys "g" :olp ("Projects" "gifts")) ; TODO either add recipient as tag or in olp
-                          ("Groceries" :keys "o" :olp ("Projects" "groceries"))))
+                          ))
                         (:group "Reference"
                          :file "~/.local/share/notes/gtd/org-gtd-tasks.org"
                          :template "* %?"
@@ -473,8 +455,7 @@
                             ("Show"    :keys "s" :olp ("Projects" "shows"))
                             ("Book"    :keys "b" :olp ("Projects" "books"))
                             ("Article" :keys "a" :olp ("Projects" "articles"))
-                            ("Album"   :keys "l" :olp ("Projects" "albums"))))
-                          ("Repo" :keys "r" :olp ("Projects" "repos"))))))))
+                            ("Album"   :keys "l" :olp ("Projects" "albums"))))))))))
   (defun +patch/doct-properties ()
     "Add declaration's :properties to current entry."
     (let ((properties (doct-get :properties)))
