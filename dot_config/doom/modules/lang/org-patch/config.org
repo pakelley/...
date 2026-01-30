@@ -105,10 +105,12 @@ Keybindings while creating a project:
   <<org-gtd-edna>>
   <<refile-utils>>
   <<gtd-projects>>
-  <<archive-sans-id>>
+  <<archive-helpers>>
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
                :desc "Archive"             "a" #'+patch-dayone/archive-task
+               :desc "Archive DONE items"  "A" #'+patch-gtd/archive-completed-tasks
+               :desc "Migrate legacy archive" "m" #'+patch-gtd/migrate-legacy-archive
                :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
@@ -140,13 +142,269 @@ Notably, I use the following property for edna to keep tasks from marking DONE t
 :TRIGGER: if next-sibling match("/+DONE") then else next-sibling todo!(NEXT) endif
 I tried to get !done? to work here, but it seemed to work the opposite of how I'd expect.
 ** Archive
-Remove ID when archiving, to avoid constant warnings about "duplicate" ids from org-caldav
-#+name: archive-sans-id
+Keep my GTD file slim by archiving completed work into a dedicated archive file while keeping the original outline structure intact. Each archived subtree lands under the same parent headings it had in the source file, so projects stay grouped together. Holding =DEL a= still archives the subtree at point, while =DEL A= sweeps an entire buffer (defaults to my =org-gtd= tasks file) for =DONE= and =CNCL= items and archives them in one go.
+
+Set these vars to tweak the behaviour:
+- `+patch/org-archive-file-name`: base name for the archive file
+- `+patch/org-archive-file-extension`: optional extension (defaults to no extension to match existing files)
+- `+patch/org-archive-directory`: where archive files are stored, defaults to the GTD directory
+
+I also added utilities to migrate the old datetree archive into the new outline-preserving file:
+- `+patch-gtd/migrate-legacy-archive-entry`: move the entry at point using its =ARCHIVE_OLPATH= metadata
+- `+patch-gtd/migrate-legacy-archive`: migrate every archived entry (i.e. nodes with =ARCHIVE_TIME=) in the current subtree (use =C-u= to operate on the whole buffer)
+Both commands fill in missing =ARCHIVE_OLPATH= data by applying the same metadata helper I use for normal archiving: they look at the current outline path (so you can reorganize entries first) and record it before moving anything.
+
+#+name: archive-helpers
 #+begin_src emacs-lisp :tangle no
+(defvar +patch/org-archive-file-name "gtd_archive"
+  "Base archive file name (without extension).")
+
+(defvar +patch/org-archive-file-extension ""
+  "Optional extension appended to archive files (e.g. \".org\"). Defaults to no extension.")
+
+(defvar +patch/org-archive-directory org-gtd-directory
+  "Directory that stores archive files. Defaults to the GTD directory.")
+
+(defun +patch/org-archive--target-file ()
+  "Return the archive file path, creating it (and the directory) if necessary."
+  (let* ((base-dir (file-name-as-directory (or +patch/org-archive-directory org-gtd-directory)))
+         (ext (or +patch/org-archive-file-extension ""))
+         (file (expand-file-name (concat +patch/org-archive-file-name ext) base-dir)))
+    (make-directory (file-name-directory file) t)
+    (unless (file-exists-p file)
+      (with-temp-buffer
+        (insert "# -*- mode: org -*-\n\n")
+        (insert "#+title: " +patch/org-archive-file-name "\n\n")
+        (write-region (point-min) (point-max) file)))
+    file))
+
+(defun +patch/org-archive--ensure-outline (outline-path file)
+  "Ensure OUTLINE-PATH (list of parent headings) exists inside FILE.
+Return a marker pointing at the last heading in OUTLINE-PATH, or nil if the path is empty."
+  (when outline-path
+    (with-current-buffer (find-file-noselect file)
+      (org-with-wide-buffer
+        (let ((pos nil))
+          (dolist (heading outline-path)
+            (setq pos (+patch/org-archive--find-or-create-heading heading pos)))
+          (when pos
+            (copy-marker pos t)))))))
+
+(defun +patch/org-archive--find-or-create-heading (heading parent-pos)
+  "Find or create HEADING under PARENT-POS (nil means top-level). Return the absolute position."
+  (let* ((parent-level (if parent-pos
+                           (org-with-point-at parent-pos (org-current-level))
+                         0))
+         (level (1+ parent-level))
+         (regexp (format "^\\*\\{%d\\}\\s-+%s\\(?:\\s-*$\\|\\s-+\\)"
+                         level (regexp-quote heading))))
+    (save-restriction
+      (if parent-pos
+          (progn
+            (goto-char parent-pos)
+            (org-narrow-to-subtree)
+            (forward-line 1))
+        (goto-char (point-min)))
+      (or (save-excursion
+            (goto-char (point-min))
+            (when (re-search-forward regexp nil t)
+              (line-beginning-position)))
+          (progn
+            (goto-char (point-max))
+            (unless (bolp) (insert "\n"))
+            (insert (make-string level ?*) " " heading "\n")
+            (forward-line -1)
+            (point))))))
+
+(defun +patch/org-archive--context-info (origin-file outline-path)
+  "Store the context requested by `org-archive-save-context-info'.
+See (info \"(org) Archiving\") or https://orgmode.org/manual/Archiving.html for details on the ARCHIVE_* properties."
+  (let ((path-string (when outline-path
+                       (org-format-outline-path outline-path nil nil "/"))))
+    (dolist (item org-archive-save-context-info)
+      (pcase item
+        ('time (org-entry-put (point) "ARCHIVE_TIME"
+                              (format-time-string (org-time-stamp-format t t))))
+        ('file (org-entry-put (point) "ARCHIVE_FILE"
+                              (abbreviate-file-name origin-file)))
+        ('category (org-entry-put (point) "ARCHIVE_CATEGORY"
+                                  (org-get-category nil t)))
+        ('todo (when-let ((state (org-get-todo-state)))
+                 (org-entry-put (point) "ARCHIVE_TODO" state)))
+        ('olpath (when path-string
+                   (org-entry-put (point) "ARCHIVE_OLPATH" path-string)))
+        ('priority (when-let ((priority (org-entry-get (point) "PRIORITY")))
+                     (org-entry-put (point) "ARCHIVE_PRIORITY" priority)))
+        ('tags (when-let ((tags (org-get-tags nil t)))
+                 (org-entry-put (point) "ARCHIVE_TAGS"
+                                (mapconcat #'identity tags " "))))))))
+
+(defun +patch/org-archive--move-subtree (target-file outline-path)
+  "Move the subtree at point into TARGET-FILE under OUTLINE-PATH."
+  (let* ((parent-marker (+patch/org-archive--ensure-outline outline-path target-file))
+         (level (if outline-path (1+ (length outline-path)) 1)))
+    (org-cut-subtree)
+    (with-current-buffer (find-file-noselect target-file)
+      (org-with-wide-buffer
+        (if parent-marker
+            (progn
+              (goto-char parent-marker)
+              (org-end-of-subtree t t)
+              (unless (bolp) (insert "\n")))
+          (goto-char (point-max))
+          (unless (bolp) (insert "\n")))
+        (org-paste-subtree level)
+        (save-buffer)))))
+
+(defun +patch/org-archive--outline-path-from-prop ()
+  "Return the outline path stored in ARCHIVE_OLPATH at point as a list."
+  (when-let* ((raw (org-entry-get (point) "ARCHIVE_OLPATH"))
+              (trimmed (org-trim raw))
+              ((not (string= trimmed ""))))
+    (let* ((path (cl-remove-if (lambda (s) (string= s ""))
+                               (mapcar #'org-trim (split-string trimmed "/" t))))
+           (normalized (+patch/org-archive--normalize-outline-path path)))
+      (when (and normalized (not (equal path normalized)))
+        (org-entry-put (point) "ARCHIVE_OLPATH"
+                       (+patch/org-archive--outline-path-to-string normalized)))
+      normalized)))
+
+(defun +patch/org-archive--outline-path-to-string (outline-path)
+  "Convert OUTLINE-PATH list to the stored ARCHIVE_OLPATH string."
+  (when outline-path
+    (mapconcat #'identity outline-path "/")))
+
+(defun +patch/org-archive--current-outline-path ()
+  "Return the current outline path at point as a list, or nil if not inside a heading."
+  (let ((path (org-get-outline-path t)))
+    (when path
+      (mapcar #'org-trim path))))
+
+(defun +patch/org-archive--current-heading ()
+  "Return the current heading title without TODO, priority, or tags."
+  (string-trim (org-no-properties (org-get-heading t t t t))))
+
+(defun +patch/org-archive--normalize-outline-path (outline-path)
+  "Drop trailing archive-only placeholders like \"Archive\" from OUTLINE-PATH."
+  (let ((result (cl-remove-if (lambda (s)
+                                (let ((trim (string-trim s)))
+                                  (or (string-empty-p trim)
+                                      (string-equal trim "Archive")
+                                      (string-equal trim "archive"))))
+                              (copy-sequence outline-path))))
+    (setq result (mapcar #'string-trim result))
+    (while (and result
+                (string-equal (downcase (car (last result))) "archive"))
+      (setq result (butlast result)))
+    result))
+
+(defun +patch/org-archive--ensure-outline-path (&optional quiet)
+  "Return the outline path for the entry at point, populating ARCHIVE_OLPATH if missing.
+When QUIET is non-nil, suppress informational messages while filling in metadata."
+  (or (+patch/org-archive--outline-path-from-prop)
+      (let* ((normalized (+patch/org-archive--normalize-outline-path
+                          (+patch/org-archive--current-outline-path)))
+             (heading (+patch/org-archive--current-heading))
+             (fallback (when normalized (copy-sequence normalized))))
+        (when (and fallback heading
+                   (string-equal (string-trim (car (last fallback))) heading))
+          (setq fallback (butlast fallback)))
+        (when fallback
+          (org-entry-put (point) "ARCHIVE_OLPATH"
+                         (+patch/org-archive--outline-path-to-string fallback))
+          (unless quiet
+            (message "Set ARCHIVE_OLPATH to %s"
+                     (+patch/org-archive--outline-path-to-string fallback))))
+        fallback)))
+
+(defun +patch/org-archive--at-point (&optional quiet)
+  "Archive the subtree at point, preserving outline hierarchy.
+QUIET suppresses the status message."
+  (org-back-to-heading t)
+  (let* ((origin-buffer (or (buffer-base-buffer) (current-buffer)))
+         (origin-file (or (buffer-file-name origin-buffer)
+                          (user-error "Current buffer is not visiting a file")))
+         (outline-path (org-get-outline-path t))
+         (target-file (+patch/org-archive--target-file)))
+    (+patch/org-archive--context-info origin-file outline-path)
+    (org-entry-delete (point) "ID")
+    (+patch/org-archive--move-subtree target-file outline-path)
+    (unless quiet
+      (message "Archived to %s" (abbreviate-file-name target-file)))))
+
+(defun +patch-gtd/migrate-legacy-archive-entry ()
+  "Move the archived entry at point into the new archive hierarchy."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an Org buffer"))
+  (org-back-to-heading t)
+  (let ((outline-path (+patch/org-archive--ensure-outline-path)))
+    (unless outline-path
+      (user-error "Cannot derive outline path; add headings first"))
+    (let ((target-file (+patch/org-archive--target-file)))
+      (+patch/org-archive--move-subtree target-file outline-path)
+      (message "Migrated entry (%s) to %s"
+               (+patch/org-archive--outline-path-to-string outline-path)
+               (abbreviate-file-name target-file)))))
+
+(defun +patch-gtd/migrate-legacy-archive (&optional scope)
+  "Migrate archived entries in SCOPE (defaults to current subtree) into the new archive file.
+With a prefix argument, operate on the entire buffer."
+  (interactive (list (if current-prefix-arg 'file 'tree)))
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an Org buffer"))
+  (let ((target-file (+patch/org-archive--target-file))
+        (migrated 0)
+        (missing-outline 0))
+    (save-excursion
+      (save-restriction
+        (when (eq scope 'file)
+          (widen))
+        (org-map-entries
+         (lambda ()
+           (let ((outline-path (+patch/org-archive--ensure-outline-path t)))
+             (if outline-path
+                 (progn
+                   (+patch/org-archive--move-subtree target-file outline-path)
+                   (cl-incf migrated)
+                   (setq org-map-continue-from (point)))
+               (cl-incf missing-outline))))
+         "ARCHIVE_TIME<>\"\"" scope)))
+    (message "Migrated %d entries%s"
+             migrated
+             (if (zerop missing-outline)
+                 ""
+               (format " (%d without outline metadata)" missing-outline)))))
+
 (defun +patch-dayone/archive-task ()
   (interactive)
-  (org-entry-delete (point) "ID")
-  (org-archive-to-archive-sibling))
+  (if (derived-mode-p 'org-agenda-mode)
+      (org-agenda-with-point-at-orig-entry
+        (+patch/org-archive--at-point))
+    (+patch/org-archive--at-point)))
+
+(defun +patch-gtd/archive-completed-tasks (&optional file)
+  "Archive every DONE/CNCL entry in FILE (defaults to current buffer or the GTD task file)."
+  (interactive
+   (list (cond
+          (current-prefix-arg
+           (read-file-name "Archive DONE/CNCL from: " (file-name-directory +patch/org-gtd-tasks-file)
+                           nil t nil #'file-readable-p))
+          ((and (derived-mode-p 'org-mode)
+                (buffer-file-name (or (buffer-base-buffer) (current-buffer))))
+           (buffer-file-name (or (buffer-base-buffer) (current-buffer))))
+          (t +patch/org-gtd-tasks-file))))
+  (unless (and file (file-exists-p file))
+    (user-error "Cannot find org file to archive from"))
+  (with-current-buffer (find-file-noselect file)
+    (org-with-wide-buffer
+      (goto-char (point-min))
+      (org-map-entries
+       (lambda ()
+         (+patch/org-archive--at-point t)
+         (setq org-map-continue-from (point)))
+       "TODO=\"DONE\"|TODO=\"CNCL\"" 'file)))
+  (message "Archived DONE/CNCL tasks in %s" (abbreviate-file-name file)))
 
 #+end_src
 * Roam
@@ -1034,12 +1292,14 @@ Notably, this is where I'm defining what a task vs project are:
   :after (org-agenda ts)
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
-  :defines (+patch/set-orgql-view +patch/is-action)
+  :defines (+patch/set-orgql-view +patch-dayone/is-action)
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
   <<planning-defs-orgql>>
   <<view-planning-props-orgql>>
   <<planning-predicates-orgql>>
+  ;; Load task queue library early since quarterly planning views depend on its predicates
+  (load! "dayone-task-queue")
   (setq
    +patch/daily-agenda-super-groups
    `((:name "Routine"
@@ -1275,11 +1535,11 @@ The system here is that "@" tags denote context (e.g. I can only do this task at
 - [ ] need to link to someday/maybe docs here when I have them semi-polished.
 #+name: tag-list
 #+begin_src elisp :tangle no
-(setq org-tag-alist '((:startgroup . nil)
+(setq org-tag-alist '(;; Context tags (mutually exclusive)
+                      (:startgroup . nil)
                       ("@anywhere"       . ?a)
                       ("@phone"          . ?o)
                       ("@email"          . ?m)
-                      ("@book"           . ?b)
                       ("@cheryls"        . ?y)
                       ("@parents"        . ?p)
                       ("@errands"        . ?r)
@@ -1287,18 +1547,256 @@ The system here is that "@" tags denote context (e.g. I can only do this task at
                       ("@home"           . ?h)
                       ("@work"           . ?w)
                       (:endgroup . nil)
+
                       (:startgrouptag . nil)
                       ("@work")
                       (:grouptags)
                       ("@anywhere")
                       ("@comp")
                       (:endgrouptag . nil)
-                      ("@@someday_maybe" . ?s)
-                      ("@@aspirational"  . ?z)
-                      ("@@frontburner"   . ?f)
+
+                      ;; Task queue tags (mutually exclusive)
+                      (:startgroup . nil)
+                      ("@@icebox"      . ?i)  ; Someday/maybe (READY)
+                      ("@@shelf"       . ?S)  ; Selected for this year, not yet quarterly (TODO)
+                      ("@@backburner"  . ?b)  ; Pulled into this quarter (TODO + OPENED)
+                      ("@@frontburner" . ?f)  ; This week's priorities (TODO + OPENED)
+                      (:endgroup . nil)
+
+                      ;; Other tags
+                      ("@@someday_maybe" . ?s)  ; DEPRECATED: use @@icebox instead
+                      ("@@aspirational"  . ?z)  ; DEPRECATED
                       ("%quick"          . ?q)
                       ("%easy"           . ?e)))
 #+end_src
+
+* Task Queue System
+The task queue system manages task prioritization across four levels (coldest to hottest):
+- *Icebox* - Someday/maybe ideas (TODO, @@icebox)
+- *Shelf* - Selected for this year, not yet in quarterly planning (TODO, @@shelf)
+- *Backburner* - Pulled into this quarter (TODO, @@backburner, OPENED)
+- *Frontburner* - This week's priorities (TODO/NEXT, @@frontburner, OPENED)
+
+Core functions are tangled to =dayone-task-queue.el= for independent testing.
+
+** Running Tests
+From the =org-patch= directory:
+#+begin_src shell :tangle no
+emacs --batch \
+  -L . \
+  -L ~/.config/doom-emacs/.local/straight/build-30.1/buttercup \
+  -L ~/.config/doom-emacs/.local/straight/build-30.1/ts \
+  -L ~/.config/doom-emacs/.local/straight/build-30.1/dash \
+  -L ~/.config/doom-emacs/.local/straight/build-30.1/s \
+  -l buttercup \
+  -l dayone-task-queue \
+  -l test/test-task-queue.el \
+  -f buttercup-run
+#+end_src
+
+** Library Header
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+;;; dayone-task-queue.el --- Task queue system for GTD workflow -*- lexical-binding: t; -*-
+;;; Commentary:
+;; Core functions for managing task priority queues.
+;; Queues from coldest to hottest: icebox -> shelf -> backburner -> frontburner
+;;; Code:
+(require 'org)
+(require 'org-agenda)
+(require 'ts)
+#+end_src
+
+** Queue Tag Helpers
+#+name: queue-tag-helpers
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+(defconst +patch-dayone/queue-tags
+  '("@@icebox" "@@shelf" "@@backburner" "@@frontburner")
+  "All queue tags, in order from coldest to hottest.")
+
+(defun +patch-dayone/clear-queue-tags ()
+  "Remove all queue tags from the current heading."
+  (dolist (tag +patch-dayone/queue-tags)
+    (org-toggle-tag tag 'off)))
+
+(defun +patch-dayone/set-queue-tag (tag)
+  "Set TAG as the queue tag, removing any other queue tags."
+  (+patch-dayone/clear-queue-tags)
+  (org-toggle-tag tag 'on))
+
+(defun +patch/set-opened-date (&optional pom date)
+  "Set the OPENED date of a task at POM (default point).
+DATE defaults to today if not specified."
+  (let* ((pom (or pom (point)))
+         (date (or date (ts-format (ts-now))))
+         (date-str (ts-format "%Y-%m-%d" (ts-parse date))))
+    (org-entry-put pom "OPENED" date-str)))
+
+(defun +patch-dayone/clean-task ()
+  "Clean task metadata when demoting to icebox or shelf.
+Removes priority, schedule, OPENED, and planning properties."
+  (ignore-errors (org-priority 'remove))
+  (ignore-errors (org-schedule '(4)))
+  (ignore-errors (org-entry-delete (point) "OPENED"))
+  (ignore-errors (org-entry-delete (point) "PLANNED-FOR-QUARTER"))
+  (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR"))
+  (+patch-dayone/clear-queue-tags))
+#+end_src
+
+** Core Movement Functions
+#+name: queue-movement-functions
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+(defun +patch-dayone/freeze (&optional pom)
+  "Move task to icebox (someday/maybe).
+Clears scheduling, priority, OPENED, and planning properties."
+  (interactive)
+  (save-excursion
+    (when pom (goto-char pom))
+    (+patch-dayone/clean-task)
+    (org-todo "")  ; clear TODO state
+    (+patch-dayone/set-queue-tag "@@icebox")))
+
+(defun +patch-dayone/shelve (&optional pom)
+  "Move task to shelf (selected for this year, not yet in quarterly planning).
+Clears scheduling, priority, OPENED, and planning properties."
+  (interactive)
+  (save-excursion
+    (when pom (goto-char pom))
+    (+patch-dayone/clean-task)
+    (org-todo "TODO")
+    (+patch-dayone/set-queue-tag "@@shelf")))
+
+(defun +patch-dayone/send-to-backburner (&optional pom)
+  "Move task to backburner (pulled into this quarter).
+Sets OPENED date if not already set."
+  (interactive)
+  (save-excursion
+    (when pom (goto-char pom))
+    (org-todo "TODO")
+    (+patch-dayone/set-queue-tag "@@backburner")
+    (unless (org-entry-get nil "OPENED")
+      (+patch/set-opened-date (point) (ts-format (ts-now))))))
+
+(defun +patch-dayone/send-to-frontburner (&optional pom)
+  "Move task to frontburner (this week's priorities).
+Sets OPENED date if not already set. Clears any existing schedule."
+  (interactive)
+  (save-excursion
+    (when pom (goto-char pom))
+    (org-todo "TODO")
+    (org-schedule '(4))  ; prefix arg to clear schedule
+    (+patch-dayone/set-queue-tag "@@frontburner")
+    (unless (org-entry-get nil "OPENED")
+      (+patch/set-opened-date (point) (ts-format (ts-now))))))
+#+end_src
+
+** Agenda Variants
+#+name: queue-agenda-functions
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+(defun +patch-dayone/agenda/freeze ()
+  "Move agenda task to icebox."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/freeze)))
+
+(defun +patch-dayone/agenda/shelve ()
+  "Move agenda task to shelf."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/shelve)))
+
+(defun +patch-dayone/agenda/send-to-backburner ()
+  "Move agenda task to backburner."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner)))
+
+(defun +patch-dayone/agenda/send-to-frontburner ()
+  "Move agenda task to frontburner."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-frontburner)))
+#+end_src
+
+** Planning View Variants
+#+name: queue-planning-functions
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+(defun +patch-dayone/planning/freeze ()
+  "Move task to icebox and refresh planning view."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/freeze))
+  (org-ql-view-refresh))
+
+(defun +patch-dayone/planning/shelve ()
+  "Move task to shelf and refresh planning view."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/shelve))
+  (org-ql-view-refresh))
+
+(defun +patch-dayone/planning/send-to-backburner ()
+  "Move task to backburner and refresh planning view."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner))
+  (org-ql-view-refresh))
+
+(defun +patch-dayone/planning/send-to-frontburner ()
+  "Move task to frontburner and refresh planning view."
+  (interactive)
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-frontburner))
+  (org-ql-view-refresh))
+#+end_src
+
+** Bulk Actions and Keybindings
+#+name: queue-keybindings
+#+begin_src emacs-lisp :tangle no
+(setq org-agenda-bulk-custom-functions
+      (append org-agenda-bulk-custom-functions
+              '((?I +patch-dayone/agenda/freeze)
+                (?S +patch-dayone/agenda/shelve)
+                (?B +patch-dayone/agenda/send-to-backburner)
+                (?F +patch-dayone/agenda/send-to-frontburner))))
+
+(map! (:map (org-agenda-mode-map org-agenda-keymap)
+       "I" #'+patch-dayone/agenda/freeze
+       "S" #'+patch-dayone/agenda/shelve
+       "B" #'+patch-dayone/agenda/send-to-backburner
+       "F" #'+patch-dayone/agenda/send-to-frontburner)
+      (:map evil-org-agenda-mode-map
+       :m "I" #'+patch-dayone/agenda/freeze
+       :m "S" #'+patch-dayone/agenda/shelve
+       :m "B" #'+patch-dayone/agenda/send-to-backburner
+       :m "F" #'+patch-dayone/agenda/send-to-frontburner))
+#+end_src
+
+** Org-QL Queue Predicates
+#+name: queue-predicates
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+;; Task type predicates
+(setq +patch-dayone/is-task '(not (tags "routine"))
+      +patch-dayone/is-action '(not (children))
+      ;; NOTE: is-project is currently orphaned but kept for reference/future use
+      +patch-dayone/is-project '(and (ancestors "Projects") (children)))
+
+;; Individual queue predicates
+(setq +patch-dayone/is-frozen     '(tags "@@icebox")
+      +patch-dayone/is-shelved    '(tags "@@shelf")
+      +patch-dayone/is-backburner '(tags "@@backburner")
+      +patch-dayone/is-frontburner '(tags "@@frontburner")
+
+      ;; Composite predicates
+      +patch-dayone/is-in-queue '(or (tags "@@icebox")
+                                     (tags "@@shelf")
+                                     (tags "@@backburner")
+                                     (tags "@@frontburner"))
+      +patch-dayone/is-cooking `(and ,+patch-dayone/is-task
+                                     (or (tags "@@backburner")
+                                         (tags "@@frontburner")))
+      +patch-dayone/is-cold `(and ,+patch-dayone/is-task
+                                  (or (tags "@@shelf")
+                                      (tags "@@icebox"))))
+#+end_src
+
+** Library Footer
+#+begin_src emacs-lisp :tangle dayone-task-queue.el
+(provide 'dayone-task-queue)
+;;; dayone-task-queue.el ends here
+#+end_src
+
 * Codeblocks
 ** Keep parinfer from constantly asking if it can indent things
 #+begin_src emacs-lisp
@@ -1424,13 +1922,13 @@ These are the views I use to plan my tasks. I review my tasks periodically, with
   :defer-incrementally (all-the-icons ob-jupyter org-caldav org-jira)
   :config
   <<layout-fns>>
+  <<queue-keybindings>>
   <<yearly-planning-utils>>
   <<quarterly-planning-view>>
   <<quarterly-planning-utils>>
   <<generate-burnup-plot>>
   <<quarterly-planning-review>>
   <<weekly-planning-view>>
-  <<weekly-planning-utils>>
   <<daily-planning-cmds>>
   <<daily-planning-view>>
   (defun +patch-gtd/planning/gtd-file-layout ()
@@ -1528,50 +2026,20 @@ A view of my upcoming year. On the left, I can see all TODO/NEXT projects (or ac
 
 #+name: planning-defs-orgql
 #+begin_src emacs-lisp :tangle no
-(setq
-  +patch/is-project '(and (ancestors "Projects") (children))
-  +patch/is-action '(not (children)))
-
 #+end_src
 
 #+name: yearly-planning-orgql-views
 #+begin_src emacs-lisp :tangle no
+;; TODO doesn't look like this needs a set/refresh wrapper anymore
 (defun +patch-gtd/set-or-refresh-yearly-views ()
-  (setq
-   +patch-dayone/is-active '(and (todo "TODO" "NEXT")
-                               (not (tags "routine")))
-   +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
-                                           (not (tags "routine"))
-                                           (not (ancestors (todo "TODO" "NEXT")))))
-
   (+patch/set-orgql-view
    "Active Tasks"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query ,+patch-dayone/is-active
+     :query (and (todo "TODO" "NEXT") ,+patch-dayone/is-task)
      :sort (priority todo)
      :narrow nil
      :super-groups ((:auto-outline-path t))
-     :title "Active Tasks"))
-
-  ;; hoping to get rid of this, but leaving it for now
-  (+patch/set-orgql-view
-   "Active Tasks Schedule"
-   `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query ,+patch/is-top-level-selected-task
-     :sort (priority todo)
-     :narrow nil
-     :super-groups ((:auto-planning t))
-     :title "Yearly Planning"))
-
-  ;; hoping to get rid of this, but leaving it for now
-  (+patch/set-orgql-view
-   "Active Projects" ;; previously "Yearly Planning"
-   `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query (and ,+patch/is-top-level-selected-task ,+patch/is-project)
-     :sort (priority todo)
-     :narrow nil
-     :super-groups ((:auto-outline-path t))
-     :title "Active Projects")))
+     :title "Active Tasks")))
 
 (+patch-gtd/set-or-refresh-yearly-views)
 #+end_src
@@ -1579,44 +2047,19 @@ A view of my upcoming year. On the left, I can see all TODO/NEXT projects (or ac
 #+name: yearly-planning-utils
 #+begin_src emacs-lisp :tangle no
 (defun +patch-dayone/clean-task ()
+  "Clean task metadata, removing it from any task queue.
+Removes priority, schedule, OPENED, and planning properties."
   (ignore-errors (org-priority 'remove))
   (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
   (ignore-errors (org-entry-delete (point) "OPENED"))
   (ignore-errors (org-entry-delete (point) "PLANNED-FOR-QUARTER"))
-  (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR")))
-
-(defun +patch-dayone/hatch (&optional pom)
-  (interactive)
-  (+patch-dayone/clean-task)
-  (org-todo "TODO"))
-
-(defun +patch-dayone/incubate ()
-  (interactive)
-  (+patch-dayone/clean-task)
-  (org-todo "READY"))
-
-(defun +patch-dayone/agenda/hatch ()
-  (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/hatch)))
-
-(defun +patch-dayone/agenda/incubate ()
-  (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/incubate)))
-
-(setq org-agenda-bulk-custom-functions
-      (append org-agenda-bulk-custom-functions '((?i +patch-dayone/agenda/incubate)
-                                                 (?h +patch-dayone/agenda/hatch))))
-(map! (:map org-agenda-mode-map "i" #'+patch-dayone/agenda/incubate)
-      (:map org-agenda-mode-map "h" #'+patch-dayone/agenda/hatch)
-      (:map org-agenda-keymap "i" #'+patch-dayone/agenda/incubate)
-      (:map org-agenda-keymap "h" #'+patch-dayone/agenda/hatch)
-      (:map evil-org-agenda-mode-map :m "i" #'+patch-dayone/agenda/incubate)
-      (:map evil-org-agenda-mode-map :m "h" #'+patch-dayone/agenda/hatch))
+  (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR"))
+  (+patch-dayone/clear-queue-tags))
 #+end_src
 ** quarterly planning
 Ultimately, the goal here is to curate a "Backburner" queue to pull in tasks from throughout the quarter. Backburner tasks have an "OPENED" property, which also keeps track of when they were pulled in.
-Quarterly planning is done with an org-ql view of my "Unopened Active Tasks" on the left, and the "Backburner" on the right. The process is to:
-1. All Wishes Granted: Open promising tasks, pulling them from the left (Unopened Active Tasks) to the right (Backburner) to get an "all wishes granted" backburner queue
+Quarterly planning is done with an org-ql view of my "Cold Tasks (Shelf, Icebox)" on the left, and the "Backburner" on the right. The process is to:
+1. All Wishes Granted: Pull promising tasks from the left (Cold Tasks) to the right (Backburner) to get an "all wishes granted" backburner queue
 2. Prioritize: Roughly prioritize the Backburner tasks, relative to eachother. (This is basically an internal prioritization until I come up with a real process/view for this)
 3. Review: Compare what I've pulled in with my historical quarterly velocity and against this year's burnup so far, and open/un-open (or archive) tasks accordingly
 *** initial planning
@@ -1658,17 +2101,14 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
 
 
 (defun +patch-gtd/set-or-refresh-quarterly-views ()
+  "Set or refresh quarterly view predicates. Call this to update time-based predicates."
   (setq
-   +patch-dayone/is-open `(and ,+patch-dayone/is-active (property "OPENED"))
-   +patch-dayone/has-been-open `(and (not (tags "routine")) (property "OPENED"))
-   +patch-dayone/is-unopened-active-task `(and ,+patch-dayone/is-active (not (property "OPENED")))
    +patch-dayone/closed-before-this-quarter `(closed :to ,(ts-format (+patch/start-of-this-quarter-ts)))
-   +patch-dayone/planned-for-this-quarter `(and ,+patch-dayone/has-been-open
+   +patch-dayone/planned-for-this-quarter `(and ,+patch-dayone/is-cooking
                                                 (not ,+patch-dayone/closed-before-this-quarter))
    +patch-dayone/closed-before-this-year `(closed :to ,(ts-format (ts-dec 'second 1 (+patch/start-of-this-year-ts))))
-   +patch-dayone/planned-for-this-year `(and ,+patch-dayone/has-been-open
-                                                (not ,+patch-dayone/closed-before-this-year))
-)
+   +patch-dayone/planned-for-this-year `(and ,+patch-dayone/is-cooking
+                                                (not ,+patch-dayone/closed-before-this-year)))
 
   (defun +patch-dayone--show-closed-without-scheduled()
     (interactive)
@@ -1693,8 +2133,6 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
         :where '(and (closed) (not (scheduled)))
         :select #'+patch-dayone--set-scheduled-to-closed))
 
-
-
   (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
     (length
      (org-ql-query
@@ -1710,16 +2148,16 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
   (+patch/set-orgql-view
    "Backburner"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query (and ,+patch-dayone/is-open ,+patch/is-action)
+     :query (and ,+patch-dayone/is-cooking ,+patch-dayone/is-action)
      :sort (priority todo)
      :narrow nil
      :super-groups ((:auto-outline-path t))
      :title "Backburner"))
 
   (+patch/set-orgql-view
-   "Unopened Active Tasks"
+   "Cold Tasks (Shelf, Icebox)"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query ,+patch-dayone/is-unopened-active-task
+     :query (and ,+patch-dayone/is-cold ,+patch-dayone/is-action)
      :sort (priority todo)
      :narrow nil
      :super-groups ((:auto-outline-path t))
@@ -1739,7 +2177,7 @@ A view of my upcoming quarter. On the right I can see all TODO/NEXT actions (as 
                              delete-other-windows
                              split-window-horizontally
                              (lambda () (enlarge-window (/ (frame-width) 10) t))
-                             (lambda () (org-ql-view "Unopened Active Tasks"))
+                             (lambda () (org-ql-view "Cold Tasks (Shelf, Icebox)"))
                              (lambda () (evil-window-right 1)))))
 
 
@@ -1758,64 +2196,41 @@ Some helpful utilities for my quarterly review
 (defun +patch/ts-quarter-with-year (ts)
   (format "%s-Q%s" (ts-year ts) (+patch/ts-quarter ts)))
 
-(defun +patch-dayone/open (&optional pom)
+;; Functions for backdating OPENED to start of quarter/year (useful during planning sessions)
+(defun +patch-dayone/send-to-backburner-this-quarter (&optional pom)
+  "Send task to backburner with OPENED dated to start of this quarter."
   (interactive)
-  ;; makes it so I can use this to demote tasks from the frontburner, as well as promote to the backburner
-  (org-toggle-tag "@@frontburner" 'off)
-  (when (not (org-entry-get nil "OPENED"))
-    (+patch/set-opened-date (or pom (point)) (ts-format (ts-now)))))
+  (save-excursion
+    (when pom (goto-char pom))
+    (org-todo "TODO")
+    (+patch-dayone/set-queue-tag "@@backburner")
+    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts)))))
 
-(defun +patch-dayone/open-this-quarter (&optional pom)
+(defun +patch-dayone/send-to-backburner-this-year (&optional pom)
+  "Send task to backburner with OPENED dated to start of this year."
   (interactive)
-  (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-  (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
+  (save-excursion
+    (when pom (goto-char pom))
+    (org-todo "TODO")
+    (+patch-dayone/set-queue-tag "@@backburner")
+    (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
+    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts)))))
 
-(defun +patch-dayone/open-this-year (&optional pom)
+(defun +patch-dayone/agenda/send-to-backburner-this-quarter ()
   (interactive)
-  (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
-  (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-  (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts))))
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-quarter)))
 
-(defun +patch-dayone/agenda/open ()
+(defun +patch-dayone/agenda/send-to-backburner-this-year ()
   (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/open)))
+  (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-year)))
 
-(defun +patch-dayone/agenda/open-this-quarter ()
-  (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-quarter)))
-
-(defun +patch-dayone/agenda/open-this-year ()
-  (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-year)))
-
-(defun +patch-dayone/planning/open ()
-  (interactive)
-  (+patch--from-source-of-agenda-entry (+patch-dayone/open))
-  (org-ql-view-refresh))
-
-(defun +patch-dayone/send-to-backburner (&optional pom)
-  (interactive)
-  (+patch-dayone/open pom))
-
-(defun +patch-dayone/agenda/send-to-backburner (&optional pom)
-  (interactive)
-  (+patch-dayone/agenda/open pom))
-
-(defun +patch-dayone/planning/send-to-backburner ()
-  (interactive)
-  (+patch-dayone/planning/open))
-
-(setq org-agenda-bulk-custom-functions
-      (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
-(map! (:map (org-agenda-mode-map org-agenda-keymap) "o" #'+patch-dayone/agenda/open)
-      (:map evil-org-agenda-mode-map :m "o" #'+patch-dayone/agenda/open)
-      (:map evil-org-agenda-mode-map :m "O" nil)
-      (:map org-super-agenda-header-map :m "O" nil)
-      (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
+(map! (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
             (:prefix ("O" . "Open At Time")
-             :desc "Now"              "n"   #'+patch-dayone/agenda/open
-             :desc "For This Quarter" "q"   #'+patch-dayone/agenda/open-this-quarter
-             :desc "For This Year"    "y"   #'+patch-dayone/agenda/open-this-year)))
+             :desc "Now"              "n"   #'+patch-dayone/agenda/send-to-backburner
+             :desc "For This Quarter" "q"   #'+patch-dayone/agenda/send-to-backburner-this-quarter
+             :desc "For This Year"    "y"   #'+patch-dayone/agenda/send-to-backburner-this-year)))
 #+end_src
 
 *** review
@@ -1904,7 +2319,7 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
       (org-ql-query
         :select #'+patch/find-and-parse-task
         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-        :where +patch-dayone/has-been-open))))
+        :where +patch-dayone/is-cooking))))
 
 #+end_src
 
@@ -1924,7 +2339,7 @@ These get me the tasks for this quarter, and eventually I'd like to better use t
   (+patch/set-orgql-view
    "Backburner Review"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-     :query (and ,+patch-dayone/is-open ,+patch/is-action)
+     :query (and ,+patch-dayone/is-cooking ,+patch-dayone/is-action)
      :sort (priority todo)
      :narrow nil
      :super-groups ((:auto-outline-path t))
@@ -2261,8 +2676,8 @@ The view for my weekly planning has all actions currently scheduled (up until th
    "Non-Scheduled Backburner"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
      :query (and
-             ,+patch-dayone/is-open
-             ,+patch/is-action
+             ,+patch-dayone/is-cooking
+             ,+patch-dayone/is-action
              (not ,scheduled-through-around-this-week)
              (not (tags "@@frontburner")))
      :sort (priority todo)
@@ -2274,8 +2689,9 @@ The view for my weekly planning has all actions currently scheduled (up until th
    "This Week's Agenda"
    `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
      :query (and
-             ,+patch-dayone/is-open
-             ,+patch/is-action
+             (todo "TODO" "NEXT")
+             ,+patch-dayone/is-cooking
+             ,+patch-dayone/is-action
              (or ,scheduled-through-around-this-week
                  ,due-through-around-this-week
                  (tags "@@frontburner")))
@@ -2300,7 +2716,7 @@ The view for my weekly planning has all actions currently scheduled (up until th
      :title "This Week's Agenda"))
   )
 
-(+patch-gtd/set-or-refresh-weekly-views)
+(after! ts (+patch-gtd/set-or-refresh-weekly-views))
 #+end_src
 
 #+name: weekly-planning-view
@@ -2332,25 +2748,6 @@ The view for my weekly planning has all actions currently scheduled (up until th
                                (lambda () (evil-window-right 1))
                                ;; (lambda () (funcall consult--buffer-display "*Org QL View: This Week's Agenda*"))
                                )))
-#+end_src
-
-#+name: weekly-planning-utils
-#+begin_src emacs-lisp :tangle no
-(defun +patch-dayone/send-to-frontburner ()
-  (interactive)
-  (org-schedule '(4))
-  (org-set-tags "@@frontburner"))
-
-(defun +patch-dayone/agenda/send-to-frontburner ()
-  (interactive)
-  (org-agenda-schedule '(4))
-  (org-agenda-set-tags "@@frontburner"))
-
-(setq org-agenda-bulk-custom-functions
-      (append org-agenda-bulk-custom-functions '((?F +patch-dayone/agenda/send-to-frontburner))))
-(map! (:map org-agenda-mode-map "f" #'+patch-dayone/agenda/send-to-frontburner)
-      (:map org-agenda-keymap "f" #'+patch-dayone/agenda/send-to-frontburner)
-      (:map evil-org-agenda-mode-map :m "f" #'+patch-dayone/agenda/send-to-frontburner))
 #+end_src
 
 ** daily planning

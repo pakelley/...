@@ -654,12 +654,9 @@
   :after (org-agenda ts)
   :custom
   (org-super-agenda-date-format "%e %B %Y - %A")
-  :defines (+patch/set-orgql-view +patch/is-action)
+  :defines (+patch/set-orgql-view +patch-dayone/is-action)
   :config
   ;; have to setq instead of :custom bc we need access to org-ql vars (so we need it executed after the package is loaded, and :custom seems to be executed before the package is loaded)
-  (setq
-    +patch/is-project '(and (ancestors "Projects") (children))
-    +patch/is-action '(not (children)))
   
   (defun +patch--get-path (task)
     "Try to find the path to TASK by walking up ':parent' tasks (found using the
@@ -775,6 +772,8 @@
                   (from (ts<= from opened-at))
                   (to (ts<= opened-at to))))))
     )
+  ;; Load task queue library early since quarterly planning views depend on its predicates
+  (load! "dayone-task-queue")
   (setq
    +patch/daily-agenda-super-groups
    `((:name "Routine"
@@ -856,42 +855,16 @@
            (if view
                (setf (cdr view) view-spec)
              (add-to-list 'org-ql-views `(,view-name . ,view-spec)))))
+       ;; TODO doesn't look like this needs a set/refresh wrapper anymore
        (defun +patch-gtd/set-or-refresh-yearly-views ()
-         (setq
-          +patch-dayone/is-active '(and (todo "TODO" "NEXT")
-                                      (not (tags "routine")))
-          +patch/is-top-level-selected-task '(and (todo "TODO" "NEXT")
-                                                  (not (tags "routine"))
-                                                  (not (ancestors (todo "TODO" "NEXT")))))
-       
          (+patch/set-orgql-view
           "Active Tasks"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query ,+patch-dayone/is-active
+            :query (and (todo "TODO" "NEXT") ,+patch-dayone/is-task)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
-            :title "Active Tasks"))
-       
-         ;; hoping to get rid of this, but leaving it for now
-         (+patch/set-orgql-view
-          "Active Tasks Schedule"
-          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query ,+patch/is-top-level-selected-task
-            :sort (priority todo)
-            :narrow nil
-            :super-groups ((:auto-planning t))
-            :title "Yearly Planning"))
-       
-         ;; hoping to get rid of this, but leaving it for now
-         (+patch/set-orgql-view
-          "Active Projects" ;; previously "Yearly Planning"
-          `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and ,+patch/is-top-level-selected-task ,+patch/is-project)
-            :sort (priority todo)
-            :narrow nil
-            :super-groups ((:auto-outline-path t))
-            :title "Active Projects")))
+            :title "Active Tasks")))
        
        (+patch-gtd/set-or-refresh-yearly-views)
        (defun +patch/ts-quarter (ts)
@@ -904,64 +877,41 @@
        (defun +patch/ts-quarter-with-year (ts)
          (format "%s-Q%s" (ts-year ts) (+patch/ts-quarter ts)))
        
-       (defun +patch-dayone/open (&optional pom)
+       ;; Functions for backdating OPENED to start of quarter/year (useful during planning sessions)
+       (defun +patch-dayone/send-to-backburner-this-quarter (&optional pom)
+         "Send task to backburner with OPENED dated to start of this quarter."
          (interactive)
-         ;; makes it so I can use this to demote tasks from the frontburner, as well as promote to the backburner
-         (org-toggle-tag "@@frontburner" 'off)
-         (when (not (org-entry-get nil "OPENED"))
-           (+patch/set-opened-date (or pom (point)) (ts-format (ts-now)))))
+         (save-excursion
+           (when pom (goto-char pom))
+           (org-todo "TODO")
+           (+patch-dayone/set-queue-tag "@@backburner")
+           (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+           (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts)))))
        
-       (defun +patch-dayone/open-this-quarter (&optional pom)
+       (defun +patch-dayone/send-to-backburner-this-year (&optional pom)
+         "Send task to backburner with OPENED dated to start of this year."
          (interactive)
-         (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-         (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
+         (save-excursion
+           (when pom (goto-char pom))
+           (org-todo "TODO")
+           (+patch-dayone/set-queue-tag "@@backburner")
+           (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
+           (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+           (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts)))))
        
-       (defun +patch-dayone/open-this-year (&optional pom)
+       (defun +patch-dayone/agenda/send-to-backburner-this-quarter ()
          (interactive)
-         (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
-         (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-         (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts))))
+         (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-quarter)))
        
-       (defun +patch-dayone/agenda/open ()
+       (defun +patch-dayone/agenda/send-to-backburner-this-year ()
          (interactive)
-         (+patch--from-source-of-agenda-entry (+patch-dayone/open)))
+         (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-year)))
        
-       (defun +patch-dayone/agenda/open-this-quarter ()
-         (interactive)
-         (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-quarter)))
-       
-       (defun +patch-dayone/agenda/open-this-year ()
-         (interactive)
-         (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-year)))
-       
-       (defun +patch-dayone/planning/open ()
-         (interactive)
-         (+patch--from-source-of-agenda-entry (+patch-dayone/open))
-         (org-ql-view-refresh))
-       
-       (defun +patch-dayone/send-to-backburner (&optional pom)
-         (interactive)
-         (+patch-dayone/open pom))
-       
-       (defun +patch-dayone/agenda/send-to-backburner (&optional pom)
-         (interactive)
-         (+patch-dayone/agenda/open pom))
-       
-       (defun +patch-dayone/planning/send-to-backburner ()
-         (interactive)
-         (+patch-dayone/planning/open))
-       
-       (setq org-agenda-bulk-custom-functions
-             (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
-       (map! (:map (org-agenda-mode-map org-agenda-keymap) "o" #'+patch-dayone/agenda/open)
-             (:map evil-org-agenda-mode-map :m "o" #'+patch-dayone/agenda/open)
-             (:map evil-org-agenda-mode-map :m "O" nil)
-             (:map org-super-agenda-header-map :m "O" nil)
-             (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
+       (map! (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
                    (:prefix ("O" . "Open At Time")
-                    :desc "Now"              "n"   #'+patch-dayone/agenda/open
-                    :desc "For This Quarter" "q"   #'+patch-dayone/agenda/open-this-quarter
-                    :desc "For This Year"    "y"   #'+patch-dayone/agenda/open-this-year)))
+                    :desc "Now"              "n"   #'+patch-dayone/agenda/send-to-backburner
+                    :desc "For This Quarter" "q"   #'+patch-dayone/agenda/send-to-backburner-this-quarter
+                    :desc "For This Year"    "y"   #'+patch-dayone/agenda/send-to-backburner-this-year)))
        (defun +patch/start-of-this-quarter-ts (&optional as-of)
          (let* ((base-ts (or as-of (ts-now)))
                 (base-date (ts-apply :hour 0 :minute 0 :second 0 base-ts))
@@ -996,17 +946,14 @@
        
        
        (defun +patch-gtd/set-or-refresh-quarterly-views ()
+         "Set or refresh quarterly view predicates. Call this to update time-based predicates."
          (setq
-          +patch-dayone/is-open `(and ,+patch-dayone/is-active (property "OPENED"))
-          +patch-dayone/has-been-open `(and (not (tags "routine")) (property "OPENED"))
-          +patch-dayone/is-unopened-active-task `(and ,+patch-dayone/is-active (not (property "OPENED")))
           +patch-dayone/closed-before-this-quarter `(closed :to ,(ts-format (+patch/start-of-this-quarter-ts)))
-          +patch-dayone/planned-for-this-quarter `(and ,+patch-dayone/has-been-open
+          +patch-dayone/planned-for-this-quarter `(and ,+patch-dayone/is-cooking
                                                        (not ,+patch-dayone/closed-before-this-quarter))
           +patch-dayone/closed-before-this-year `(closed :to ,(ts-format (ts-dec 'second 1 (+patch/start-of-this-year-ts))))
-          +patch-dayone/planned-for-this-year `(and ,+patch-dayone/has-been-open
-                                                       (not ,+patch-dayone/closed-before-this-year))
-       )
+          +patch-dayone/planned-for-this-year `(and ,+patch-dayone/is-cooking
+                                                       (not ,+patch-dayone/closed-before-this-year)))
        
          (defun +patch-dayone--show-closed-without-scheduled()
            (interactive)
@@ -1031,8 +978,6 @@
                :where '(and (closed) (not (scheduled)))
                :select #'+patch-dayone--set-scheduled-to-closed))
        
-       
-       
          (defun +patch/num-tasks-completed-last-quarter (&optional as-of)
            (length
             (org-ql-query
@@ -1048,16 +993,16 @@
          (+patch/set-orgql-view
           "Backburner"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query (and ,+patch-dayone/is-open ,+patch/is-action)
+            :query (and ,+patch-dayone/is-cooking ,+patch-dayone/is-action)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
             :title "Backburner"))
        
          (+patch/set-orgql-view
-          "Unopened Active Tasks"
+          "Cold Tasks (Shelf, Icebox)"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-            :query ,+patch-dayone/is-unopened-active-task
+            :query (and ,+patch-dayone/is-cold ,+patch-dayone/is-action)
             :sort (priority todo)
             :narrow nil
             :super-groups ((:auto-outline-path t))
@@ -1144,8 +1089,8 @@
           "Non-Scheduled Backburner"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
             :query (and
-                    ,+patch-dayone/is-open
-                    ,+patch/is-action
+                    ,+patch-dayone/is-cooking
+                    ,+patch-dayone/is-action
                     (not ,scheduled-through-around-this-week)
                     (not (tags "@@frontburner")))
             :sort (priority todo)
@@ -1157,8 +1102,9 @@
           "This Week's Agenda"
           `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
             :query (and
-                    ,+patch-dayone/is-open
-                    ,+patch/is-action
+                    (todo "TODO" "NEXT")
+                    ,+patch-dayone/is-cooking
+                    ,+patch-dayone/is-action
                     (or ,scheduled-through-around-this-week
                         ,due-through-around-this-week
                         (tags "@@frontburner")))
@@ -1183,7 +1129,7 @@
             :title "This Week's Agenda"))
          )
        
-       (+patch-gtd/set-or-refresh-weekly-views)
+       (after! ts (+patch-gtd/set-or-refresh-weekly-views))
 
 
   (defun org-ql-action-list (action-list-name)
@@ -1338,11 +1284,11 @@
 (use-package! org
   :commands org-mode
   :config
-  (setq org-tag-alist '((:startgroup . nil)
+  (setq org-tag-alist '(;; Context tags (mutually exclusive)
+                        (:startgroup . nil)
                         ("@anywhere"       . ?a)
                         ("@phone"          . ?o)
                         ("@email"          . ?m)
-                        ("@book"           . ?b)
                         ("@cheryls"        . ?y)
                         ("@parents"        . ?p)
                         ("@errands"        . ?r)
@@ -1350,15 +1296,25 @@
                         ("@home"           . ?h)
                         ("@work"           . ?w)
                         (:endgroup . nil)
+  
                         (:startgrouptag . nil)
                         ("@work")
                         (:grouptags)
                         ("@anywhere")
                         ("@comp")
                         (:endgrouptag . nil)
-                        ("@@someday_maybe" . ?s)
-                        ("@@aspirational"  . ?z)
-                        ("@@frontburner"   . ?f)
+  
+                        ;; Task queue tags (mutually exclusive)
+                        (:startgroup . nil)
+                        ("@@icebox"      . ?i)  ; Someday/maybe (READY)
+                        ("@@shelf"       . ?S)  ; Selected for this year, not yet quarterly (TODO)
+                        ("@@backburner"  . ?b)  ; Pulled into this quarter (TODO + OPENED)
+                        ("@@frontburner" . ?f)  ; This week's priorities (TODO + OPENED)
+                        (:endgroup . nil)
+  
+                        ;; Other tags
+                        ("@@someday_maybe" . ?s)  ; DEPRECATED: use @@icebox instead
+                        ("@@aspirational"  . ?z)  ; DEPRECATED
                         ("%quick"          . ?q)
                         ("%easy"           . ?e)))
   (setq org-startup-with-latex-preview t)
@@ -1436,40 +1392,32 @@
         (dolist (buffer-ref-or-fn (cdr buffer-refs-or-fns))
           (when-let* ((ret (open-buffer-or-call-fn buffer-ref-or-fn)))
             (display-buffer-same-window ret nil))))))
+  (setq org-agenda-bulk-custom-functions
+        (append org-agenda-bulk-custom-functions
+                '((?I +patch-dayone/agenda/freeze)
+                  (?S +patch-dayone/agenda/shelve)
+                  (?B +patch-dayone/agenda/send-to-backburner)
+                  (?F +patch-dayone/agenda/send-to-frontburner))))
+  
+  (map! (:map (org-agenda-mode-map org-agenda-keymap)
+         "I" #'+patch-dayone/agenda/freeze
+         "S" #'+patch-dayone/agenda/shelve
+         "B" #'+patch-dayone/agenda/send-to-backburner
+         "F" #'+patch-dayone/agenda/send-to-frontburner)
+        (:map evil-org-agenda-mode-map
+         :m "I" #'+patch-dayone/agenda/freeze
+         :m "S" #'+patch-dayone/agenda/shelve
+         :m "B" #'+patch-dayone/agenda/send-to-backburner
+         :m "F" #'+patch-dayone/agenda/send-to-frontburner))
   (defun +patch-dayone/clean-task ()
+    "Clean task metadata, removing it from any task queue.
+  Removes priority, schedule, OPENED, and planning properties."
     (ignore-errors (org-priority 'remove))
     (ignore-errors (org-schedule '(4)))  ;; prefix arg to unschedule
     (ignore-errors (org-entry-delete (point) "OPENED"))
     (ignore-errors (org-entry-delete (point) "PLANNED-FOR-QUARTER"))
-    (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR")))
-  
-  (defun +patch-dayone/hatch (&optional pom)
-    (interactive)
-    (+patch-dayone/clean-task)
-    (org-todo "TODO"))
-  
-  (defun +patch-dayone/incubate ()
-    (interactive)
-    (+patch-dayone/clean-task)
-    (org-todo "READY"))
-  
-  (defun +patch-dayone/agenda/hatch ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/hatch)))
-  
-  (defun +patch-dayone/agenda/incubate ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/incubate)))
-  
-  (setq org-agenda-bulk-custom-functions
-        (append org-agenda-bulk-custom-functions '((?i +patch-dayone/agenda/incubate)
-                                                   (?h +patch-dayone/agenda/hatch))))
-  (map! (:map org-agenda-mode-map "i" #'+patch-dayone/agenda/incubate)
-        (:map org-agenda-mode-map "h" #'+patch-dayone/agenda/hatch)
-        (:map org-agenda-keymap "i" #'+patch-dayone/agenda/incubate)
-        (:map org-agenda-keymap "h" #'+patch-dayone/agenda/hatch)
-        (:map evil-org-agenda-mode-map :m "i" #'+patch-dayone/agenda/incubate)
-        (:map evil-org-agenda-mode-map :m "h" #'+patch-dayone/agenda/hatch))
+    (ignore-errors (org-entry-delete (point) "PLANNED-FOR-YEAR"))
+    (+patch-dayone/clear-queue-tags))
   (defun +patch-gtd/planning/quarterly-planning-layout ()
     (interactive)
     (+patch-gtd/set-or-refresh-quarterly-views)
@@ -1478,7 +1426,7 @@
                                delete-other-windows
                                split-window-horizontally
                                (lambda () (enlarge-window (/ (frame-width) 10) t))
-                               (lambda () (org-ql-view "Unopened Active Tasks"))
+                               (lambda () (org-ql-view "Cold Tasks (Shelf, Icebox)"))
                                (lambda () (evil-window-right 1)))))
   
   
@@ -1492,64 +1440,41 @@
   (defun +patch/ts-quarter-with-year (ts)
     (format "%s-Q%s" (ts-year ts) (+patch/ts-quarter ts)))
   
-  (defun +patch-dayone/open (&optional pom)
+  ;; Functions for backdating OPENED to start of quarter/year (useful during planning sessions)
+  (defun +patch-dayone/send-to-backburner-this-quarter (&optional pom)
+    "Send task to backburner with OPENED dated to start of this quarter."
     (interactive)
-    ;; makes it so I can use this to demote tasks from the frontburner, as well as promote to the backburner
-    (org-toggle-tag "@@frontburner" 'off)
-    (when (not (org-entry-get nil "OPENED"))
-      (+patch/set-opened-date (or pom (point)) (ts-format (ts-now)))))
+    (save-excursion
+      (when pom (goto-char pom))
+      (org-todo "TODO")
+      (+patch-dayone/set-queue-tag "@@backburner")
+      (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+      (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts)))))
   
-  (defun +patch-dayone/open-this-quarter (&optional pom)
+  (defun +patch-dayone/send-to-backburner-this-year (&optional pom)
+    "Send task to backburner with OPENED dated to start of this year."
     (interactive)
-    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-quarter-ts))))
+    (save-excursion
+      (when pom (goto-char pom))
+      (org-todo "TODO")
+      (+patch-dayone/set-queue-tag "@@backburner")
+      (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
+      (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
+      (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts)))))
   
-  (defun +patch-dayone/open-this-year (&optional pom)
+  (defun +patch-dayone/agenda/send-to-backburner-this-quarter ()
     (interactive)
-    (org-entry-put pom "PLANNED-FOR-YEAR" (number-to-string (ts-year (ts-now))))
-    (org-entry-put pom "PLANNED-FOR-QUARTER" (+patch/ts-quarter-with-year (ts-now)))
-    (+patch/set-opened-date (or pom (point)) (ts-format (+patch/start-of-this-year-ts))))
+    (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-quarter)))
   
-  (defun +patch-dayone/agenda/open ()
+  (defun +patch-dayone/agenda/send-to-backburner-this-year ()
     (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/open)))
+    (+patch--from-source-of-agenda-entry (+patch-dayone/send-to-backburner-this-year)))
   
-  (defun +patch-dayone/agenda/open-this-quarter ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-quarter)))
-  
-  (defun +patch-dayone/agenda/open-this-year ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/open-this-year)))
-  
-  (defun +patch-dayone/planning/open ()
-    (interactive)
-    (+patch--from-source-of-agenda-entry (+patch-dayone/open))
-    (org-ql-view-refresh))
-  
-  (defun +patch-dayone/send-to-backburner (&optional pom)
-    (interactive)
-    (+patch-dayone/open pom))
-  
-  (defun +patch-dayone/agenda/send-to-backburner (&optional pom)
-    (interactive)
-    (+patch-dayone/agenda/open pom))
-  
-  (defun +patch-dayone/planning/send-to-backburner ()
-    (interactive)
-    (+patch-dayone/planning/open))
-  
-  (setq org-agenda-bulk-custom-functions
-        (append org-agenda-bulk-custom-functions '((?o +patch-dayone/agenda/open))))
-  (map! (:map (org-agenda-mode-map org-agenda-keymap) "o" #'+patch-dayone/agenda/open)
-        (:map evil-org-agenda-mode-map :m "o" #'+patch-dayone/agenda/open)
-        (:map evil-org-agenda-mode-map :m "O" nil)
-        (:map org-super-agenda-header-map :m "O" nil)
-        (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
+  (map! (:map (org-agenda-mode-map org-agenda-keymap evil-org-agenda-mode-map)
               (:prefix ("O" . "Open At Time")
-               :desc "Now"              "n"   #'+patch-dayone/agenda/open
-               :desc "For This Quarter" "q"   #'+patch-dayone/agenda/open-this-quarter
-               :desc "For This Year"    "y"   #'+patch-dayone/agenda/open-this-year)))
+               :desc "Now"              "n"   #'+patch-dayone/agenda/send-to-backburner
+               :desc "For This Quarter" "q"   #'+patch-dayone/agenda/send-to-backburner-this-quarter
+               :desc "For This Year"    "y"   #'+patch-dayone/agenda/send-to-backburner-this-year)))
   (defun +patch/generate-quarters-burnup-plot ()
     (interactive)
     (+patch/invoke-babel-named "~/.config/doom/modules/lang/org-patch/config.org" "quarters-tasks")
@@ -1568,7 +1493,7 @@
     (+patch/set-orgql-view
      "Backburner Review"
      `(:buffers-files ("~/.local/share/notes/gtd/org-gtd-tasks.org")
-       :query (and ,+patch-dayone/is-open ,+patch/is-action)
+       :query (and ,+patch-dayone/is-cooking ,+patch-dayone/is-action)
        :sort (priority todo)
        :narrow nil
        :super-groups ((:auto-outline-path t))
@@ -1620,21 +1545,6 @@
                                  (lambda () (evil-window-right 1))
                                  ;; (lambda () (funcall consult--buffer-display "*Org QL View: This Week's Agenda*"))
                                  )))
-  (defun +patch-dayone/send-to-frontburner ()
-    (interactive)
-    (org-schedule '(4))
-    (org-set-tags "@@frontburner"))
-  
-  (defun +patch-dayone/agenda/send-to-frontburner ()
-    (interactive)
-    (org-agenda-schedule '(4))
-    (org-agenda-set-tags "@@frontburner"))
-  
-  (setq org-agenda-bulk-custom-functions
-        (append org-agenda-bulk-custom-functions '((?F +patch-dayone/agenda/send-to-frontburner))))
-  (map! (:map org-agenda-mode-map "f" #'+patch-dayone/agenda/send-to-frontburner)
-        (:map org-agenda-keymap "f" #'+patch-dayone/agenda/send-to-frontburner)
-        (:map evil-org-agenda-mode-map :m "f" #'+patch-dayone/agenda/send-to-frontburner))
   (defun +patch/is-substr (comparison-string query-string)
     (string-match-p (regexp-quote query-string) comparison-string))
   
@@ -1766,7 +1676,7 @@
       (org-ql-query
         :select #'+patch/find-and-parse-task
         :from (cons "~/.local/share/notes/gtd/org-gtd-tasks.org" (f-glob "gtd_archive_[0-9][0-9][0-9][0-9]" "~/.local/share/notes/gtd"))
-        :where +patch-dayone/has-been-open))))
+        :where +patch-dayone/is-cooking))))
 
 (use-package! origami
   :after (org-agenda evil-org-agenda org-super-agenda)
