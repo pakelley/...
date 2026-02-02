@@ -2277,26 +2277,25 @@
 
 (use-package! org-jira
   :custom
+  (auth-sources '("~/.authinfo"))
   (org-jira-working-dir "~/.local/share/notes/gtd/jira")
-  (jiralib-url "https://humansignal.atlassian.net")
-  (jiralib-user "patrick@humansignal.com")
-  (org-jira-default-jql "project = \"DIA\" AND Sprint in openSprints() AND (assignee = currentUser() OR status IN (\"In Review\", Confirmed)) ORDER BY  priority DESC, created ASC")
+  (jiralib-url "https://bombora.atlassian.net")
+  (jiralib-user "pkelley@bombora.com")
+  (org-jira-default-jql "project = \"DSML\" AND Sprint in openSprints() AND (assignee = currentUser() OR status IN (\"Peer Review\", \"Code Review\")) ORDER BY  priority DESC, created ASC")
   (org-jira-jira-status-to-org-keyword-alist
-      '(("Ready for Dev" . "READY")
-        ("In Progress" . "TODO")
-        ("In Review" . "REVIEW")
-        ("Confirmed" . "CONFIRMED")
-        ("Delivered" . "DONE")))
+   '(("To Do" . "READY")
+     ("Ready for Development" . "READY")
+     ("Development" . "TODO")
+     ("Peer Review" . "REVIEW")
+     ("Done" . "DONE")
+     ("Will Not Do" . "DONE")))
   :config
   (add-to-list 'org-agenda-files org-jira-working-dir)
   (defconst org-jira-progress-issue-flow
-  '(("To Refine" . "To Groom")
-    ("To Groom" . "Ready For Dev")
-    ("Ready for Dev" . "In Progress")
-    ("In Progress" . "In Review")
-    ("In Review" . "QA")
-    ("QA" . "Confirmed")
-    ("Confirmed" . "Delivered")))
+    '(("Ready for Dev" . "Development")
+      ("To Do" . "Development")
+      ("Development" . "Peer Review")
+      ("Peer Review" . "Done")))
   (after! code-review
     (defun +patch/get-pr-url-for-ticket (jira-key)
       "Find ticket identified by JIRA-KEY, and return an associated PR url.
