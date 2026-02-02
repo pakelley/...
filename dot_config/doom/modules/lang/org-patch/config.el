@@ -79,14 +79,260 @@
       (save-excursion
         (save-restriction
           (funcall hook)))))
+  (defvar +patch/org-archive-file-name "gtd_archive"
+    "Base archive file name (without extension).")
+  
+  (defvar +patch/org-archive-file-extension ""
+    "Optional extension appended to archive files (e.g. \".org\"). Defaults to no extension.")
+  
+  (defvar +patch/org-archive-directory org-gtd-directory
+    "Directory that stores archive files. Defaults to the GTD directory.")
+  
+  (defun +patch/org-archive--target-file ()
+    "Return the archive file path, creating it (and the directory) if necessary."
+    (let* ((base-dir (file-name-as-directory (or +patch/org-archive-directory org-gtd-directory)))
+           (ext (or +patch/org-archive-file-extension ""))
+           (file (expand-file-name (concat +patch/org-archive-file-name ext) base-dir)))
+      (make-directory (file-name-directory file) t)
+      (unless (file-exists-p file)
+        (with-temp-buffer
+          (insert "# -*- mode: org -*-\n\n")
+          (insert "#+title: " +patch/org-archive-file-name "\n\n")
+          (write-region (point-min) (point-max) file)))
+      file))
+  
+  (defun +patch/org-archive--ensure-outline (outline-path file)
+    "Ensure OUTLINE-PATH (list of parent headings) exists inside FILE.
+  Return a marker pointing at the last heading in OUTLINE-PATH, or nil if the path is empty."
+    (when outline-path
+      (with-current-buffer (find-file-noselect file)
+        (org-with-wide-buffer
+          (let ((pos nil))
+            (dolist (heading outline-path)
+              (setq pos (+patch/org-archive--find-or-create-heading heading pos)))
+            (when pos
+              (copy-marker pos t)))))))
+  
+  (defun +patch/org-archive--find-or-create-heading (heading parent-pos)
+    "Find or create HEADING under PARENT-POS (nil means top-level). Return the absolute position."
+    (let* ((parent-level (if parent-pos
+                             (org-with-point-at parent-pos (org-current-level))
+                           0))
+           (level (1+ parent-level))
+           (regexp (format "^\\*\\{%d\\}\\s-+%s\\(?:\\s-*$\\|\\s-+\\)"
+                           level (regexp-quote heading))))
+      (save-restriction
+        (if parent-pos
+            (progn
+              (goto-char parent-pos)
+              (org-narrow-to-subtree)
+              (forward-line 1))
+          (goto-char (point-min)))
+        (or (save-excursion
+              (goto-char (point-min))
+              (when (re-search-forward regexp nil t)
+                (line-beginning-position)))
+            (progn
+              (goto-char (point-max))
+              (unless (bolp) (insert "\n"))
+              (insert (make-string level ?*) " " heading "\n")
+              (forward-line -1)
+              (point))))))
+  
+  (defun +patch/org-archive--context-info (origin-file outline-path)
+    "Store the context requested by `org-archive-save-context-info'.
+  See (info \"(org) Archiving\") or https://orgmode.org/manual/Archiving.html for details on the ARCHIVE_* properties."
+    (let ((path-string (when outline-path
+                         (org-format-outline-path outline-path nil nil "/"))))
+      (dolist (item org-archive-save-context-info)
+        (pcase item
+          ('time (org-entry-put (point) "ARCHIVE_TIME"
+                                (format-time-string (org-time-stamp-format t t))))
+          ('file (org-entry-put (point) "ARCHIVE_FILE"
+                                (abbreviate-file-name origin-file)))
+          ('category (org-entry-put (point) "ARCHIVE_CATEGORY"
+                                    (org-get-category nil t)))
+          ('todo (when-let ((state (org-get-todo-state)))
+                   (org-entry-put (point) "ARCHIVE_TODO" state)))
+          ('olpath (when path-string
+                     (org-entry-put (point) "ARCHIVE_OLPATH" path-string)))
+          ('priority (when-let ((priority (org-entry-get (point) "PRIORITY")))
+                       (org-entry-put (point) "ARCHIVE_PRIORITY" priority)))
+          ('tags (when-let ((tags (org-get-tags nil t)))
+                   (org-entry-put (point) "ARCHIVE_TAGS"
+                                  (mapconcat #'identity tags " "))))))))
+  
+  (defun +patch/org-archive--move-subtree (target-file outline-path)
+    "Move the subtree at point into TARGET-FILE under OUTLINE-PATH."
+    (let* ((parent-marker (+patch/org-archive--ensure-outline outline-path target-file))
+           (level (if outline-path (1+ (length outline-path)) 1)))
+      (org-cut-subtree)
+      (with-current-buffer (find-file-noselect target-file)
+        (org-with-wide-buffer
+          (if parent-marker
+              (progn
+                (goto-char parent-marker)
+                (org-end-of-subtree t t)
+                (unless (bolp) (insert "\n")))
+            (goto-char (point-max))
+            (unless (bolp) (insert "\n")))
+          (org-paste-subtree level)
+          (save-buffer)))))
+  
+  (defun +patch/org-archive--outline-path-from-prop ()
+    "Return the outline path stored in ARCHIVE_OLPATH at point as a list."
+    (when-let* ((raw (org-entry-get (point) "ARCHIVE_OLPATH"))
+                (trimmed (org-trim raw))
+                ((not (string= trimmed ""))))
+      (let* ((path (cl-remove-if (lambda (s) (string= s ""))
+                                 (mapcar #'org-trim (split-string trimmed "/" t))))
+             (normalized (+patch/org-archive--normalize-outline-path path)))
+        (when (and normalized (not (equal path normalized)))
+          (org-entry-put (point) "ARCHIVE_OLPATH"
+                         (+patch/org-archive--outline-path-to-string normalized)))
+        normalized)))
+  
+  (defun +patch/org-archive--outline-path-to-string (outline-path)
+    "Convert OUTLINE-PATH list to the stored ARCHIVE_OLPATH string."
+    (when outline-path
+      (mapconcat #'identity outline-path "/")))
+  
+  (defun +patch/org-archive--current-outline-path ()
+    "Return the current outline path at point as a list, or nil if not inside a heading."
+    (let ((path (org-get-outline-path t)))
+      (when path
+        (mapcar #'org-trim path))))
+  
+  (defun +patch/org-archive--current-heading ()
+    "Return the current heading title without TODO, priority, or tags."
+    (string-trim (org-no-properties (org-get-heading t t t t))))
+  
+  (defun +patch/org-archive--normalize-outline-path (outline-path)
+    "Drop trailing archive-only placeholders like \"Archive\" from OUTLINE-PATH."
+    (let ((result (cl-remove-if (lambda (s)
+                                  (let ((trim (string-trim s)))
+                                    (or (string-empty-p trim)
+                                        (string-equal trim "Archive")
+                                        (string-equal trim "archive"))))
+                                (copy-sequence outline-path))))
+      (setq result (mapcar #'string-trim result))
+      (while (and result
+                  (string-equal (downcase (car (last result))) "archive"))
+        (setq result (butlast result)))
+      result))
+  
+  (defun +patch/org-archive--ensure-outline-path (&optional quiet)
+    "Return the outline path for the entry at point, populating ARCHIVE_OLPATH if missing.
+  When QUIET is non-nil, suppress informational messages while filling in metadata."
+    (or (+patch/org-archive--outline-path-from-prop)
+        (let* ((normalized (+patch/org-archive--normalize-outline-path
+                            (+patch/org-archive--current-outline-path)))
+               (heading (+patch/org-archive--current-heading))
+               (fallback (when normalized (copy-sequence normalized))))
+          (when (and fallback heading
+                     (string-equal (string-trim (car (last fallback))) heading))
+            (setq fallback (butlast fallback)))
+          (when fallback
+            (org-entry-put (point) "ARCHIVE_OLPATH"
+                           (+patch/org-archive--outline-path-to-string fallback))
+            (unless quiet
+              (message "Set ARCHIVE_OLPATH to %s"
+                       (+patch/org-archive--outline-path-to-string fallback))))
+          fallback)))
+  
+  (defun +patch/org-archive--at-point (&optional quiet)
+    "Archive the subtree at point, preserving outline hierarchy.
+  QUIET suppresses the status message."
+    (org-back-to-heading t)
+    (let* ((origin-buffer (or (buffer-base-buffer) (current-buffer)))
+           (origin-file (or (buffer-file-name origin-buffer)
+                            (user-error "Current buffer is not visiting a file")))
+           (outline-path (org-get-outline-path t))
+           (target-file (+patch/org-archive--target-file)))
+      (+patch/org-archive--context-info origin-file outline-path)
+      (org-entry-delete (point) "ID")
+      (+patch/org-archive--move-subtree target-file outline-path)
+      (unless quiet
+        (message "Archived to %s" (abbreviate-file-name target-file)))))
+  
+  (defun +patch-gtd/migrate-legacy-archive-entry ()
+    "Move the archived entry at point into the new archive hierarchy."
+    (interactive)
+    (unless (derived-mode-p 'org-mode)
+      (user-error "Not in an Org buffer"))
+    (org-back-to-heading t)
+    (let ((outline-path (+patch/org-archive--ensure-outline-path)))
+      (unless outline-path
+        (user-error "Cannot derive outline path; add headings first"))
+      (let ((target-file (+patch/org-archive--target-file)))
+        (+patch/org-archive--move-subtree target-file outline-path)
+        (message "Migrated entry (%s) to %s"
+                 (+patch/org-archive--outline-path-to-string outline-path)
+                 (abbreviate-file-name target-file)))))
+  
+  (defun +patch-gtd/migrate-legacy-archive (&optional scope)
+    "Migrate archived entries in SCOPE (defaults to current subtree) into the new archive file.
+  With a prefix argument, operate on the entire buffer."
+    (interactive (list (if current-prefix-arg 'file 'tree)))
+    (unless (derived-mode-p 'org-mode)
+      (user-error "Not in an Org buffer"))
+    (let ((target-file (+patch/org-archive--target-file))
+          (migrated 0)
+          (missing-outline 0))
+      (save-excursion
+        (save-restriction
+          (when (eq scope 'file)
+            (widen))
+          (org-map-entries
+           (lambda ()
+             (let ((outline-path (+patch/org-archive--ensure-outline-path t)))
+               (if outline-path
+                   (progn
+                     (+patch/org-archive--move-subtree target-file outline-path)
+                     (cl-incf migrated)
+                     (setq org-map-continue-from (point)))
+                 (cl-incf missing-outline))))
+           "ARCHIVE_TIME<>\"\"" scope)))
+      (message "Migrated %d entries%s"
+               migrated
+               (if (zerop missing-outline)
+                   ""
+                 (format " (%d without outline metadata)" missing-outline)))))
+  
   (defun +patch-dayone/archive-task ()
     (interactive)
-    (org-entry-delete (point) "ID")
-    (org-archive-to-archive-sibling))
+    (if (derived-mode-p 'org-agenda-mode)
+        (org-agenda-with-point-at-orig-entry
+          (+patch/org-archive--at-point))
+      (+patch/org-archive--at-point)))
+  
+  (defun +patch-gtd/archive-completed-tasks (&optional file)
+    "Archive every DONE/CNCL entry in FILE (defaults to current buffer or the GTD task file)."
+    (interactive
+     (list (cond
+            (current-prefix-arg
+             (read-file-name "Archive DONE/CNCL from: " (file-name-directory +patch/org-gtd-tasks-file)
+                             nil t nil #'file-readable-p))
+            ((and (derived-mode-p 'org-mode)
+                  (buffer-file-name (or (buffer-base-buffer) (current-buffer))))
+             (buffer-file-name (or (buffer-base-buffer) (current-buffer))))
+            (t +patch/org-gtd-tasks-file))))
+    (unless (and file (file-exists-p file))
+      (user-error "Cannot find org file to archive from"))
+    (with-current-buffer (find-file-noselect file)
+      (org-with-wide-buffer
+        (goto-char (point-min))
+        (org-map-entries
+         (lambda ()
+           (+patch/org-archive--at-point t)
+           (setq org-map-continue-from (point)))
+         "TODO=\"DONE\"|TODO=\"CNCL\"" 'file)))
+    (message "Archived DONE/CNCL tasks in %s" (abbreviate-file-name file)))
   
   (map! (:map evil-normal-state-map
               (:prefix-map ("DEL" . "GTD")
                :desc "Archive"             "a" #'+patch-dayone/archive-task
+               :desc "Archive DONE items"  "A" #'+patch-gtd/archive-completed-tasks
                :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
@@ -1940,15 +2186,6 @@
       ["Apply"
        ("x" "apply and eXit" +patch-gtd/apply-task-attrs)
        ("d" "apply and eDit" +patch-gtd/apply-task-attrs-and-goto-task)])))
-
-(defun +patch-gtd/archive-all-done ()
-  (interactive)
-  (org-ql-query
-    ;; :select #'org-archive-to-archive-sibling
-    ;; :select '(org-archive-to-archive-sibling)
-    :select '(org-get-heading)
-    :from "~/.local/share/notes/gtd/org-gtd-tasks.org"
-    :where '(and (closed) (not (tags "ARCHIVE")))))
 
 ;; (after! bufler
 ;;   (setq bufler-groups (bufler-defgroups

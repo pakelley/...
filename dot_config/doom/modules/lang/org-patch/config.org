@@ -110,7 +110,6 @@ Keybindings while creating a project:
               (:prefix-map ("DEL" . "GTD")
                :desc "Archive"             "a" #'+patch-dayone/archive-task
                :desc "Archive DONE items"  "A" #'+patch-gtd/archive-completed-tasks
-               :desc "Migrate legacy archive" "m" #'+patch-gtd/migrate-legacy-archive
                :desc "Views"               "V" #'org-ql-view
                :desc "Process Item"        "DEL" #'+patch-gtd/process-inbox-item
                (:prefix ("r" . "Projects")
@@ -141,7 +140,7 @@ Right now this is only the recommendations from `org-gtd`, but I'll probably add
 Notably, I use the following property for edna to keep tasks from marking DONE tasks as NEXT:
 :TRIGGER: if next-sibling match("/+DONE") then else next-sibling todo!(NEXT) endif
 I tried to get !done? to work here, but it seemed to work the opposite of how I'd expect.
-** Archive
+* Archive
 Keep my GTD file slim by archiving completed work into a dedicated archive file while keeping the original outline structure intact. Each archived subtree lands under the same parent headings it had in the source file, so projects stay grouped together. Holding =DEL a= still archives the subtree at point, while =DEL A= sweeps an entire buffer (defaults to my =org-gtd= tasks file) for =DONE= and =CNCL= items and archives them in one go.
 
 Set these vars to tweak the behaviour:
@@ -3210,18 +3209,6 @@ necessary for the particular task."
   ["Apply"
    ("x" "apply and eXit" +patch-gtd/apply-task-attrs)
    ("d" "apply and eDit" +patch-gtd/apply-task-attrs-and-goto-task)])
-#+end_src
-
-* Tidy org file
-#+begin_src emacs-lisp :tangle yes
-(defun +patch-gtd/archive-all-done ()
-  (interactive)
-  (org-ql-query
-    ;; :select #'org-archive-to-archive-sibling
-    ;; :select '(org-archive-to-archive-sibling)
-    :select '(org-get-heading)
-    :from "~/.local/share/notes/gtd/org-gtd-tasks.org"
-    :where '(and (closed) (not (tags "ARCHIVE")))))
 #+end_src
 
 * bufler
